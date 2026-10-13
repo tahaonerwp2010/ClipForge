@@ -1,0 +1,165 @@
+// YouTube download via yt-dlp (auto-fetched once into userData/bin).
+const fs = require('fs');
+const path = require('path');
+const https = require('https');
+const { spawn } = require('child_process');
+const P = require('./paths.cjs');
+
+let cur = null;
+let cancelled = false;
+const procs = new Set();
+function killTree(p) {
+  if (!p) return;
+  try {
+    if (process.platform === 'win32' && p.pid) spawn('taskkill', ['/PID', String(p.pid), '/T', '/F'], { windowsHide: true });
+    else p.kill('SIGKILL');
+  } catch { try { p.kill(); } catch {} }
+}
+const isUrl = (u) => /^https?:\/\/[^\s]+\.[^\s]+/i.test(String(u || '').trim());
+
+function fetchTo(url, dest, onPct, hops = 0) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'ClipForge' } }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && hops < 6) {
+        res.resume(); return fetchTo(new URL(res.headers.location, url).toString(), dest, onPct, hops + 1).then(resolve, reject);
+      }
+      if (res.statusCode !== 200) { res.resume(); return reject(new Error('HTTP ' + res.statusCode)); }
+      const total = +res.headers['content-length'] || 0; let got = 0, lastQ = -1;
+      const out = fs.createWriteStream(dest);
+      res.on('data', (d) => { got += d.length; if (total && onPct) { const q = Math.round(got / total * 100); if (q !== lastQ) { lastQ = q; onPct(q); } } });
+      res.pipe(out); out.on('finish', () => out.close(resolve)); out.on('error', reject);
+    });
+    req.on('error', reject);
+  });
+}
+
+async function ensureYtDlp(onStatus) {
+  const have = P.resolveBin('yt-dlp');
+  const fresh = have && (Date.now() - fs.statSync(have).mtimeMs < 3 * 86400e3 || have.indexOf(path.join(P.userDataDir(), 'bin')) !== 0);   // bundled copies are left alone; downloaded ones are refreshed every 3 days
+  if (fresh) return have;
+  const win = process.platform === 'win32';
+  const name = win ? 'yt-dlp.exe' : (process.platform === 'darwin' ? 'yt-dlp_macos' : 'yt-dlp');
+  const binDir = path.join(P.userDataDir(), 'bin'); fs.mkdirSync(binDir, { recursive: true });
+  const dest = path.join(binDir, win ? 'yt-dlp.exe' : 'yt-dlp');
+  const url = process.env.CF_YTDLP_URL || `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${name}`;
+  onStatus && onStatus('Preparing downloader (one-time, ~15 MB)…', 0);
+  try { await fetchTo(url, dest + '.part', (p) => onStatus && onStatus('Preparing downloader (one-time, ~15 MB)…', p)); }
+  catch (e) { try { fs.unlinkSync(dest + '.part'); } catch {} if (have) return have; throw new Error('Could not fetch the downloader. Check your internet connection. (' + e.message + ')'); }
+  fs.renameSync(dest + '.part', dest);
+  try { fs.chmodSync(dest, 0o755); } catch {}
+  return dest;
+}
+
+function cancel() { cancelled = true; for (const p of procs) killTree(p); procs.clear(); cur = null; }
+
+function friendly(err) {
+  const t = String(err || '');
+  if (/Private video|Sign in|members-only/i.test(t)) return 'This video is private or needs a sign-in.';
+  if (/Video unavailable|not available|removed/i.test(t)) return 'This video is unavailable.';
+  if (/Unsupported URL/i.test(t)) return 'This link is not supported. Paste a YouTube video link.';
+  if (/Unable to download|getaddrinfo|Temporary failure|timed out|Network/i.test(t)) return 'Network problem. Check your internet and try again.';
+  return 'Download failed. ' + (t.trim().split('\n').pop() || '').slice(0, 160);
+}
+
+const num = (x) => { const n = Number(x); return isFinite(n) && x !== '' && x !== 'NA' && x !== 'None' ? n : null; };
+
+// Ask yt-dlp for the size of the chosen formats first, so the bar can show a real total (video + audio).
+function probeSize(bin, url, fmt, extra = []) {
+  return new Promise((resolve) => {
+    let out = '', done = false;
+    const p = spawn(bin, ['--no-playlist', ...extra, '-f', fmt, '--print', 'CFSZ|%(requested_formats.0.filesize,requested_formats.0.filesize_approx)s|%(requested_formats.1.filesize,requested_formats.1.filesize_approx)s|%(filesize,filesize_approx)s', url], { windowsHide: true }); procs.add(p);
+    const fin = (v) => { if (!done) { done = true; clearTimeout(t); procs.delete(p); killTree(p); resolve(v); } };
+    const t = setTimeout(() => fin(0), 30000);
+    p.stdout.on('data', (d) => { out += d; });
+    p.on('error', () => fin(0));
+    p.on('close', () => {
+      const m = out.match(/CFSZ\|([^|\n]*)\|([^|\n]*)\|([^|\n\r]*)/);
+      if (!m) return fin(0);
+      const a = num(m[1].trim()), b = num(m[2].trim()), c = num(m[3].trim());
+      fin(a != null && b != null ? a + b : (c || a || 0));
+    });
+  });
+}
+
+// Different "routes" to YouTube. The first is yt-dlp's default; if a route is throttled (a few KB/s) we switch to the next one and resume.
+const ROUTES = [
+  { name: 'default', args: [] },
+  { name: 'android_vr', args: ['--extractor-args', 'youtube:player_client=android_vr'] },
+  { name: 'tv', args: ['--extractor-args', 'youtube:player_client=tv'] },
+  { name: 'ios', args: ['--extractor-args', 'youtube:player_client=ios'] },
+];
+const SLOW_BPS = 250 * 1024;                       // below this for ~9 s = throttled
+const FAST_ARGS = ['-N', '8', '--http-chunk-size', '10M', '--retries', '10', '--fragment-retries', '10', '--socket-timeout', '20', '--throttled-rate', '100K'];
+
+async function download(url, dir, onProgress) {
+  url = String(url || '').trim();
+  if (!isUrl(url)) throw new Error('Please paste a valid video link.');
+  fs.mkdirSync(dir, { recursive: true });
+  cancelled = false;
+  const bin = await ensureYtDlp((m, p) => { if (!cancelled) onProgress({ phase: 'prepare', percent: p, text: m }); });
+  if (cancelled) throw new Error('Cancelled');
+  const ff = P.resolveBin('ffmpeg');
+  const fmt = 'bv*[height<=1080]+ba/b[height<=1080]/b';
+  let lastErr = '';
+  for (let r = 0; r < ROUTES.length; r++) {
+    onProgress({ phase: 'prepare', percent: 0, text: r === 0 ? 'Reading video info…' : 'Slow connection to YouTube — trying a faster route…' });
+    if (cancelled) throw new Error('Cancelled');
+    const grand = await probeSize(bin, url, fmt, ROUTES[r].args);
+    if (cancelled) throw new Error('Cancelled');
+    const res = await attempt(bin, url, dir, fmt, ff, ROUTES[r], grand, onProgress, r < ROUTES.length - 1);
+    if (res.ok) return res.value;
+    if (res.cancelled || cancelled) throw new Error('Cancelled');
+    lastErr = res.error || lastErr;
+    if (!res.slow && r > 0) break;                  // a real error on a fallback route: stop
+    if (!res.slow && /Private video|Sign in|unavailable|Unsupported URL/i.test(lastErr)) break;
+  }
+  throw new Error(friendly(lastErr));
+}
+
+function attempt(bin, url, dir, fmt, ff, route, grand, onProgress, canSwitch) {
+  const args = ['--no-playlist', '--newline', '--no-colors', '--progress', '-f', fmt, '--merge-output-format', 'mp4', ...FAST_ARGS, ...route.args,
+    '--progress-template', 'download:CFP|%(progress.status)s|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s',
+    '-o', path.join(dir, '%(title).80B [%(id)s].%(ext)s'), '--print', 'after_move:CFFILE:%(filepath)s', '--print', 'CFTITLE:%(title)s'];
+  if (ff) args.push('--ffmpeg-location', path.dirname(ff));
+  args.push(url);
+  return new Promise((resolve) => {
+    const p = spawn(bin, args, { windowsHide: true }); cur = p; procs.add(p);
+    let file = '', title = '', errBuf = '', buf = '', slowFlag = false;
+    let base = 0, lastD = 0, lastT = 0, lastEmit = 0, tStart = 0, ema = 0, slowSince = 0;
+    const line = (l) => {
+      if (l.startsWith('CFFILE:')) { file = l.slice(7).trim(); return; }
+      if (l.startsWith('CFTITLE:')) { title = l.slice(8).trim(); return; }
+      if (l.startsWith('CFP|')) {
+        const [, status, d, t1, t2, sp, eta] = l.split('|').map(x => x.trim());
+        const done = num(d) || 0, tot = num(t1) || num(t2) || 0, speed = num(sp), etaS = num(eta);
+        if (done < lastD - 1024) base += lastT || lastD;
+        lastD = done; if (tot) lastT = tot; else lastT = Math.max(lastT, done);
+        const overall = base + done;
+        const total = Math.max(grand || 0, base + (tot || done));
+        const now = Date.now();
+        if (!tStart) tStart = now;
+        if (speed != null) ema = ema ? ema * 0.7 + speed * 0.3 : speed;
+        // throttled? (slow for 9 s in a row while a lot is still left) -> switch route and resume
+        if (canSwitch && ema && ema < SLOW_BPS && total - overall > 8 * 1024 * 1024 && now - tStart > 4000) { if (!slowSince) slowSince = now; if (now - slowSince > 9000) { slowFlag = true; killTree(p); return; } }
+        else slowSince = 0;
+        if (now - lastEmit < 120 && status !== 'finished') return;
+        lastEmit = now;
+        const percent = total ? Math.min(99.5, overall / total * 100) : 0;
+        onProgress({ phase: 'download', percent, done: overall, total, speed: speed || 0, eta: etaS != null ? etaS : null, text: 'Downloading…' });
+        return;
+      }
+      if (/\[Merger\]|\[ExtractAudio\]|\[VideoRemuxer\]|\[FixupM/.test(l)) onProgress({ phase: 'merge', percent: 100, text: 'Finishing…' });
+    };
+    p.stdout.on('data', (d) => { buf += d; let i; while ((i = buf.indexOf('\n')) >= 0) { line(buf.slice(0, i).replace(/\r$/, '')); buf = buf.slice(i + 1); } });
+    p.stderr.on('data', (d) => { errBuf += d; });
+    p.on('error', (e) => { cur = null; procs.delete(p); resolve({ ok: false, error: e.message }); });
+    p.on('close', (code) => {
+      procs.delete(p); const wasCancelled = cancelled; if (cur === p) cur = null;
+      if (wasCancelled) return resolve({ ok: false, cancelled: true });
+      if (slowFlag) return resolve({ ok: false, slow: true, error: 'slow' });
+      if (code === 0 && file && fs.existsSync(file)) return resolve({ ok: true, value: { path: file, title } });
+      resolve({ ok: false, error: errBuf });
+    });
+  });
+}
+module.exports = { download, cancel, isUrl, ensureYtDlp };

@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8"><body>
+<script src="face-api.js"></script>
+<script>
+// window.runDetect({manifest,binB64}, frameUrls) -> [{faces:[{cx,cy,w,h,score,act}]}]
+// act = how much the mouth area changed vs the previous frame (cheap "who is talking" signal)
+window.runDetect = async function (model, urls) {
+  let ok = false; try { ok = await faceapi.tf.setBackend('webgl'); } catch (e) {}
+  if (!ok) await faceapi.tf.setBackend('cpu');
+  await faceapi.tf.ready();
+  // weights are passed in (no fetch of file:// needed): model = { manifest, binB64 }
+  const bin = Uint8Array.from(atob(model.binB64), c => c.charCodeAt(0)).buffer;
+  const map = faceapi.tf.io.decodeWeights(bin, model.manifest[0].weights);
+  faceapi.nets.tinyFaceDetector.loadFromWeightMap(map);
+  const opt = new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.35 });
+  const cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
+  let prev = null, out = [];
+  for (const u of urls) {
+    const img = new Image(); img.src = u;
+    try { await img.decode(); } catch (e) { out.push({ faces: [] }); continue; }
+    const W = img.naturalWidth, H = img.naturalHeight;
+    cv.width = W; cv.height = H; cx.drawImage(img, 0, 0);
+    const px = cx.getImageData(0, 0, W, H).data;
+    const gray = new Uint8Array(W * H);
+    for (let i = 0, j = 0; i < px.length; i += 4, j++) gray[j] = (px[i] * 3 + px[i + 1] * 6 + px[i + 2]) / 10;
+    let diff = 0;                                   // whole-frame change vs previous frame: a big jump = camera cut / zoom change
+    if (prev && prev.length === gray.length) { let d = 0, c = 0; for (let i = 0; i < gray.length; i += 37) { d += Math.abs(gray[i] - prev[i]); c++; } diff = d / c; }
+    const dets = await faceapi.detectAllFaces(img, opt);
+    const faces = dets.map(d => {
+      const b = d.box, x0 = Math.max(0, Math.round(b.x + b.width * 0.15)), x1 = Math.min(W, Math.round(b.x + b.width * 0.85));
+      const y0 = Math.max(0, Math.round(b.y + b.height * 0.55)), y1 = Math.min(H, Math.round(b.y + b.height * 1.05));
+      let act = 0, n = 0;
+      if (prev && prev.length === gray.length) {
+        for (let y = y0; y < y1; y += 2) for (let x = x0; x < x1; x += 2) { act += Math.abs(gray[y * W + x] - prev[y * W + x]); n++; }
+        act = n ? act / n : 0;
+      }
+      return { cx: (b.x + b.width / 2) / W, cy: (b.y + b.height / 2) / H, w: b.width / W, h: b.height / H, score: d.score, act };
+    });
+    out.push({ faces, diff }); prev = gray;
+  }
+  return out;
+};
+</script>

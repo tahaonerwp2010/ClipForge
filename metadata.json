@@ -1,0 +1,6 @@
+{
+  "name": "ClipForge Studio",
+  "description": "Desktop-grade AI video clipper & reframer for YouTube Shorts, Instagram Reels, and TikTok with customizable inner video aspect ratios, dynamic captions, and viral formatting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

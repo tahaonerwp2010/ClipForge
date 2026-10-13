@@ -1,0 +1,50 @@
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
+
+contextBridge.exposeInMainWorld('electronAPI', {
+  isElectron: true,
+  downloadModel: (modelId) => ipcRenderer.invoke('download-model', { modelId }),
+  onDownloadProgress: (callback) => {
+    const h = (event, data) => callback(data);
+    ipcRenderer.on('download-progress', h);
+    return () => ipcRenderer.removeListener('download-progress', h);
+  },
+  getPathForFile: (file) => { try { return webUtils.getPathForFile(file); } catch { return ''; } },
+  pickVideo: () => ipcRenderer.invoke('pick-video'),
+  pickFolder: () => ipcRenderer.invoke('pick-folder'),
+  ytDownload: (url) => ipcRenderer.invoke('yt-download', { url }),
+  ytCancel: () => ipcRenderer.invoke('yt-cancel'),
+  onYtProgress: (cb) => { const h = (e, d) => cb(d); ipcRenderer.on('yt-progress', h); return () => ipcRenderer.removeListener('yt-progress', h); },
+  pickVideos: () => ipcRenderer.invoke('pick-videos'),
+  detectFacecam: (filePath) => ipcRenderer.invoke('detect-facecam', { filePath }),
+  syncVideos: (mainPath, secondPath) => ipcRenderer.invoke('sync-videos', { mainPath, secondPath }),
+  probeVideo: (p) => ipcRenderer.invoke('probe-video', p),
+  showInFolder: (p) => ipcRenderer.invoke('show-in-folder', p),
+  modelStatus: () => ipcRenderer.invoke('model-status'),
+  verifyModel: (modelId) => ipcRenderer.invoke('verify-model', { modelId }),
+  deleteModel: (modelId) => ipcRenderer.invoke('delete-model', { modelId }),
+  getFolders: () => ipcRenderer.invoke('get-folders'),
+  chooseFolder: (kind, reset) => ipcRenderer.invoke('choose-folder', { kind, reset }),
+  saveClipSheet: (dir, rows) => ipcRenderer.invoke('save-clip-sheet', { dir, rows }),
+  openFolder: (p) => ipcRenderer.invoke('open-folder', p),
+  testGemini: (apiKey, model) => ipcRenderer.invoke('gemini-test', { apiKey, model }),
+  engineStatus: () => ipcRenderer.invoke('engine-status'),
+  startPipeline: (job) => ipcRenderer.invoke('start-pipeline', job),
+  deleteProjectFiles: (args) => ipcRenderer.invoke('delete-project-files', args),
+  cancelPipeline: () => ipcRenderer.invoke('cancel-pipeline'),
+  listUserFonts: () => ipcRenderer.invoke('list-user-fonts'),
+  importFont: () => ipcRenderer.invoke('import-font'),
+  removeUserFont: (f) => ipcRenderer.invoke('remove-user-font', f),
+  pickAudio: () => ipcRenderer.invoke('pick-audio'),
+  pickImage: () => ipcRenderer.invoke('pick-image'),
+  discardCheckpoint: (job) => ipcRenderer.invoke('discard-checkpoint', job),
+  onPipelineEvent: (cb) => { const h = (e, d) => cb(d); ipcRenderer.on('pipeline-event', h); return () => ipcRenderer.removeListener('pipeline-event', h); },
+  runFfmpeg: (args) => ipcRenderer.invoke('run-ffmpeg', args),
+  getSystemSpecs: () => ipcRenderer.invoke('get-system-specs'),
+  engineCheck: () => ipcRenderer.invoke('engine-check'),
+  updateCheck: (repo) => ipcRenderer.invoke('update-check', { repo }),
+  updateDownload: (url, name) => ipcRenderer.invoke('update-download', { url, name }),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  onUpdateProgress: (cb) => { const h = (e, d) => cb(d); ipcRenderer.on('update-progress', h); return () => ipcRenderer.removeListener('update-progress', h); },
+  reloadApp: () => ipcRenderer.send('window-reload')
+});
+
