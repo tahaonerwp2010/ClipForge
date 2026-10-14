@@ -18,8 +18,9 @@ async function check(repoIn, current) {
   try {
     const rel = await getJson(`https://api.github.com/repos/${repo}/releases/latest`);
     if (rel && rel.tag_name) {
-      const assets = (rel.assets || []).filter(a => /\.(exe|msi|zip)$/i.test(a.name));
-      const asset = assets.find(a => /\.exe$/i.test(a.name)) || assets[0] || null;
+      const assets = rel.assets || [];
+      const plat = process.platform === 'win32' ? { os: /windows|win/i, ext: /\.exe$/i } : process.platform === 'darwin' ? { os: /mac|darwin|osx/i, ext: /\.dmg$/i } : { os: /linux/i, ext: /\.appimage$/i };
+      const asset = assets.find(a => plat.ext.test(a.name)) || assets.find(a => plat.os.test(a.name)) || null;
       return { ok: true, repo, current, latest: String(rel.tag_name).replace(/^v/i, ''), available: newer(rel.tag_name, current), notes: String(rel.body || '').slice(0, 800), pageUrl: rel.html_url, asset: asset ? { name: asset.name, url: asset.browser_download_url, size: asset.size } : null, source: 'release' };
     }
     const r = await fetch(`https://raw.githubusercontent.com/${repo}/HEAD/package.json`, { headers: { 'User-Agent': 'ClipForge-Updater' }, signal: AbortSignal.timeout(15000) });

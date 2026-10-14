@@ -12,7 +12,7 @@ async function transcribe(wavPath, { modelId = 'small', language = 'auto', workD
   const model = P.modelFile(modelId);
   if (!fs.existsSync(model)) throw new Error(`Whisper model "${modelId}" is not downloaded. Settings → Models → Download.`);
   const bin = P.resolveBin('whisper-cli') || P.resolveBin('main');
-  if (!bin) throw new Error('whisper-cli.exe not found. Put it (with its .dll files) in the "binaries" folder.');
+  if (!bin) throw new Error('The speech engine (whisper-cli) was not found in the "binaries" folder.');
   const n = duration > chunkSec * 1.4 && slice ? Math.ceil(duration / chunkSec) : 1;
   const all = [];
   for (let i = 0; i < n; i++) {

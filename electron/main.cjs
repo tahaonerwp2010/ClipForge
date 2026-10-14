@@ -136,6 +136,7 @@ function createWindow() {
   });
 }
 
+if (process.platform === 'linux') app.commandLine.appendSwitch('no-sandbox');   // AppImage on newer Ubuntu blocks the sandbox
 app.whenReady().then(() => {
   Paths.configure({ userData: app.getPath('userData'), appPath: app.getAppPath(), resourcesPath: process.resourcesPath || '' });
   Paths.setModelsDir(Settings.load().modelsDir);
