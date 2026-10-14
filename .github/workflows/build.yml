@@ -13,9 +13,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: windows-latest, name: windows, flag: --win }
-          - { os: ubuntu-22.04,   name: linux,   flag: --linux }
-          - { os: macos-latest,   name: mac-arm, flag: --mac }
+          - { os: windows-latest, name: windows, flag: --win, plat: win32 }
+          - { os: ubuntu-22.04,   name: linux,   flag: --linux, plat: linux }
+          - { os: macos-latest,   name: mac-arm, flag: --mac, plat: darwin }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -67,6 +67,7 @@ jobs:
           chmod +x ../../binaries/*
           ls -la ../../binaries
 
+      - run: node scripts/prune-onnx.cjs ${{ matrix.plat }}
       - run: npx vite build
       - run: npx electron-builder ${{ matrix.flag }} --publish never
         env:

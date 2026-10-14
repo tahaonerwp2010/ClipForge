@@ -13,7 +13,7 @@
     "lint": "tsc --noEmit",
     "electron:dev": "vite build && electron .",
     "pack": "vite build && electron-builder --dir",
-    "build:exe": "vite build && electron-builder --win"
+    "build:exe": "node scripts/prune-onnx.cjs win32 && vite build && electron-builder --win"
   },
   "build": {
     "appId": "com.clipforge.desktop",
@@ -32,12 +32,7 @@
       "target": "portable",
       "artifactName": "${productName}-windows-${arch}.${ext}",
       "signAndEditExecutable": false,
-      "icon": "build/icon.ico",
-      "files": [
-        "!node_modules/onnxruntime-node/bin/napi-v6/darwin/**",
-        "!node_modules/onnxruntime-node/bin/napi-v6/linux/**",
-        "!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**"
-      ]
+      "icon": "build/icon.ico"
     },
     "portable": {
       "artifactName": "${productName}-windows-${arch}.${ext}"
@@ -67,11 +62,7 @@
       ],
       "category": "public.app-category.video",
       "artifactName": "${productName}-mac-${arch}.${ext}",
-      "icon": "build/icon.png",
-      "files": [
-        "!node_modules/onnxruntime-node/bin/napi-v6/win32/**",
-        "!node_modules/onnxruntime-node/bin/napi-v6/linux/**"
-      ]
+      "icon": "build/icon.png"
     },
     "linux": {
       "target": [
@@ -79,11 +70,7 @@
       ],
       "category": "AudioVideo",
       "artifactName": "${productName}-linux-${arch}.${ext}",
-      "icon": "build/icon.png",
-      "files": [
-        "!node_modules/onnxruntime-node/bin/napi-v6/win32/**",
-        "!node_modules/onnxruntime-node/bin/napi-v6/darwin/**"
-      ]
+      "icon": "build/icon.png"
     }
   },
   "dependencies": {
