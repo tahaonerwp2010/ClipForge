@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.3.0",
+  "version": "1.5.0",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -114,6 +114,14 @@
   "clipforge": {
     "updateRepo": "tahaonerwp2010/ClipForge"
   },
-  "author": "ClipForge",
-  "description": "ClipForge Studio - AI video clipper"
+  "author": {
+    "name": "ClipForge",
+    "email": "clipforge@users.noreply.github.com"
+  },
+  "description": "ClipForge Studio - AI video clipper",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tahaonerwp2010/ClipForge.git"
+  },
+  "homepage": "https://github.com/tahaonerwp2010/ClipForge"
 }

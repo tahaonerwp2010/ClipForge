@@ -27,31 +27,45 @@ jobs:
       - name: Windows tools
         if: matrix.name == 'windows'
         shell: pwsh
-        run: powershell -ExecutionPolicy Bypass -File binaries/get-binaries.ps1
+        run: |
+          New-Item -ItemType Directory -Force binaries, tmp | Out-Null
+          curl.exe -fL --retry 4 -o tmp/ffmpeg.zip https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip
+          Expand-Archive tmp/ffmpeg.zip tmp/ff -Force
+          Get-ChildItem tmp/ff -Recurse -Include ffmpeg.exe,ffprobe.exe | Copy-Item -Destination binaries -Force
+          git clone --depth 1 https://github.com/ggml-org/whisper.cpp tmp/whisper.cpp
+          cmake -S tmp/whisper.cpp -B tmp/whisper.cpp/build -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+          cmake --build tmp/whisper.cpp/build --config Release --target whisper-cli -j 4
+          Get-ChildItem tmp/whisper.cpp/build -Recurse -Filter whisper-cli.exe | Select-Object -First 1 | Copy-Item -Destination binaries -Force
+          Get-ChildItem binaries
 
       - name: Linux tools
         if: matrix.name == 'linux'
         run: |
           sudo apt-get update && sudo apt-get install -y cmake build-essential xz-utils
           mkdir -p binaries tmp && cd tmp
-          curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz | tar -xJ
+          curl -fL --retry 4 https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz | tar -xJ
           cp ffmpeg-*-static/ffmpeg ffmpeg-*-static/ffprobe ../binaries/
           git clone --depth 1 https://github.com/ggml-org/whisper.cpp
-          cd whisper.cpp && cmake -B build -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release && cmake --build build -j --config Release --target whisper-cli
+          cd whisper.cpp && cmake -B build -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DCMAKE_BUILD_TYPE=Release && cmake --build build -j --config Release --target whisper-cli
           cp build/bin/whisper-cli ../../binaries/
           chmod +x ../../binaries/*
+          ls -la ../../binaries
 
       - name: macOS tools
         if: matrix.name == 'mac-arm'
         run: |
           brew install cmake
           mkdir -p binaries tmp && cd tmp
-          curl -L https://evermeet.cx/ffmpeg/getrelease/zip -o ffmpeg.zip && unzip -o ffmpeg.zip -d ../binaries
-          curl -L https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip -o ffprobe.zip && unzip -o ffprobe.zip -d ../binaries
+          for t in ffmpeg ffprobe; do
+            curl -fL --retry 4 -o $t.zip "https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/$t.zip" \
+              || curl -fL --retry 4 -o $t.zip "https://evermeet.cx/ffmpeg/getrelease/$( [ $t = ffprobe ] && echo ffprobe/ )zip"
+            unzip -o $t.zip -d ../binaries
+          done
           git clone --depth 1 https://github.com/ggml-org/whisper.cpp
           cd whisper.cpp && cmake -B build -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release && cmake --build build -j --config Release --target whisper-cli
           cp build/bin/whisper-cli ../../binaries/
           chmod +x ../../binaries/*
+          ls -la ../../binaries
 
       - run: npx vite build
       - run: npx electron-builder ${{ matrix.flag }} --publish never
