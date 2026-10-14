@@ -12,6 +12,8 @@ const RF = require('./reframe.cjs');
 const SYNC = require('./sync.cjs');
 const SUBJ = require('./subject.cjs');
 const TR = require('./translate.cjs');
+const AL = require('./align.cjs');
+const AI = require('./ai.cjs');
 const { checkCancel } = require('./proc.cjs');
 // Each project gets its own folder; a different project with the same name gets _2, _3 ...
 function uniqueDir(base, id) {
@@ -25,9 +27,22 @@ function uniqueDir(base, id) {
 const fmtDur = s => s < 60 ? `${s.toFixed(1)}s` : s < 3600 ? `${Math.floor(s / 60)}m ${String(Math.round(s % 60)).padStart(2, '0')}s` : `${Math.floor(s / 3600)}h ${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}m`;
 const slug = s => String(s || 'project').replace(/[^\w\-]+/g, '_').slice(0, 50) || 'project';
 
+// Caption sync: place every word exactly where it is spoken (needs the small "caption sync" model; otherwise the basic timing stays).
+async function syncWords(words, wavPath, log, checkCancel, onProgress) {
+  try {
+    log('Whisper', 'Syncing captions to the audio…');
+    const r = await AL.alignWords(words, wavPath, { checkCancel, onProgress });
+    if (r.used) { log('Whisper', `Captions synced word by word (${r.aligned}/${r.total} words${r.failedChunks ? `, ${r.failedChunks} part(s) kept basic timing` : ''})`, 'success'); return r.words; }
+    const why = { 'model-missing': 'the caption sync model is not downloaded (Settings → Speech Models). Using basic timing.', script: 'this language script cannot be synced yet. Using basic timing.', engine: 'the sync engine could not start. Using basic timing.', audio: 'the audio format is not supported. Using basic timing.' }[r.reason] || 'using basic timing.';
+    log('Whisper', `Caption sync skipped: ${why}`, 'warn');
+  } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('Whisper', 'Caption sync skipped (basic timing used).', 'warn'); }
+  return words;
+}
+
 async function runInner(job, emit, deps = {}) {
   const t0 = Date.now();
   const log = (source, message, kind = 'info') => emit({ type: 'log', source, message, kind });
+  AI.forget(); AI.setLogger((m, k) => log('AI', m, k));
   if (!fs.existsSync(job.filePath)) throw new Error(`Source file not found: ${job.filePath}`);
   const outDir = job.outDir || uniqueDir(path.join(job.clipsBase || path.join(os.homedir(), 'Videos', 'ClipForge'), slug(job.name)), String(job.id || job.name));
   fs.mkdirSync(outDir, { recursive: true });
@@ -124,6 +139,7 @@ async function runInner(job, emit, deps = {}) {
       duration: info.duration, chunkSec: +process.env.CF_CHUNK_SEC || 300, slice: R.sliceAudio, onProgress: p => setPct(2, p) });
     if (!words.length) throw new Error('No speech detected in this video.');
     try { words = SYNC.refineWords(words, wav); log('Whisper', 'Word timings aligned to the audio', 'success'); } catch {}
+    words = await syncWords(words, wav, log, checkCancel);
     writeJson('words.json', words);
     end(2, `${words.length} words with timestamps`); log('Whisper', `${words.length} words`, 'success');
   }
@@ -132,21 +148,21 @@ async function runInner(job, emit, deps = {}) {
   // 4/5 optional: translate captions / Roman script (Gemini). Original words stay for moment-finding; captions use capWords.
   let capWords = words;
   const wantTr = !!(job.captions?.enabled && job.captions.translateTo), wantRoman = !!(job.captions?.enabled && job.captions.romanScript);
-  const gOk = !!(job.gemini && job.gemini.enabled && job.gemini.apiKey);
+  const gOk = AI.ready(job.gemini);
   const cached = readJson('capwords.json');
   for (const [i, want, label] of [[3, wantTr, 'translate'], [4, wantRoman, 'roman']]) {
     if (!want) { emit({ type: 'step', index: i, status: 'skipped' }); pct[i] = 1; continue; }
     if (meta.steps[i] && cached) { restore(i); capWords = cached; continue; }
     startWork(); begin(i);
     try {
-      if (!gOk) throw new Error('needs AI Boost (Gemini API key)');
+      if (!gOk) throw new Error('needs AI Boost (add an API key in Settings)');
       if (label === 'translate') capWords = await TR.translate(capWords, job.captions.translateTo, job.gemini, p => setPct(i, p));
       else capWords = await TR.toRoman(capWords, job.gemini, p => setPct(i, p));
       writeJson('capwords.json', capWords);
       end(i, label === 'translate' ? `translated to ${job.captions.translateTo}` : 'converted to Roman letters');
     } catch (e) {
       if (String(e.message) === 'CANCELLED') throw e;
-      log('Gemini', `${label === 'translate' ? 'Translation' : 'Roman conversion'} skipped: ${String(e.message).slice(0, 120)}`, 'warn');
+      log('AI', `${label === 'translate' ? 'Translation' : 'Roman conversion'} skipped: ${String(e.message).slice(0, 120)}`, 'warn');
       end(i, `skipped (${String(e.message).slice(0, 40)})`);
     }
   }
@@ -161,7 +177,7 @@ async function runInner(job, emit, deps = {}) {
     clips = r.clips;
     if (!clips.length) throw new Error('Could not find any suitable moments.');
     writeJson('clips.json', clips);
-    end(5, `${clips.length} clips · moments: ${r.engine === 'gemini' ? 'Gemini' : 'offline'} · titles: ${r.titleEngine === 'gemini' ? 'Gemini' : r.titleEngine === 'local' ? 'local' : 'Gemini + local'}`);
+    end(5, `${clips.length} clips · moments: ${r.engine === 'gemini' ? 'AI' : 'offline'} · titles: ${r.titleEngine === 'gemini' ? 'AI' : r.titleEngine === 'local' ? 'local' : 'AI + local'}`);
   }
   checkCancel();
 
@@ -263,6 +279,7 @@ async function runInner(job, emit, deps = {}) {
 async function runShortsInner(job, emit, deps = {}) {
   const t0 = Date.now();
   const log = (source, message, kind = 'info') => emit({ type: 'log', source, message, kind });
+  AI.forget(); AI.setLogger((m, k) => log('AI', m, k));
   const files = (job.files || []).filter(x => x && x.path);
   if (!files.length) throw new Error('No clips were selected.');
   if (files.length > 30) throw new Error('You can process at most 30 clips at once.');
@@ -352,6 +369,7 @@ async function runShortsInner(job, emit, deps = {}) {
         const wd = f(`wk${i}`); fs.mkdirSync(wd, { recursive: true });
         w = await W.transcribe(wavs[i], { modelId: job.modelId, language: job.language || 'auto', workDir: wd, duration: infos[i].duration, chunkSec: 300, slice: R.sliceAudio, onProgress: p => setPct(2, (i + p) / N) });
         try { w = SYNC.refineWords(w, wavs[i]); } catch {}
+        w = await syncWords(w, wavs[i], log, checkCancel);
       } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('Whisper', `Clip ${i + 1}: ${String(e.message).slice(0, 120)}`, 'warn'); w = []; }
       if (!w.length) log('Whisper', `Clip ${i + 1}: no speech detected`, 'warn');
       words[i] = w; writeJson(`words_${i}.json`, w); setPct(2, (i + 1) / N, true);
@@ -362,7 +380,7 @@ async function runShortsInner(job, emit, deps = {}) {
 
   // 4/5 translate / roman (on the merged word list; cached per project)
   let capWords = words.map(w => w);
-  const gOk = !!(job.gemini && job.gemini.enabled && job.gemini.apiKey);
+  const gOk = AI.ready(job.gemini);
   const cachedCap = readJson('capwords_s.json');
   const flat = words.flatMap((w, i) => w.map(x => ({ ...x, _f: i })));
   let capFlat = flat;
@@ -371,14 +389,14 @@ async function runShortsInner(job, emit, deps = {}) {
     if (meta.steps[i] && cachedCap) { restore(i); capFlat = cachedCap; continue; }
     startWork(); begin(i);
     try {
-      if (!gOk) throw new Error('needs AI Boost (Gemini API key)');
+      if (!gOk) throw new Error('needs AI Boost (add an API key in Settings)');
       if (label === 'translate') capFlat = await TR.translate(capFlat, job.captions.translateTo, job.gemini, p => setPct(i, p));
       else capFlat = await TR.toRoman(capFlat, job.gemini, p => setPct(i, p));
       writeJson('capwords_s.json', capFlat);
       end(i, label === 'translate' ? `translated to ${job.captions.translateTo}` : 'converted to Roman letters');
     } catch (e) {
       if (String(e.message) === 'CANCELLED') throw e;
-      log('Gemini', `${label === 'translate' ? 'Translation' : 'Roman conversion'} skipped: ${String(e.message).slice(0, 120)}`, 'warn');
+      log('AI', `${label === 'translate' ? 'Translation' : 'Roman conversion'} skipped: ${String(e.message).slice(0, 120)}`, 'warn');
       end(i, `skipped (${String(e.message).slice(0, 40)})`);
     }
   }
@@ -402,7 +420,7 @@ async function runShortsInner(job, emit, deps = {}) {
     // a clip with no speech keeps its file name as the title
     clips.forEach((c, i) => { if (!words[i].length) { c.title = names[i]; c.hookText = names[i]; } });
     writeJson('clips_s.json', clips);
-    end(5, `${N} titles · ${eng === 'gemini' ? 'Gemini' : eng === 'local' ? 'local' : 'Gemini + local'}`);
+    end(5, `${N} titles · ${eng === 'gemini' ? 'AI' : eng === 'local' ? 'local' : 'AI + local'}`);
   }
   checkCancel();
   emit({ type: 'step', index: 6, status: 'skipped' }); pct[6] = 1;

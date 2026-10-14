@@ -48,27 +48,27 @@ export const FacecamEditor: React.FC<Props> = ({ frame, dims, rect, onApply, onC
 
   return (
     <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#0b0e12] border border-[#1e2533] rounded-2xl p-4 w-full max-w-3xl space-y-3">
+      <div className="bg-[#09110e] border border-[#1b2f26] rounded-2xl p-4 w-full max-w-3xl space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <div className="text-sm font-bold text-white">Select the facecam area</div>
             <div className="text-[11px] text-neutral-400">Drag the box over the facecam. Drag a corner dot to resize it.</div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-[#1a1f27] text-neutral-400 cursor-pointer"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-[#16261e] text-neutral-400 cursor-pointer"><X className="w-4 h-4" /></button>
         </div>
         <div ref={box} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
           className="relative w-full select-none bg-black rounded-lg overflow-hidden touch-none" style={{ aspectRatio: String(aspect) }}>
           <img src={frame} alt="" draggable={false} className="absolute inset-0 w-full h-full object-fill pointer-events-none" />
           {/* dim everything outside the box */}
           <div className="absolute inset-0 pointer-events-none" style={{ background: 'rgba(0,0,0,0.55)', clipPath: `polygon(0 0,100% 0,100% 100%,0 100%,0 0,${pct(r.x)} ${pct(r.y)},${pct(r.x)} ${pct(r.y + r.h)},${pct(r.x + r.w)} ${pct(r.y + r.h)},${pct(r.x + r.w)} ${pct(r.y)},${pct(r.x)} ${pct(r.y)})` }} />
-          <div onPointerDown={start('move')} className="absolute border-2 border-[#bef264] cursor-move touch-none" style={{ left: pct(r.x), top: pct(r.y), width: pct(r.w), height: pct(r.h) }} />
+          <div onPointerDown={start('move')} className="absolute border-2 border-[#3f9a5a] cursor-move touch-none" style={{ left: pct(r.x), top: pct(r.y), width: pct(r.w), height: pct(r.h) }} />
           {dot('tl', { left: pct(r.x), top: pct(r.y) }, 'nwse-resize')}
           {dot('tr', { left: pct(r.x + r.w), top: pct(r.y) }, 'nesw-resize')}
           {dot('bl', { left: pct(r.x), top: pct(r.y + r.h) }, 'nesw-resize')}
           {dot('br', { left: pct(r.x + r.w), top: pct(r.y + r.h) }, 'nwse-resize')}
         </div>
         <div className="flex items-center justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-[#14181f] border border-[#222834] text-xs text-neutral-300 cursor-pointer">Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-[#111e18] border border-[#1d3228] text-xs text-neutral-300 cursor-pointer">Cancel</button>
           <button onClick={() => onApply(r)} className="px-5 py-2 rounded-lg bg-[#bef264] hover:bg-[#a3e635] text-black text-xs font-extrabold flex items-center gap-1.5 cursor-pointer"><Check className="w-4 h-4" /> Use this area</button>
         </div>
       </div>

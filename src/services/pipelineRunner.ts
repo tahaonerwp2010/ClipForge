@@ -13,6 +13,7 @@ import { AutoReframeEngine, SpeakerKeyframe } from './autoReframeEngine';
 import { ViralDetectorEngine } from './viralDetectorEngine';
 import { SoftwareLogEvent, SoftwareManager } from './softwareManager';
 import { GeminiService } from './geminiService';
+import { AiService } from './aiService';
 
 export interface PipelineExecutionConfig {
   project: ProjectItem;
@@ -60,7 +61,6 @@ export class PipelineRunner {
   ): Promise<{ project: ProjectItem; clips: GeneratedClip[] }> {
     const api = window.electronAPI!;
     const { project, framing, captions, grading, branding, targetClipsCount = 4 } = config;
-    const gem = GeminiService.getSettings();
 
     const steps: PipelineStep[] = [
       'Reading video metadata', 'Extracting audio', 'Transcribing speech', 'Translating captions',
@@ -108,7 +108,7 @@ export class PipelineRunner {
         ratio: config.split ? '9:16' : (config.canvasRatio || '9:16'),
         split: config.split ? { ...config.split, frame: undefined, secondUrl: undefined } : undefined,
         framing, captions, grading, branding,
-        gemini: { enabled: gem.enabled, apiKey: gem.apiKey, model: gem.model }
+        gemini: AiService.forJob()
       });
 
       const toUrl = (p: string) => 'file:///' + p.replace(/\\/g, '/').split('/').map((seg, i) => i === 0 ? seg : encodeURIComponent(seg)).join('/');

@@ -87,9 +87,9 @@ const MusicSection: React.FC<{ branding: BrandingConfig; onBrandingChange: (b: B
   const update = (patch: Partial<NonNullable<BrandingConfig['bgMusic']>>) => m && onBrandingChange({ ...branding, bgMusic: { ...m, ...patch } });
 
   return (
-    <section className={`p-4 rounded-xl border transition-all ${m ? 'bg-[#121c10] border-[#bef264] shadow-md shadow-[#bef264]/10' : 'bg-[#0d1015] border-[#1e242e]'}`}>
+    <section className={`p-4 rounded-xl border transition-all ${m ? 'bg-[#0e1a15] border-[#3f9a5a] shadow-md shadow-[#3f9a5a]/10' : 'bg-[#0b1410] border-[#1a2c24]'}`}>
       <div className="flex items-center gap-2">
-        <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${m ? 'bg-[#bef264]/20 text-[#bef264]' : 'bg-neutral-800 text-neutral-400'}`}>
+        <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${m ? 'bg-[#3f9a5a]/20 text-[#8fd0a4]' : 'bg-neutral-800 text-neutral-400'}`}>
           <Music className="w-3.5 h-3.5" />
         </div>
         <h3 className="text-xs font-black uppercase tracking-wider text-white">Background Music</h3>
@@ -98,14 +98,14 @@ const MusicSection: React.FC<{ branding: BrandingConfig; onBrandingChange: (b: B
 
       {!m ? (
         <button type="button" onClick={pick}
-          className="mt-3 w-full py-5 rounded-lg border border-dashed border-[#2d3644] hover:border-[#bef264] text-neutral-300 hover:text-[#bef264] flex flex-col items-center gap-1 cursor-pointer transition-colors">
+          className="mt-3 w-full py-5 rounded-lg border border-dashed border-[#293f35] hover:border-[#3f9a5a] text-neutral-300 hover:text-[#8fd0a4] flex flex-col items-center gap-1 cursor-pointer transition-colors">
           <Upload className="w-4 h-4" />
           <span className="text-[11px] font-bold">Add music</span>
           <span className="text-[10px] text-neutral-500">MP3, WAV, M4A, AAC, OGG, FLAC</span>
         </button>
       ) : (
         <div className="mt-3 space-y-4">
-          <div className="flex items-center gap-3 p-2 rounded-lg bg-[#0a0d11] border border-[#1e242e]">
+          <div className="flex items-center gap-3 p-2 rounded-lg bg-[#09100d] border border-[#1a2c24]">
             <button type="button" onClick={toggle} title={playing ? 'Pause preview' : 'Preview from the selected start'}
               className="w-9 h-9 rounded-full bg-[#bef264] text-black flex items-center justify-center cursor-pointer shrink-0">
               {playing ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
@@ -114,7 +114,7 @@ const MusicSection: React.FC<{ branding: BrandingConfig; onBrandingChange: (b: B
               <div className="text-[11px] text-white truncate">{m.name}</div>
               <div className="text-[10px] text-neutral-500">{m.duration ? `Length ${fmtTime(m.duration)}` : 'Length unknown'}</div>
               <div className="flex gap-3 mt-0.5">
-                <button type="button" onClick={pick} className="text-[10px] text-[#bef264] hover:underline cursor-pointer font-bold">Change</button>
+                <button type="button" onClick={pick} className="text-[10px] text-[#8fd0a4] hover:underline cursor-pointer font-bold">Change</button>
                 <button type="button" onClick={() => { stop(); onBrandingChange({ ...branding, bgMusic: undefined }); }}
                   className="text-[10px] text-rose-400 hover:underline cursor-pointer font-bold flex items-center gap-1"><Trash2 className="w-2.5 h-2.5" />Remove</button>
               </div>
@@ -125,11 +125,11 @@ const MusicSection: React.FC<{ branding: BrandingConfig; onBrandingChange: (b: B
           <div className="space-y-1">
             <div className="flex justify-between text-[11px]">
               <span className="text-neutral-300 font-semibold">Start the song at</span>
-              <span className="font-mono text-[#bef264] font-bold">{fmtTime(m.startSec)}{m.duration ? ` / ${fmtTime(m.duration)}` : ''}</span>
+              <span className="font-mono text-[#8fd0a4] font-bold">{fmtTime(m.startSec)}{m.duration ? ` / ${fmtTime(m.duration)}` : ''}</span>
             </div>
             <input type="range" min={0} max={Math.max(1, Math.floor((m.duration || 600) - 1))} step={0.5} value={m.startSec}
               onChange={(e) => { const v = Number(e.target.value); update({ startSec: v }); if (playing && audioRef.current) audioRef.current.currentTime = v; }}
-              className="w-full h-1.5 bg-[#1a1f28] rounded-lg appearance-none cursor-pointer accent-[#bef264]" />
+              className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]" />
             <p className="text-[10px] text-neutral-500">Every clip starts the music from this point. If the song ends before the clip does, it loops.</p>
           </div>
 
@@ -137,11 +137,11 @@ const MusicSection: React.FC<{ branding: BrandingConfig; onBrandingChange: (b: B
           <div className="space-y-1">
             <div className="flex justify-between text-[11px]">
               <span className="text-neutral-300 font-semibold">Music volume</span>
-              <span className="font-mono text-[#bef264] font-bold">{m.volumeDb > 0 ? '+' : ''}{m.volumeDb} dB</span>
+              <span className="font-mono text-[#8fd0a4] font-bold">{m.volumeDb > 0 ? '+' : ''}{m.volumeDb} dB</span>
             </div>
             <input type="range" min={-60} max={12} step={1} value={m.volumeDb}
               onChange={(e) => update({ volumeDb: Number(e.target.value) })}
-              className="w-full h-1.5 bg-[#1a1f28] rounded-lg appearance-none cursor-pointer accent-[#bef264]" />
+              className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]" />
             <div className="flex justify-between text-[10px] text-neutral-500">
               <span>-60 dB (quiet)</span>
               <button type="button" onClick={() => update({ volumeDb: -18 })} className="hover:text-white cursor-pointer underline">Reset to -18 dB</button>
@@ -169,7 +169,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
   const [open, setOpen] = useState<Record<string, boolean>>({});          // every settings block starts collapsed
   const OpenBtn = ({ id }: { id: string }) => (
     <button type="button" onClick={() => setOpen(o => ({ ...o, [id]: !o[id] }))}
-      className="mt-3 text-[11px] font-bold text-[#bef264] hover:underline cursor-pointer flex items-center gap-1">
+      className="mt-3 text-[11px] font-bold text-[#8fd0a4] hover:underline cursor-pointer flex items-center gap-1">
       {open[id] ? 'Hide settings ▴' : 'Show settings ▾'}
     </button>
   );
@@ -227,14 +227,14 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
       ======================================================== */}
       <section className={`p-4 rounded-xl border transition-all ${
         isAutoTitleOn 
-          ? 'bg-[#121c10] border-[#bef264] shadow-md shadow-[#bef264]/10' 
-          : 'bg-[#0d1015] border-[#1e242e]'
+          ? 'bg-[#0e1a15] border-[#3f9a5a] shadow-md shadow-[#3f9a5a]/10' 
+          : 'bg-[#0b1410] border-[#1a2c24]'
       }`}>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                isAutoTitleOn ? 'bg-[#bef264]/20 text-[#bef264]' : 'bg-neutral-800 text-neutral-400'
+                isAutoTitleOn ? 'bg-[#3f9a5a]/20 text-[#8fd0a4]' : 'bg-neutral-800 text-neutral-400'
               }`}>
                 <Sparkles className="w-3.5 h-3.5" />
               </div>
@@ -243,7 +243,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
               </h3>
               <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
                 isAutoTitleOn
-                  ? 'bg-[#bef264]/20 text-[#bef264] border-[#bef264]/30'
+                  ? 'bg-[#3f9a5a]/20 text-[#8fd0a4] border-[#3f9a5a]/30'
                   : 'bg-neutral-800 text-neutral-400 border-neutral-700'
               }`}>
                 {isAutoTitleOn ? 'ACTIVE' : 'OFF'}
@@ -259,7 +259,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
             type="button"
             onClick={handleToggleAutoTitle}
             className={`w-13 h-7 rounded-full p-1 transition-all cursor-pointer relative shadow-inner shrink-0 ${
-              isAutoTitleOn ? 'bg-[#bef264]' : 'bg-[#222834]'
+              isAutoTitleOn ? 'bg-[#bef264]' : 'bg-[#1d3228]'
             }`}
             title={isAutoTitleOn ? 'Disable Auto Hook' : 'Enable Auto Hook'}
           >
@@ -279,13 +279,13 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-neutral-300 flex items-center gap-1.5">
-                  <Type className="w-3 h-3 text-[#bef264]" />
+                  <Type className="w-3 h-3 text-[#8fd0a4]" />
                   <span>Sample hook (preview only — every clip gets its own AI hook):</span>
                 </span>
                 <button
                   type="button"
                   onClick={handleRegenerateTitle}
-                  className="text-[10px] text-[#bef264] hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                  className="text-[10px] text-[#8fd0a4] hover:underline flex items-center gap-1 cursor-pointer font-bold"
                 >
                   <RefreshCw className="w-2.5 h-2.5" />
                   <span>New sample</span>
@@ -302,7 +302,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                   }
                 })}
                 placeholder="AI CLIP TITLE"
-                className="w-full bg-[#0a0d11] border border-[#232832] focus:border-[#bef264] rounded-lg px-3 py-2 text-xs text-white uppercase font-black tracking-wide placeholder-neutral-500 focus:outline-none"
+                className="w-full bg-[#09100d] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-3 py-2 text-xs text-white uppercase font-black tracking-wide placeholder-neutral-500 focus:outline-none"
               />
             </div>
 
@@ -335,7 +335,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                     {opts.map(([v, l]) => (
                       <button key={v} type="button"
                         onClick={() => onBrandingChange({ ...branding, autoTitle: { ...branding.autoTitle, [key]: key === 'showSeconds' ? Number(v) : v } })}
-                        className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-colors ${cur === v ? 'bg-[#182116] border border-[#bef264] text-[#bef264] font-bold' : 'bg-[#12151c] border border-[#232832] text-neutral-400 hover:text-white'}`}>{l}</button>
+                        className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-colors ${cur === v ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] font-bold' : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white'}`}>{l}</button>
                     ))}
                   </div>
                 );
@@ -351,7 +351,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
               <div className="space-y-1">
                 <div className="flex justify-between text-[11px]">
                   <span className="text-neutral-400">Position X (Horizontal):</span>
-                  <span className="font-mono text-[#bef264] font-bold">
+                  <span className="font-mono text-[#8fd0a4] font-bold">
                     {branding.autoTitle?.positionX ?? 50}%
                   </span>
                 </div>
@@ -367,7 +367,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                       positionX: Number(e.target.value)
                     }
                   })}
-                  className="w-full h-1.5 bg-[#1a1f28] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
+                  className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
                 />
               </div>
 
@@ -375,7 +375,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
               <div className="space-y-1">
                 <div className="flex justify-between text-[11px]">
                   <span className="text-neutral-400">Position Y (Vertical):</span>
-                  <span className="font-mono text-[#bef264] font-bold">
+                  <span className="font-mono text-[#8fd0a4] font-bold">
                     {branding.autoTitle?.positionY ?? 10}%
                   </span>
                 </div>
@@ -391,14 +391,14 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                       positionY: Number(e.target.value)
                     }
                   })}
-                  className="w-full h-1.5 bg-[#1a1f28] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
+                  className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
                 />
               </div>
             </div>
 
             {/* Direct Manipulation Guide */}
-            <div className="p-2 rounded-lg bg-[#0a0d11] border border-[#1e242e] text-[10px] text-neutral-400 flex items-center gap-2">
-              <Move className="w-3 h-3 text-[#bef264] shrink-0" />
+            <div className="p-2 rounded-lg bg-[#09100d] border border-[#1a2c24] text-[10px] text-neutral-400 flex items-center gap-2">
+              <Move className="w-3 h-3 text-[#8fd0a4] shrink-0" />
               <span>
                 <strong>Drag & Drop:</strong> You can click and drag the Auto Hook directly on the mobile phone preview screen to position it anywhere!
               </span>
@@ -412,8 +412,8 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
       ======================================================== */}
       <section className={`p-4 rounded-xl border transition-all ${
         branding.showHookTitle 
-          ? 'bg-[#121c10] border-[#bef264]/70 shadow-sm' 
-          : 'bg-[#0d1015] border-[#1e242e]'
+          ? 'bg-[#0e1a15] border-[#3f9a5a]/70 shadow-sm' 
+          : 'bg-[#0b1410] border-[#1a2c24]'
       }`}>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -444,7 +444,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
             type="button"
             onClick={() => onBrandingChange({ ...branding, showHookTitle: !branding.showHookTitle })}
             className={`w-13 h-7 rounded-full p-1 transition-all cursor-pointer relative shadow-inner shrink-0 ${
-              branding.showHookTitle ? 'bg-[#bef264]' : 'bg-[#222834]'
+              branding.showHookTitle ? 'bg-[#bef264]' : 'bg-[#1d3228]'
             }`}
             title={branding.showHookTitle ? 'Disable Top Banner' : 'Enable Top Banner'}
           >
@@ -467,7 +467,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                 value={branding.hookTitle}
                 onChange={(e) => onBrandingChange({ ...branding, hookTitle: e.target.value })}
                 placeholder="e.g. WAIT TILL THE END 😱"
-                className="w-full bg-[#0a0d11] border border-[#232832] focus:border-[#bef264] rounded-lg px-3 py-2 text-xs text-white uppercase font-black placeholder-neutral-500 focus:outline-none"
+                className="w-full bg-[#09100d] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-3 py-2 text-xs text-white uppercase font-black placeholder-neutral-500 focus:outline-none"
               />
             </div>
 
@@ -491,7 +491,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                     key={sug}
                     type="button"
                     onClick={() => onBrandingChange({ ...branding, hookTitle: sug })}
-                    className="text-[10px] bg-[#0a0d11] hover:bg-[#161c24] text-neutral-300 hover:text-white px-2 py-1 rounded border border-[#1e242e] transition-colors cursor-pointer"
+                    className="text-[10px] bg-[#09100d] hover:bg-[#13221b] text-neutral-300 hover:text-white px-2 py-1 rounded border border-[#1a2c24] transition-colors cursor-pointer"
                   >
                     {sug}
                   </button>
@@ -500,11 +500,11 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
             </div>
 
             {/* BACKGROUND ON / OFF TOGGLE (Requested by user) */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[#0a0d11] border border-[#1e242e]">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-[#09100d] border border-[#1a2c24]">
               <div>
                 <div className="text-[11px] font-bold text-white flex items-center gap-1.5">
                   {branding.bannerShowBackground !== false ? (
-                    <Eye className="w-3.5 h-3.5 text-[#bef264]" />
+                    <Eye className="w-3.5 h-3.5 text-[#8fd0a4]" />
                   ) : (
                     <EyeOff className="w-3.5 h-3.5 text-neutral-400" />
                   )}
@@ -523,8 +523,8 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                 })}
                 className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
                   branding.bannerShowBackground !== false
-                    ? 'bg-[#bef264] text-black border-[#bef264]'
-                    : 'bg-[#141820] text-neutral-400 border-[#232832]'
+                    ? 'bg-[#bef264] text-black border-[#3f9a5a]'
+                    : 'bg-[#111e18] text-neutral-400 border-[#1d3228]'
                 }`}
               >
                 {branding.bannerShowBackground !== false ? 'Background: ON' : 'Background: OFF'}
@@ -545,7 +545,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
               <div className="space-y-1">
                 <div className="flex justify-between text-[11px]">
                   <span className="text-neutral-400">Position X:</span>
-                  <span className="font-mono text-[#bef264] font-bold">
+                  <span className="font-mono text-[#8fd0a4] font-bold">
                     {branding.bannerPositionX ?? 50}%
                   </span>
                 </div>
@@ -558,14 +558,14 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                     ...branding,
                     bannerPositionX: Number(e.target.value)
                   })}
-                  className="w-full h-1.5 bg-[#1a1f28] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
+                  className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
                 />
               </div>
 
               <div className="space-y-1">
                 <div className="flex justify-between text-[11px]">
                   <span className="text-neutral-400">Position Y:</span>
-                  <span className="font-mono text-[#bef264] font-bold">
+                  <span className="font-mono text-[#8fd0a4] font-bold">
                     {branding.bannerPositionY ?? 6}%
                   </span>
                 </div>
@@ -578,13 +578,13 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                     ...branding,
                     bannerPositionY: Number(e.target.value)
                   })}
-                  className="w-full h-1.5 bg-[#1a1f28] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
+                  className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
                 />
               </div>
             </div>
 
-            <div className="p-2 rounded-lg bg-[#0a0d11] border border-[#1e242e] text-[10px] text-neutral-400 flex items-center gap-2">
-              <Move className="w-3 h-3 text-[#bef264] shrink-0" />
+            <div className="p-2 rounded-lg bg-[#09100d] border border-[#1a2c24] text-[10px] text-neutral-400 flex items-center gap-2">
+              <Move className="w-3 h-3 text-[#8fd0a4] shrink-0" />
               <span>
                 <strong>Direct Drag:</strong> You can click and drag the Banner directly on the mobile phone preview!
               </span>
@@ -598,8 +598,8 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
       ======================================================== */}
       <section className={`p-4 rounded-xl border transition-all ${
         branding.showWatermark 
-          ? 'bg-[#121c10] border-[#bef264]/70 shadow-sm' 
-          : 'bg-[#0d1015] border-[#1e242e]'
+          ? 'bg-[#0e1a15] border-[#3f9a5a]/70 shadow-sm' 
+          : 'bg-[#0b1410] border-[#1a2c24]'
       }`}>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -630,7 +630,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
             type="button"
             onClick={() => onBrandingChange({ ...branding, showWatermark: !branding.showWatermark })}
             className={`w-13 h-7 rounded-full p-1 transition-all cursor-pointer relative shadow-inner shrink-0 ${
-              branding.showWatermark ? 'bg-[#bef264]' : 'bg-[#222834]'
+              branding.showWatermark ? 'bg-[#bef264]' : 'bg-[#1d3228]'
             }`}
             title={branding.showWatermark ? 'Disable Watermark' : 'Enable Watermark'}
           >
@@ -650,7 +650,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
               {(['text', 'image'] as const).map(t => (
                 <button key={t} type="button" onClick={() => onBrandingChange({ ...branding, watermarkType: t })}
                   className={`py-1.5 rounded-lg border text-[11px] font-bold cursor-pointer transition-all ${
-                    (branding.watermarkType || 'text') === t ? 'bg-[#bef264] text-black border-[#bef264]' : 'bg-[#111612] text-neutral-300 border-[#22331e] hover:border-[#344d2d]'}`}>
+                    (branding.watermarkType || 'text') === t ? 'bg-[#bef264] text-black border-[#3f9a5a]' : 'bg-[#0d1712] text-neutral-300 border-[#1b2f26] hover:border-[#2c4439]'}`}>
                   {t === 'text' ? 'Add text' : 'Add image'}
                 </button>
               ))}
@@ -665,7 +665,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                     value={branding.creatorHandle}
                     onChange={(e) => onBrandingChange({ ...branding, creatorHandle: e.target.value })}
                     placeholder="@your_handle"
-                    className="w-full bg-[#0a0d11] border border-[#232832] focus:border-[#bef264] rounded-lg px-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none"
+                    className="w-full bg-[#09100d] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none"
                   />
                 </div>
                 <FontPicker
@@ -681,31 +681,31 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                 <div className="space-y-1">
                   <div className="flex justify-between text-[11px]">
                     <span className="text-neutral-400">Text Size:</span>
-                    <span className="font-mono text-[#bef264] font-bold">{branding.watermarkFontSize ?? 40}</span>
+                    <span className="font-mono text-[#8fd0a4] font-bold">{branding.watermarkFontSize ?? 40}</span>
                   </div>
                   <input type="range" min={20} max={100} value={branding.watermarkFontSize ?? 40}
                     onChange={(e) => onBrandingChange({ ...branding, watermarkFontSize: Number(e.target.value) })}
-                    className="w-full h-1.5 bg-[#1a1f28] rounded-lg appearance-none cursor-pointer accent-[#bef264]" />
+                    className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]" />
                 </div>
               </>
             ) : (
               <div className="space-y-3">
                 {branding.watermarkImage ? (
-                  <div className="flex items-center gap-3 p-2 rounded-lg bg-[#0a0d11] border border-[#1e242e]">
+                  <div className="flex items-center gap-3 p-2 rounded-lg bg-[#09100d] border border-[#1a2c24]">
                     <div className="w-14 h-14 rounded-md bg-[repeating-conic-gradient(#222_0%_25%,#333_0%_50%)] bg-[length:10px_10px] flex items-center justify-center overflow-hidden shrink-0">
                       <img src={branding.watermarkImage.dataUrl} alt="" className="max-w-full max-h-full object-contain" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-[11px] text-white truncate">{branding.watermarkImage.name}</div>
                       <div className="flex gap-3 mt-1">
-                        <button type="button" onClick={pickWatermarkImage} className="text-[10px] text-[#bef264] hover:underline cursor-pointer font-bold">Change</button>
+                        <button type="button" onClick={pickWatermarkImage} className="text-[10px] text-[#8fd0a4] hover:underline cursor-pointer font-bold">Change</button>
                         <button type="button" onClick={() => onBrandingChange({ ...branding, watermarkImage: undefined })} className="text-[10px] text-rose-400 hover:underline cursor-pointer font-bold flex items-center gap-1"><Trash2 className="w-2.5 h-2.5" />Remove</button>
                       </div>
                     </div>
                   </div>
                 ) : (
                   <button type="button" onClick={pickWatermarkImage}
-                    className="w-full py-5 rounded-lg border border-dashed border-[#2d3644] hover:border-[#bef264] text-neutral-300 hover:text-[#bef264] flex flex-col items-center gap-1 cursor-pointer transition-colors">
+                    className="w-full py-5 rounded-lg border border-dashed border-[#293f35] hover:border-[#3f9a5a] text-neutral-300 hover:text-[#8fd0a4] flex flex-col items-center gap-1 cursor-pointer transition-colors">
                     <Upload className="w-4 h-4" />
                     <span className="text-[11px] font-bold">Upload image</span>
                     <span className="text-[10px] text-neutral-500">PNG, JPG, JPEG, JFIF or WEBP</span>
@@ -714,20 +714,20 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                 <div className="space-y-1">
                   <div className="flex justify-between text-[11px]">
                     <span className="text-neutral-400">Image Size:</span>
-                    <span className="font-mono text-[#bef264] font-bold">{branding.watermarkImageSize ?? 20}%</span>
+                    <span className="font-mono text-[#8fd0a4] font-bold">{branding.watermarkImageSize ?? 20}%</span>
                   </div>
                   <input type="range" min={5} max={80} value={branding.watermarkImageSize ?? 20}
                     onChange={(e) => onBrandingChange({ ...branding, watermarkImageSize: Number(e.target.value) })}
-                    className="w-full h-1.5 bg-[#1a1f28] rounded-lg appearance-none cursor-pointer accent-[#bef264]" />
+                    className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]" />
                 </div>
                 <div className="space-y-1">
                   <div className="flex justify-between text-[11px]">
                     <span className="text-neutral-400">Opacity:</span>
-                    <span className="font-mono text-[#bef264] font-bold">{branding.watermarkOpacity ?? 100}%</span>
+                    <span className="font-mono text-[#8fd0a4] font-bold">{branding.watermarkOpacity ?? 100}%</span>
                   </div>
                   <input type="range" min={10} max={100} value={branding.watermarkOpacity ?? 100}
                     onChange={(e) => onBrandingChange({ ...branding, watermarkOpacity: Number(e.target.value) })}
-                    className="w-full h-1.5 bg-[#1a1f28] rounded-lg appearance-none cursor-pointer accent-[#bef264]" />
+                    className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]" />
                 </div>
               </div>
             )}
@@ -737,7 +737,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
               <div className="space-y-1">
                 <div className="flex justify-between text-[11px]">
                   <span className="text-neutral-400">Position X:</span>
-                  <span className="font-mono text-[#bef264] font-bold">
+                  <span className="font-mono text-[#8fd0a4] font-bold">
                     {branding.watermarkPositionX ?? 20}%
                   </span>
                 </div>
@@ -750,14 +750,14 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                     ...branding,
                     watermarkPositionX: Number(e.target.value)
                   })}
-                  className="w-full h-1.5 bg-[#1a1f28] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
+                  className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
                 />
               </div>
 
               <div className="space-y-1">
                 <div className="flex justify-between text-[11px]">
                   <span className="text-neutral-400">Position Y:</span>
-                  <span className="font-mono text-[#bef264] font-bold">
+                  <span className="font-mono text-[#8fd0a4] font-bold">
                     {branding.watermarkPositionY ?? 92}%
                   </span>
                 </div>
@@ -770,13 +770,13 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                     ...branding,
                     watermarkPositionY: Number(e.target.value)
                   })}
-                  className="w-full h-1.5 bg-[#1a1f28] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
+                  className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
                 />
               </div>
             </div>
 
-            <div className="p-2 rounded-lg bg-[#0a0d11] border border-[#1e242e] text-[10px] text-neutral-400 flex items-center gap-2">
-              <Move className="w-3 h-3 text-[#bef264] shrink-0" />
+            <div className="p-2 rounded-lg bg-[#09100d] border border-[#1a2c24] text-[10px] text-neutral-400 flex items-center gap-2">
+              <Move className="w-3 h-3 text-[#8fd0a4] shrink-0" />
               <span>
                 <strong>Direct Drag:</strong> You can click and drag the Watermark directly on the phone preview!
               </span>

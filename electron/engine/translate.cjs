@@ -1,8 +1,8 @@
 // Optional caption translation + Roman-script conversion (needs Gemini; both keep the original word timings).
-const G = require('./gemini.cjs');
+const G = require('./ai.cjs');
 
 async function ask(g, prompt) {
-  const r = await G.generate({ apiKey: g.apiKey, model: g.model, prompt, json: true });
+  const r = await G.generate(g, { prompt, json: true });
   const out = G.parseJson(r.text);
   return Array.isArray(out) ? out : (out.result || out.words || out.segments || []);
 }

@@ -69,7 +69,7 @@ export const ColorPicker: React.FC<Props> = ({ value, onChange, label }) => {
         <div className="w-7 h-7 rounded-md border border-white/10 shrink-0" style={{ backgroundColor: value }} />
         <input value={text} maxLength={7}
           onChange={e => { const t = e.target.value; setText(t); if (/^#[0-9a-fA-F]{6}$/.test(t)) { setHsv(hexToHsv(t)); onChange(t.toLowerCase()); } }}
-          className="w-24 bg-[#0a0d11] border border-[#232832] focus:border-[#bef264] rounded-lg px-2 py-1 text-[11px] font-mono text-white focus:outline-none" />
+          className="w-24 bg-[#09100d] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-2 py-1 text-[11px] font-mono text-white focus:outline-none" />
       </div>
     </div>
   );

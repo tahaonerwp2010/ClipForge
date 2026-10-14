@@ -548,22 +548,22 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
       
       {/* Device Frame */}
       <div 
-        className={`relative ${getDeviceAspectClasses()} box-content rounded-[46px] p-[9px] bg-[#0b0b0e] border-[3px] border-[#2c2c33] shadow-[0_0_0_1px_#000,0_28px_60px_-12px_rgba(0,0,0,0.85),inset_0_0_0_1px_#1a1a20] flex flex-col transition-all duration-300`}
+        className={`relative ${getDeviceAspectClasses()} box-content rounded-[46px] p-[9px] bg-[#080f0c] border-[3px] border-[#22352c] shadow-[0_0_0_1px_#000,0_28px_60px_-12px_rgba(0,0,0,0.85),inset_0_0_0_1px_#13221b] flex flex-col transition-all duration-300`}
         onMouseMove={handlePanMouseMove}
         onMouseUp={handlePanMouseUp}
         onMouseLeave={handlePanMouseUp}
       >
         {/* Side buttons (volume / power) */}
-        <div className="absolute -left-[5px] top-[88px] w-[3px] h-7 rounded-l bg-[#2c2c33] pointer-events-none" />
-        <div className="absolute -left-[5px] top-[128px] w-[3px] h-12 rounded-l bg-[#2c2c33] pointer-events-none" />
-        <div className="absolute -left-[5px] top-[186px] w-[3px] h-12 rounded-l bg-[#2c2c33] pointer-events-none" />
-        <div className="absolute -right-[5px] top-[140px] w-[3px] h-16 rounded-r bg-[#2c2c33] pointer-events-none" />
+        <div className="absolute -left-[5px] top-[88px] w-[3px] h-7 rounded-l bg-[#22352c] pointer-events-none" />
+        <div className="absolute -left-[5px] top-[128px] w-[3px] h-12 rounded-l bg-[#22352c] pointer-events-none" />
+        <div className="absolute -left-[5px] top-[186px] w-[3px] h-12 rounded-l bg-[#22352c] pointer-events-none" />
+        <div className="absolute -right-[5px] top-[140px] w-[3px] h-16 rounded-r bg-[#22352c] pointer-events-none" />
 
         {/* Dynamic island + status bar */}
         {(canvasRatio === '9:16' || canvasRatio === '4:5') && (
           <>
             <div className="absolute top-[17px] left-1/2 -translate-x-1/2 w-[74px] h-[22px] bg-black rounded-full z-[60] pointer-events-none flex items-center justify-end px-2">
-              <div className="w-2 h-2 rounded-full bg-[#12141c] ring-1 ring-[#1d2030]" />
+              <div className="w-2 h-2 rounded-full bg-[#0f1c16] ring-1 ring-[#1a2d24]" />
             </div>
             <div className="absolute top-[19px] left-[30px] right-[30px] z-[55] pointer-events-none flex items-center justify-between text-[9px] font-semibold text-white/80" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
               <span>9:41</span>
@@ -662,7 +662,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                   onClick={onTogglePlay}
                 />
                 {framing.autoReframing ? (
-                  <div className="absolute top-5 left-1/2 -translate-x-1/2 bg-black/85 border border-[#bef264]/60 px-1.5 py-0.5 rounded-full text-[7px] text-[#bef264] font-mono flex items-center gap-1 shadow-lg z-30 pointer-events-none">
+                  <div className="absolute top-5 left-1/2 -translate-x-1/2 bg-black/85 border border-[#3f9a5a]/60 px-1.5 py-0.5 rounded-full text-[7px] text-[#8fd0a4] font-mono flex items-center gap-1 shadow-lg z-30 pointer-events-none">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#bef264] animate-pulse" />
                     <span>AI Speaker Centered</span>
                   </div>
@@ -814,13 +814,13 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                 onMouseDown={handleAutoTitleMouseDown}
                 className={`relative group/autotitle p-1 rounded cursor-move transition-all ${
                   isDraggingAutoTitle || isResizingAutoTitle || isHoveringAutoTitle
-                    ? 'ring-1 ring-[#bef264]'
+                    ? 'ring-1 ring-[#3f9a5a]'
                     : 'hover:ring-1 hover:ring-white/40'
                 }`}
               >
                 {/* Tooltip HUD */}
                 {(isHoveringAutoTitle || isDraggingAutoTitle || isResizingAutoTitle) && (
-                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-black/90 px-1.5 py-0.2 rounded border border-[#bef264]/40 text-[7px] text-[#bef264] font-mono flex items-center gap-1 shadow-md whitespace-nowrap z-50 pointer-events-none">
+                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-black/90 px-1.5 py-0.2 rounded border border-[#3f9a5a]/40 text-[7px] text-[#8fd0a4] font-mono flex items-center gap-1 shadow-md whitespace-nowrap z-50 pointer-events-none">
                     <Move className="w-2 h-2" />
                     <span>Hook: X:{branding.autoTitle.positionX ?? 50}% Y:{branding.autoTitle.positionY ?? 10}%</span>
                   </div>
@@ -940,13 +940,13 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                 onMouseDown={handleCaptionMouseDown}
                 className={`relative group/cap p-1 rounded cursor-move transition-all ${
                   isDraggingCaption || isResizingCaption || isHoveringCaption
-                    ? 'ring-1 ring-[#bef264]/70'
+                    ? 'ring-1 ring-[#3f9a5a]/70'
                     : 'hover:ring-1 hover:ring-white/30'
                 }`}
               >
                 {/* Floating position/size HUD tooltip during hover or drag */}
                 {(isHoveringCaption || isDraggingCaption || isResizingCaption) && (
-                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-black/90 px-1.5 py-0.2 rounded border border-[#bef264]/40 text-[7px] text-[#bef264] font-mono flex items-center gap-1 shadow-md whitespace-nowrap z-40 pointer-events-none">
+                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-black/90 px-1.5 py-0.2 rounded border border-[#3f9a5a]/40 text-[7px] text-[#8fd0a4] font-mono flex items-center gap-1 shadow-md whitespace-nowrap z-40 pointer-events-none">
                     <Move className="w-2 h-2" />
                     <span>X:{captions.positionX}% Y:{captions.positionY}% ({captions.fontSize}px)</span>
                   </div>
@@ -1169,7 +1169,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                             textShadow: '0 2px 8px rgba(0,0,0,0.95)'
                           }}
                           className={`font-bold tracking-widest uppercase transition-colors ${
-                            isActive ? 'font-extrabold border-b-2 border-[#bef264]' : 'opacity-80'
+                            isActive ? 'font-extrabold border-b-2 border-[#3f9a5a]' : 'opacity-80'
                           }`}
                         >
                           {w.word}
@@ -1305,7 +1305,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
         <div className="flex items-center justify-center gap-4 text-[11px] font-semibold text-neutral-300">
           <button 
             onClick={onTogglePlay} 
-            className="hover:text-[#bef264] transition-colors underline underline-offset-4 cursor-pointer"
+            className="hover:text-[#8fd0a4] transition-colors underline underline-offset-4 cursor-pointer"
           >
             {isPlaying ? 'Pause' : 'Play'}
           </button>
@@ -1325,7 +1325,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
             step={0.1}
             value={currentTime}
             onChange={handleSeek}
-            className="w-full h-1 bg-[#232832] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
+            className="w-full h-1 bg-[#1d3228] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
           />
         </div>
 

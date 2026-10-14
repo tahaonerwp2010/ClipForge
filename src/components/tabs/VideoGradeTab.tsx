@@ -79,9 +79,9 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
           <button
             type="button"
             onClick={handleReset}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141820] hover:bg-[#1f2533] text-neutral-300 hover:text-white text-xs border border-[#232a36] transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#111e18] hover:bg-[#1c3026] text-neutral-300 hover:text-white text-xs border border-[#20322a] transition-colors cursor-pointer"
           >
-            <RotateCcw className="w-3 h-3 text-[#bef264]" />
+            <RotateCcw className="w-3 h-3 text-[#8fd0a4]" />
             <span>Reset (100%)</span>
           </button>
         </div>
@@ -90,7 +90,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
         <div className="space-y-4">
           
           {/* Exposure / Brightness (0% to 200%) */}
-          <div className="space-y-1.5 p-3 rounded-lg bg-[#0d1015] border border-[#1b2029]">
+          <div className="space-y-1.5 p-3 rounded-lg bg-[#0b1410] border border-[#172820]">
             <div className="flex justify-between items-center text-[11px] text-neutral-300">
               <span className="flex items-center gap-2 font-semibold">
                 <SunMedium className="w-3.5 h-3.5 text-amber-400" />
@@ -106,7 +106,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
                     ...grading, 
                     brightness: Math.max(0, Math.min(200, parseInt(e.target.value) || 0)) 
                   })}
-                  className="w-12 px-1.5 py-0.5 rounded bg-black border border-[#262e3c] text-center font-mono text-[#bef264] text-xs font-bold"
+                  className="w-12 px-1.5 py-0.5 rounded bg-black border border-[#23372e] text-center font-mono text-[#8fd0a4] text-xs font-bold"
                 />
                 <span className="font-mono text-neutral-400 text-[10px]">%</span>
               </div>
@@ -117,7 +117,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
               max={200}
               value={grading.brightness}
               onChange={(e) => onGradingChange({ ...grading, brightness: parseInt(e.target.value) })}
-              className="w-full h-1.5 bg-[#232832] rounded-lg appearance-none accent-[#bef264] cursor-pointer"
+              className="w-full h-1.5 bg-[#1d3228] rounded-lg appearance-none accent-[#bef264] cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-neutral-500 font-mono">
               <span>0% (Dark)</span>
@@ -127,7 +127,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
           </div>
 
           {/* Punchy Contrast (0% to 200%) */}
-          <div className="space-y-1.5 p-3 rounded-lg bg-[#0d1015] border border-[#1b2029]">
+          <div className="space-y-1.5 p-3 rounded-lg bg-[#0b1410] border border-[#172820]">
             <div className="flex justify-between items-center text-[11px] text-neutral-300">
               <span className="flex items-center gap-2 font-semibold">
                 <Contrast className="w-3.5 h-3.5 text-cyan-400" />
@@ -143,7 +143,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
                     ...grading, 
                     contrast: Math.max(0, Math.min(200, parseInt(e.target.value) || 0)) 
                   })}
-                  className="w-12 px-1.5 py-0.5 rounded bg-black border border-[#262e3c] text-center font-mono text-[#bef264] text-xs font-bold"
+                  className="w-12 px-1.5 py-0.5 rounded bg-black border border-[#23372e] text-center font-mono text-[#8fd0a4] text-xs font-bold"
                 />
                 <span className="font-mono text-neutral-400 text-[10px]">%</span>
               </div>
@@ -154,7 +154,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
               max={200}
               value={grading.contrast}
               onChange={(e) => onGradingChange({ ...grading, contrast: parseInt(e.target.value) })}
-              className="w-full h-1.5 bg-[#232832] rounded-lg appearance-none accent-[#bef264] cursor-pointer"
+              className="w-full h-1.5 bg-[#1d3228] rounded-lg appearance-none accent-[#bef264] cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-neutral-500 font-mono">
               <span>0% (Flat)</span>
@@ -164,7 +164,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
           </div>
 
           {/* Color Saturation (0% to 200%) */}
-          <div className="space-y-1.5 p-3 rounded-lg bg-[#0d1015] border border-[#1b2029]">
+          <div className="space-y-1.5 p-3 rounded-lg bg-[#0b1410] border border-[#172820]">
             <div className="flex justify-between items-center text-[11px] text-neutral-300">
               <span className="flex items-center gap-2 font-semibold">
                 <Droplets className="w-3.5 h-3.5 text-rose-400" />
@@ -180,7 +180,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
                     ...grading, 
                     saturation: Math.max(0, Math.min(200, parseInt(e.target.value) || 0)) 
                   })}
-                  className="w-12 px-1.5 py-0.5 rounded bg-black border border-[#262e3c] text-center font-mono text-[#bef264] text-xs font-bold"
+                  className="w-12 px-1.5 py-0.5 rounded bg-black border border-[#23372e] text-center font-mono text-[#8fd0a4] text-xs font-bold"
                 />
                 <span className="font-mono text-neutral-400 text-[10px]">%</span>
               </div>
@@ -191,7 +191,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
               max={200}
               value={grading.saturation}
               onChange={(e) => onGradingChange({ ...grading, saturation: parseInt(e.target.value) })}
-              className="w-full h-1.5 bg-[#232832] rounded-lg appearance-none accent-[#bef264] cursor-pointer"
+              className="w-full h-1.5 bg-[#1d3228] rounded-lg appearance-none accent-[#bef264] cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-neutral-500 font-mono">
               <span>0% (Black & White)</span>
@@ -201,7 +201,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
           </div>
 
           {/* Color Temperature / Warmth (0% to 200%, 100% is Neutral) */}
-          <div className="space-y-1.5 p-3 rounded-lg bg-[#0d1015] border border-[#1b2029]">
+          <div className="space-y-1.5 p-3 rounded-lg bg-[#0b1410] border border-[#172820]">
             <div className="flex justify-between items-center text-[11px] text-neutral-300">
               <span className="flex items-center gap-2 font-semibold">
                 <Thermometer className="w-3.5 h-3.5 text-amber-500" />
@@ -217,7 +217,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
                     ...grading, 
                     warmth: Math.max(0, Math.min(200, parseInt(e.target.value) || 0)) 
                   })}
-                  className="w-12 px-1.5 py-0.5 rounded bg-black border border-[#262e3c] text-center font-mono text-[#bef264] text-xs font-bold"
+                  className="w-12 px-1.5 py-0.5 rounded bg-black border border-[#23372e] text-center font-mono text-[#8fd0a4] text-xs font-bold"
                 />
                 <span className="font-mono text-neutral-400 text-[10px]">%</span>
               </div>
@@ -228,7 +228,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
               max={200}
               value={grading.warmth}
               onChange={(e) => onGradingChange({ ...grading, warmth: parseInt(e.target.value) })}
-              className="w-full h-1.5 bg-[#232832] rounded-lg appearance-none accent-[#bef264] cursor-pointer"
+              className="w-full h-1.5 bg-[#1d3228] rounded-lg appearance-none accent-[#bef264] cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-neutral-500 font-mono">
               <span>0% (Cool Blue)</span>
@@ -240,14 +240,14 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
       </section>
 
       {/* Optical Effects & Speed Boost */}
-      <section className="space-y-3 pt-3 border-t border-[#1b2029]">
+      <section className="space-y-3 pt-3 border-t border-[#172820]">
         <label className="text-xs font-bold uppercase tracking-wider text-neutral-400 block">
           Cinematic Finish & Retention Boost
         </label>
 
         <div className="grid grid-cols-1 gap-2.5">
           {/* Vignette */}
-          <label className="flex items-center justify-between p-3 rounded-xl bg-[#0d1015] border border-[#1e242e] hover:border-[#2b3341] cursor-pointer transition-colors">
+          <label className="flex items-center justify-between p-3 rounded-xl bg-[#0b1410] border border-[#1a2c24] hover:border-[#273d32] cursor-pointer transition-colors">
             <div>
               <div className="text-xs font-bold text-white">Cinematic Dark Vignette</div>
               <p className="text-[10px] text-neutral-400 mt-0.5">
@@ -263,7 +263,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
           </label>
 
           {/* 1.05x Speed Ramping */}
-          <label className="flex items-center justify-between p-3 rounded-xl bg-[#0d1015] border border-[#1e242e] hover:border-[#2b3341] cursor-pointer transition-colors">
+          <label className="flex items-center justify-between p-3 rounded-xl bg-[#0b1410] border border-[#1a2c24] hover:border-[#273d32] cursor-pointer transition-colors">
             <div>
               <div className="text-xs font-bold text-white flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />

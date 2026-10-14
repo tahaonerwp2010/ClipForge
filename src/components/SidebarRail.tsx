@@ -1,81 +1,63 @@
-import React from 'react';
-import { 
-  FilePlus2, 
-  Film, 
-  Settings2
-} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Home, Folder, Settings, RotateCw, ArrowUpCircle } from 'lucide-react';
+import { UpdateChecker, APP_VERSION } from './UpdateChecker';
 
 export type ActiveNavView = 'home' | 'my_projects' | 'settings' | 'studio' | 'progress' | 'clips';
 
-interface FloatingSidebarProps {
+interface SidebarProps {
   activeView: ActiveNavView;
   onSelectView: (view: 'home' | 'my_projects' | 'settings') => void;
   projectsCount?: number;
+  busy?: boolean;
 }
 
-export const FloatingSidebar: React.FC<FloatingSidebarProps> = ({
-  activeView,
-  onSelectView,
-  projectsCount = 0
-}) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, projectsCount = 0, busy = false }) => {
+  const [logoOk, setLogoOk] = useState(true);
+  useEffect(() => { setLogoOk(true); }, []);
+  const items: { id: 'home' | 'my_projects' | 'settings'; label: string; Icon: React.ElementType; active: boolean; count?: number }[] = [
+    { id: 'home', label: 'Home', Icon: Home, active: activeView === 'home' || activeView === 'studio' },
+    { id: 'my_projects', label: 'Projects', Icon: Folder, active: activeView === 'my_projects' || activeView === 'progress' || activeView === 'clips', count: projectsCount },
+    { id: 'settings', label: 'Settings', Icon: Settings, active: activeView === 'settings' },
+  ];
   return (
-    <aside className="fixed left-4 top-1/2 -translate-y-1/2 z-40 select-none">
-      {/* Floating Pill Dock (Exact match to screenshot!) */}
-      <div className="bg-[#0b0e12]/95 backdrop-blur-md border border-[#1e242d] rounded-2xl p-1.5 flex flex-col items-center gap-2 shadow-2xl shadow-black/80">
-        {/* 1. PLUS / NEW VIDEO (Active on home) */}
-        <button
-          onClick={() => onSelectView('home')}
-          title="New Project / Start (Home)"
-          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative group ${
-            activeView === 'home'
-              ? 'bg-[#182116] text-[#bef264] border border-[#bef264]/60 shadow-sm'
-              : 'text-neutral-400 hover:text-white hover:bg-[#151920]'
-          }`}
-        >
-          <FilePlus2 className={`w-5 h-5 ${activeView === 'home' ? 'text-[#bef264] stroke-[2.4]' : 'stroke-[1.8]'}`} />
-          
-          <span className="absolute left-14 px-2 py-1 rounded bg-[#161a22] border border-[#2b3340] text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-lg">
-            Start / New Video
-          </span>
-        </button>
+    <aside className="w-[220px] shrink-0 h-full flex flex-col bg-[#060d0a] border-r border-[#122219] select-none">
+      <div className="flex items-center gap-3 px-5 pt-6 pb-7">
+        {logoOk
+          ? <img src="./logo.png" alt="ClipForge" className="w-10 h-10 rounded-xl" onError={() => setLogoOk(false)} draggable={false} />
+          : <div className="w-10 h-10 rounded-xl bg-[#bef264] text-black font-black flex items-center justify-center">C</div>}
+        <div className="leading-tight">
+          <div className="text-[17px] font-bold text-white tracking-tight">ClipForge</div>
+          <div className="text-[10px] text-neutral-500">AI clips. Real impact.</div>
+        </div>
+      </div>
 
-        {/* 2. MY PROJECTS */}
-        <button
-          onClick={() => onSelectView('my_projects')}
-          title="My Projects"
-          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative group ${
-            activeView === 'my_projects' || activeView === 'progress' || activeView === 'clips'
-              ? 'bg-[#182116] text-[#bef264] border border-[#bef264]/60 shadow-sm'
-              : 'text-neutral-400 hover:text-white hover:bg-[#151920]'
-          }`}
-        >
-          <Film className={`w-5 h-5 ${activeView === 'my_projects' || activeView === 'progress' || activeView === 'clips' ? 'text-[#bef264] stroke-[2.4]' : 'stroke-[1.8]'}`} />
+      <nav className="px-3 space-y-1">
+        {items.map(({ id, label, Icon, active, count }) => (
+          <button key={id} type="button" onClick={() => onSelectView(id)}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-all cursor-pointer border ${active ? 'bg-[#112a1d] border-[#1f4a31] text-white' : 'border-transparent text-neutral-400 hover:text-white hover:bg-[#0c1a13]'}`}>
+            <Icon className={`w-[18px] h-[18px] ${active ? 'text-[#bef264]' : ''}`} />
+            <span className="flex-1 text-left">{label}</span>
+            {count ? <span className={`text-[10px] font-bold min-w-[20px] text-center px-1.5 py-0.5 rounded-md ${active ? 'bg-[#1f4a31] text-[#bef264]' : 'bg-[#10201a] text-neutral-400'}`}>{count}</span> : null}
+          </button>
+        ))}
+      </nav>
 
-          {projectsCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#bef264]" />
+      <div className="flex-1" />
+
+      <div className="px-3 pb-4 space-y-2">
+        <UpdateChecker>
+          {(open, checking) => (
+            <button type="button" onClick={open} disabled={checking}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-neutral-300 hover:text-white bg-[#0b1611] hover:bg-[#10201a] border border-[#17291f] transition-colors cursor-pointer disabled:opacity-60">
+              {checking ? <RotateCw className="w-4 h-4 text-[#8fd0a4] animate-spin" /> : <ArrowUpCircle className="w-4 h-4 text-[#8fd0a4]" />}
+              <span>{checking ? 'Checking…' : 'Check for updates'}</span>
+            </button>
           )}
-
-          <span className="absolute left-14 px-2 py-1 rounded bg-[#161a22] border border-[#2b3340] text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-lg">
-            My Projects
-          </span>
-        </button>
-
-        {/* 3. SETTINGS */}
-        <button
-          onClick={() => onSelectView('settings')}
-          title="Settings (Models, Hardware, Libraries)"
-          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative group ${
-            activeView === 'settings'
-              ? 'bg-[#182116] text-[#bef264] border border-[#bef264]/60 shadow-sm'
-              : 'text-neutral-400 hover:text-white hover:bg-[#151920]'
-          }`}
-        >
-          <Settings2 className={`w-5 h-5 ${activeView === 'settings' ? 'text-[#bef264] stroke-[2.4]' : 'stroke-[1.8]'}`} />
-
-          <span className="absolute left-14 px-2 py-1 rounded bg-[#161a22] border border-[#2b3340] text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-lg">
-            Settings
-          </span>
-        </button>
+        </UpdateChecker>
+        <div className="flex items-center justify-between px-1.5 pt-1 text-[11px] text-neutral-500">
+          <span className="flex items-center gap-1.5"><span className={`w-2 h-2 rounded-full ${busy ? 'bg-amber-400 animate-pulse' : 'bg-[#bef264]'}`} />{busy ? 'Working' : 'Ready'}</span>
+          <span className="font-mono">v{APP_VERSION}</span>
+        </div>
       </div>
     </aside>
   );

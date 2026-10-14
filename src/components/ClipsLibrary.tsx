@@ -185,15 +185,15 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#000000] text-neutral-100 overflow-y-auto font-sans select-none">
+    <div className="flex-1 flex flex-col h-full bg-[#050b08] text-neutral-100 overflow-y-auto font-sans select-none">
       
       {/* Top Header Bar */}
-      <div className="h-14 border-b border-[#14181f] bg-[#000000] px-6 flex items-center justify-between shrink-0">
+      <div className="h-14 border-b border-[#111e18] bg-[#050b08] px-6 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
           {onBack && (
             <button
               onClick={onBack}
-              className="px-3 py-1.5 rounded-lg bg-[#0e1116] hover:bg-[#181d26] text-neutral-300 hover:text-white border border-[#1e242d] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-lg bg-[#0c1611] hover:bg-[#15241d] text-neutral-300 hover:text-white border border-[#192c23] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to My clips</span>
@@ -202,7 +202,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
 
           <div>
             <h1 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
-              <Film className="w-4 h-4 text-[#bef264]" />
+              <Film className="w-4 h-4 text-[#8fd0a4]" />
               <span className="truncate max-w-md">{projectName}</span>
             </h1>
             <div className="text-[10px] text-neutral-400 font-mono-num">
@@ -212,7 +212,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#bef264]/15 text-[#bef264] border border-[#bef264]/30 font-bold">
+          <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#3f9a5a]/15 text-[#8fd0a4] border border-[#3f9a5a]/30 font-bold">
             READY TO EXPORT
           </span>
         </div>
@@ -223,8 +223,8 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
         <div className="max-w-6xl mx-auto space-y-6">
           
           {clips.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl bg-[#0c0f14] border border-[#1a1f28] space-y-3 max-w-md mx-auto mt-12">
-              <div className="w-12 h-12 rounded-xl bg-[#161a22] text-[#bef264] flex items-center justify-center mx-auto">
+            <div className="p-12 text-center rounded-2xl bg-[#0a130f] border border-[#16271f] space-y-3 max-w-md mx-auto mt-12">
+              <div className="w-12 h-12 rounded-xl bg-[#13211a] text-[#8fd0a4] flex items-center justify-center mx-auto">
                 <Sparkles className="w-6 h-6" />
               </div>
               <h3 className="text-sm font-bold text-white">No clips in this project</h3>
@@ -241,12 +241,12 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
                 return (
                   <div
                     key={clip.id}
-                    className="bg-[#0b0e12] border border-[#191e26] hover:border-[#272f3d] rounded-2xl overflow-hidden flex flex-col justify-between transition-all shadow-xl group"
+                    className="bg-[#09110e] border border-[#15251e] hover:border-[#24382f] rounded-2xl overflow-hidden flex flex-col justify-between transition-all shadow-xl group"
                   >
                     {/* Top Preview Canvas Mockup */}
                     <div 
                       onClick={() => handleOpenPreview(clip)}
-                      className="relative aspect-[9/16] max-h-[380px] bg-[#050608] flex items-center justify-center overflow-hidden border-b border-[#161a22] cursor-pointer"
+                      className="relative aspect-[9/16] max-h-[380px] bg-[#040806] flex items-center justify-center overflow-hidden border-b border-[#13211a] cursor-pointer"
                     >
                       {clip.thumbnailUrl ? (
                         <img 
@@ -264,8 +264,8 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
                           }}
                         />
                       ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-[#10141a] text-neutral-500">
-                          <Film className="w-8 h-8 mb-2 text-[#bef264]" />
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-[#0e1914] text-neutral-500">
+                          <Film className="w-8 h-8 mb-2 text-[#8fd0a4]" />
                           <span className="text-xs font-mono">Real Video Clip</span>
                         </div>
                       )}
@@ -334,7 +334,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
                       </div>
 
                       {/* Virality Badge */}
-                      {clip.viralityScore > 0 && <div className="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/85 backdrop-blur-md border border-[#bef264]/40 text-[#bef264] text-[10px] font-black shadow-lg">
+                      {clip.viralityScore > 0 && <div className="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/85 backdrop-blur-md border border-[#3f9a5a]/40 text-[#8fd0a4] text-[10px] font-black shadow-lg">
                         <Flame className="w-3 h-3 fill-current" />
                         <span>{clip.viralityScore}/100 Virality</span>
                       </div>}
@@ -349,7 +349,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
                     <div className="p-4 space-y-3">
                       <div>
                         <div className="flex items-center justify-between text-[11px] text-neutral-400 font-mono mb-1">
-                          <span className="text-[#bef264] font-bold">{clip.category}</span>
+                          <span className="text-[#8fd0a4] font-bold">{clip.category}</span>
                           <span>{clip.duration}s length</span>
                         </div>
                         <h3 className="text-sm font-bold text-white tracking-tight leading-snug line-clamp-2">
@@ -358,13 +358,13 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
                       </div>
 
                       {/* Where it comes from + what it is about */}
-                      <div className="p-2.5 rounded-xl bg-[#07090c] border border-[#161a22] space-y-1.5">
+                      <div className="p-2.5 rounded-xl bg-[#060b09] border border-[#13211a] space-y-1.5">
                         {clip.sourceName ? (
-                          <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400"><span className="uppercase font-bold">Your clip</span><span className="text-[#bef264] font-bold truncate">{clip.sourceName}</span></div>
+                          <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400"><span className="uppercase font-bold">Your clip</span><span className="text-[#8fd0a4] font-bold truncate">{clip.sourceName}</span></div>
                         ) : (
                         <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400">
                           <span className="uppercase font-bold">In the video</span>
-                          <span className="text-[#bef264] font-bold">{fmtClock(clip.startTime)} – {fmtClock(clip.endTime)}</span>
+                          <span className="text-[#8fd0a4] font-bold">{fmtClock(clip.startTime)} – {fmtClock(clip.endTime)}</span>
                         </div>
                         )}
                         <p className="text-[11px] text-neutral-300 leading-relaxed line-clamp-2">
@@ -372,7 +372,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
                         </p>
                       </div>
 
-                      <div className="flex items-center justify-end pt-1 border-t border-[#161a22] text-[11px] text-neutral-400">
+                      <div className="flex items-center justify-end pt-1 border-t border-[#13211a] text-[11px] text-neutral-400">
 
                         <button
                           onClick={() => onDeleteClip(clip.id)}
@@ -395,14 +395,14 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
 
       {/* Bottom bar: open the folder with all clips of this project */}
       {clipsFolder && window.electronAPI?.openFolder && (
-        <div className="shrink-0 h-12 px-6 border-t border-[#14181f] bg-[#0a0d11] flex items-center">
+        <div className="shrink-0 h-12 px-6 border-t border-[#111e18] bg-[#09100d] flex items-center">
           <button type="button" onClick={() => window.electronAPI!.openFolder!(clipsFolder)}
-            className="px-3 py-1.5 rounded-lg bg-[#14181f] hover:bg-[#1d232e] text-neutral-200 text-xs font-bold flex items-center gap-2 border border-[#222834] cursor-pointer transition-colors">
-            <Film className="w-3.5 h-3.5 text-[#bef264]" /> Open clips folder
+            className="px-3 py-1.5 rounded-lg bg-[#111e18] hover:bg-[#192c23] text-neutral-200 text-xs font-bold flex items-center gap-2 border border-[#1d3228] cursor-pointer transition-colors">
+            <Film className="w-3.5 h-3.5 text-[#8fd0a4]" /> Open clips folder
           </button>
           <button type="button" onClick={saveSheet}
-            className="ml-2 px-3 py-1.5 rounded-lg bg-[#14181f] hover:bg-[#1d232e] text-neutral-200 text-xs font-bold flex items-center gap-2 border border-[#222834] cursor-pointer transition-colors">
-            <Download className="w-3.5 h-3.5 text-[#bef264]" /> Download title &amp; description
+            className="ml-2 px-3 py-1.5 rounded-lg bg-[#111e18] hover:bg-[#192c23] text-neutral-200 text-xs font-bold flex items-center gap-2 border border-[#1d3228] cursor-pointer transition-colors">
+            <Download className="w-3.5 h-3.5 text-[#8fd0a4]" /> Download title &amp; description
           </button>
           {sheetMsg && <span className="ml-3 text-[11px] text-neutral-400 truncate">{sheetMsg}</span>}
         </div>
@@ -414,26 +414,26 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
       ======================================================== */}
       {activePreviewClip && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="relative bg-[#0b0e12] border border-[#1e2533] rounded-3xl p-6 shadow-2xl max-w-sm w-full flex flex-col items-center space-y-4">
+          <div className="relative bg-[#09110e] border border-[#1b2f26] rounded-3xl p-6 shadow-2xl max-w-sm w-full flex flex-col items-center space-y-4">
             
             {/* Modal Header */}
-            <div className="w-full flex items-center justify-between border-b border-[#181d26] pb-3">
+            <div className="w-full flex items-center justify-between border-b border-[#15241d] pb-3">
               <div className="flex items-center gap-2">
-                <Flame className="w-4 h-4 text-[#bef264]" />
+                <Flame className="w-4 h-4 text-[#8fd0a4]" />
                 <span className="text-xs font-bold text-white truncate max-w-[220px]">
                   {activePreviewClip.title}
                 </span>
               </div>
               <button
                 onClick={handleClosePreview}
-                className="w-7 h-7 rounded-lg bg-[#141820] text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                className="w-7 h-7 rounded-lg bg-[#111e18] text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* 9:16 Vertical Screen Player */}
-            <div className="relative aspect-[9/16] w-[260px] bg-black rounded-2xl overflow-hidden border border-[#222a38] shadow-2xl flex items-center justify-center select-none">
+            <div className="relative aspect-[9/16] w-[260px] bg-black rounded-2xl overflow-hidden border border-[#20332a] shadow-2xl flex items-center justify-center select-none">
               {(activePreviewClip.videoUrl || sourceVideoUrl) ? (
                 <video 
                   ref={previewVideoRef}
@@ -449,7 +449,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
                   className="w-full h-full object-cover opacity-90"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-[#10141a] text-neutral-400 font-mono text-xs">
+                <div className="w-full h-full flex items-center justify-center bg-[#0e1914] text-neutral-400 font-mono text-xs">
                   <span>Playing Clip Video</span>
                 </div>
               )}
@@ -565,7 +565,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
 
               <button
                 onClick={() => setPreviewTime(0)}
-                className="p-2 rounded-xl bg-[#141820] hover:bg-[#1f2530] text-neutral-300 hover:text-white border border-[#232936] cursor-pointer"
+                className="p-2 rounded-xl bg-[#111e18] hover:bg-[#1b2e25] text-neutral-300 hover:text-white border border-[#20322a] cursor-pointer"
                 title="Restart"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -573,7 +573,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
 
               <button
                 onClick={() => handleExportClip(activePreviewClip)}
-                className="px-4 py-2 rounded-xl bg-[#141820] hover:bg-[#1f2530] text-neutral-200 hover:text-white font-bold text-xs border border-[#232936] flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[#111e18] hover:bg-[#1b2e25] text-neutral-200 hover:text-white font-bold text-xs border border-[#20322a] flex items-center gap-1.5 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Export MP4</span>

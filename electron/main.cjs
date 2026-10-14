@@ -16,7 +16,7 @@ const { killAll, resetCancel } = require('./engine/proc.cjs');
 const { runPipeline, workDirFor } = require('./engine/pipeline.cjs');
 const R = require('./engine/render.cjs');
 const Settings = require('./engine/settings.cjs');
-const G = require('./engine/gemini.cjs');
+const AI = require('./engine/ai.cjs');
 
 let mainWindow;
 const send = (ch, data) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(ch, data); };
@@ -28,7 +28,9 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     autoHideMenuBar: true,
-    backgroundColor: '#0d0f12',
+    backgroundColor: '#07100c',
+    icon: path.join(__dirname, '..', 'build', 'icon.png'),
+    title: 'ClipForge',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -154,8 +156,10 @@ app.on('window-all-closed', () => {
 const MODEL_URLS = {
   'small': 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin',
   'medium': 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin',
-  'large-v3-turbo': 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin'
+  'large-v3-turbo': 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin',
+  'aligner': 'https://huggingface.co/Xenova/wav2vec2-base-960h/resolve/main/onnx/model_quantized.onnx'   // caption sync (word-level alignment)
 };
+const mfile = (id) => id === 'aligner' ? require('./engine/align.cjs').modelPath() : Paths.modelFile(id);
 function fetchToFile(url, dest, onProgress, redirects = 0) {
   return new Promise((resolve, reject) => {
     if (redirects > 6) return reject(new Error('Too many redirects'));
@@ -180,26 +184,26 @@ function fetchToFile(url, dest, onProgress, redirects = 0) {
 ipcMain.handle('model-status', async () => {
   const out = {};
   for (const id of Object.keys(MODEL_URLS)) {
-    const f = Paths.modelFile(id);
+    const f = mfile(id);
     let size = 0; try { size = fs.statSync(f).size; } catch {}
     out[id] = { exists: size > 0, size };
   }
   return out;
 });
-const MIN_SIZE = { small: 480e6, medium: 1.5e9, 'large-v3-turbo': 1.6e9 };
+const MIN_SIZE = { small: 480e6, medium: 1.5e9, 'large-v3-turbo': 1.6e9, aligner: 90e6 };
 ipcMain.handle('verify-model', async (e, { modelId }) => {
-  const f = Paths.modelFile(modelId), dir = Paths.modelsDir();
+  const f = mfile(modelId), dir = Paths.modelsDir();
   if (!MODEL_URLS[modelId]) return { ok: false, message: 'Unknown model.' };
   if (!fs.existsSync(f)) return { ok: false, missing: true, dir, message: `Not downloaded. This model was not found in your models folder (${dir}).` };
   const size = fs.statSync(f).size;
   if (size < MIN_SIZE[modelId] * 0.98) return { ok: false, broken: true, size, dir, message: `Incomplete download (${(size / 1e6).toFixed(0)} MB). Delete it and download again.` };
   const fd = fs.openSync(f, 'r'); const b = Buffer.alloc(4); fs.readSync(fd, b, 0, 4, 0); fs.closeSync(fd);
-  if (b.toString('latin1') !== 'lmgg') return { ok: false, broken: true, size, dir, message: 'The file is corrupted (invalid header). Delete it and download again.' };
+  if (modelId === 'aligner' ? b[0] !== 0x08 : b.toString('latin1') !== 'lmgg') return { ok: false, broken: true, size, dir, message: 'The file is corrupted (invalid header). Delete it and download again.' };
   return { ok: true, size, dir, message: `Downloaded and working (${(size / 1e6).toFixed(0)} MB) in ${dir}.` };
 });
 ipcMain.handle('delete-model', async (e, { modelId }) => {
   if (!MODEL_URLS[modelId]) return false;
-  for (const f of [Paths.modelFile(modelId), Paths.modelFile(modelId) + '.part']) { try { fs.unlinkSync(f); } catch {} }
+  for (const f of [mfile(modelId), mfile(modelId) + '.part']) { try { fs.unlinkSync(f); } catch {} }
   return true;
 });
 const folderInfo = () => ({ modelsDir: Paths.modelsDir(), clipsDir: Settings.clipsDir(), defaultModelsDir: Paths.defaultModelsDir(), defaultClipsDir: Settings.defaultClipsDir(), ytDir: Settings.ytDir(), defaultYtDir: Settings.defaultYtDir() });
@@ -224,7 +228,9 @@ ipcMain.handle('save-clip-sheet', async (e, { dir, rows }) => {
   return file;
 });
 ipcMain.handle('open-folder', async (e, p) => { try { fs.mkdirSync(p, { recursive: true }); } catch {} return shell.openPath(p); });
-ipcMain.handle('gemini-test', async (e, { apiKey, model }) => G.test({ apiKey, model }));
+ipcMain.handle('ai-test', async (e, a) => AI.test(a));
+ipcMain.handle('ai-ping', async (e, a) => AI.ping(a));
+ipcMain.handle('ai-list-models', async (e, a) => AI.listModels(a));
 ipcMain.handle('engine-status', async () => ({
   ffmpeg: !!Paths.resolveBin('ffmpeg'), whisper: !!(Paths.resolveBin('whisper-cli') || Paths.resolveBin('main')),
 }));
@@ -233,7 +239,7 @@ ipcMain.handle('download-model', async (event, { modelId }) => {
   const url = MODEL_URLS[modelId];
   if (!url) throw new Error(`Unknown model: ${modelId}`);
   fs.mkdirSync(Paths.modelsDir(), { recursive: true });
-  const finalPath = Paths.modelFile(modelId), tmp = finalPath + '.part';
+  const finalPath = mfile(modelId), tmp = finalPath + '.part';
   try {
     await fetchToFile(url, tmp, (downloadedBytes, totalBytes) => {
       send('download-progress', { modelId, progress: totalBytes ? Math.round(downloadedBytes / totalBytes * 100) : 0, downloadedBytes, totalBytes });

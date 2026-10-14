@@ -33,6 +33,9 @@ declare global {
       onYtProgress?: (cb: (d: { phase: string; percent: number; done?: number; total?: number; speed?: number; eta?: number | null; text?: string }) => void) => () => void;
       saveClipSheet?: (dir: string, rows: string[][]) => Promise<string>;
       openFolder?: (p: string) => Promise<string>;
+      aiTest?: (a: { provider: string; key: string; model: string }) => Promise<{ success: boolean; model?: string; message: string; kind?: string; quotaExhausted?: boolean }>;
+      aiPing?: (a: { provider: string; key: string }) => Promise<{ state: string; message: string }>;
+      aiListModels?: (a: { provider: string; key: string }) => Promise<{ ok: boolean; models: { id: string; label: string; vision?: boolean }[] }>;
       testGemini?: (apiKey: string, model: string) => Promise<{ success: boolean; model?: string; message: string; kind?: string; quotaExhausted?: boolean; invalidKey?: boolean }>;
       engineCheck?: () => Promise<{ items: { id: string; name: string; ok: boolean; required: boolean; detail: string }[]; allReady: boolean; missing: string[]; optionalMissing: string[] }>;
       engineStatus?: () => Promise<{ ffmpeg: boolean; whisper: boolean }>;

@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { PipelineRunner } from '../services/pipelineRunner';
 import { SoftwareLogEvent } from '../services/softwareManager';
-import { GeminiService } from '../services/geminiService';
+import { AiService } from '../services/aiService';
 
 interface GenerationProgressViewProps {
   project: ProjectItem;
@@ -278,7 +278,8 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
 
   const isFinished = progressPercent >= 100;
   const currentStepName = steps[currentStepIdx]?.name || 'Finalizing clips';
-  const geminiSettings = GeminiService.getSettings();
+  const aiCfg = AiService.getConfig();
+  const aiOn = AiService.hasKeys(aiCfg);
   const fallbackTriggered = logs.some(l => 
     l.message.includes('[AUTO-FAILOVER]') || 
     l.message.includes('Switched to Offline Local') ||
@@ -286,7 +287,7 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
   );
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#000000] text-neutral-100 overflow-y-auto font-sans select-none">
+    <div className="flex-1 flex flex-col h-full bg-[#050b08] text-neutral-100 overflow-y-auto font-sans select-none">
       
       {errorMsg && (
         <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 max-w-2xl rounded-xl border border-red-500/40 bg-red-950/90 text-red-200 text-xs p-4 shadow-2xl select-text">
@@ -297,11 +298,11 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
       )}
 
       {/* Top Application Header bar */}
-      <div className="h-12 border-b border-[#14181f] bg-[#000000] px-4 flex items-center justify-between shrink-0">
+      <div className="h-12 border-b border-[#111e18] bg-[#050b08] px-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-400 hover:text-white hover:bg-[#14181f] transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-400 hover:text-white hover:bg-[#111e18] transition-colors cursor-pointer"
             title="Go back to My clips"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -316,15 +317,15 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
               <AlertTriangle className="w-3 h-3 text-amber-400" />
               <span>Switched to Local Engine (Quota Limit)</span>
             </span>
-          ) : geminiSettings.enabled ? (
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#bef264]/15 text-[#bef264] border border-[#bef264]/30">
+          ) : aiOn ? (
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#3f9a5a]/15 text-[#8fd0a4] border border-[#3f9a5a]/30">
               <Sparkles className="w-3 h-3" />
-              <span>Gemini Cloud (Auto-Failover Active)</span>
+              <span>AI Boost · {AiService.keyCount(aiCfg)} key{AiService.keyCount(aiCfg) > 1 ? 's' : ''} (auto-fallback)</span>
             </span>
           ) : (
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-neutral-800 text-neutral-400 border border-neutral-700">
               <Server className="w-3 h-3" />
-              <span>Offline Local Model Only</span>
+              <span>Local AI only (no key added)</span>
             </span>
           )}
 
@@ -333,8 +334,8 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
             onClick={() => setShowTerminalLogs(!showTerminalLogs)}
             className={`px-3 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
               showTerminalLogs
-                ? 'bg-[#bef264]/20 text-[#bef264] border border-[#bef264]/40'
-                : 'text-neutral-400 hover:text-white bg-[#0e1116] border border-[#1e232d]'
+                ? 'bg-[#3f9a5a]/20 text-[#8fd0a4] border border-[#3f9a5a]/40'
+                : 'text-neutral-400 hover:text-white bg-[#0c1611] border border-[#192c23]'
             }`}
           >
             <Terminal className="w-3 h-3" />
@@ -351,14 +352,14 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
           {/* ========================================================
               CARD 1: HERO PROGRESS CARD (Exact match to screenshot 1)
           ======================================================== */}
-          <div className="bg-[#0b0e12] border border-[#191e26] rounded-2xl p-7 space-y-4 shadow-xl">
+          <div className="bg-[#09110e] border border-[#15251e] rounded-2xl p-7 space-y-4 shadow-xl">
             {/* Failover notice banner if quota was reached */}
             {fallbackTriggered && (
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-2.5">
                 <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold">Zero-Downtime Local Failover: </span>
-                  The Gemini API quota or credits ran out, so the app automatically switched to the offline local engine. Generation is continuing without interruption.
+                  The AI providers ran out of quota or credits, so the app automatically switched to the built-in local engine. Generation is continuing without interruption.
                 </div>
               </div>
             )}
@@ -374,7 +375,7 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
             </div>
 
             {/* Horizontal Progress Bar */}
-            <div className="w-full h-1.5 bg-[#161a22] rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-[#13211a] rounded-full overflow-hidden">
               <div 
                 className="h-full bg-[#bef264] rounded-full transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
@@ -407,9 +408,9 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
           {/* ========================================================
               CARD 2: HARDWARE NOTICE CARD (Exact match to screenshot 1)
           ======================================================== */}
-          <div className="bg-[#0b0e12] border border-[#191e26] rounded-2xl p-6 space-y-1.5 shadow-md">
+          <div className="bg-[#09110e] border border-[#15251e] rounded-2xl p-6 space-y-1.5 shadow-md">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Cpu className="w-3.5 h-3.5 text-[#bef264]" />
+              <Cpu className="w-3.5 h-3.5 text-[#8fd0a4]" />
               <span>Optimized CPU & AVX2 Acceleration Pipeline</span>
             </h3>
             <p className="text-[11px] text-neutral-400 leading-relaxed">
@@ -421,10 +422,10 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
               LIVE TERMINAL LOGS DRAWER (Optional collapsible)
           ======================================================== */}
           {showTerminalLogs && (
-            <div className="bg-[#080a0e] border border-[#1f2633] rounded-2xl p-4 shadow-2xl space-y-2">
-              <div className="flex items-center justify-between border-b border-[#161b24] pb-2">
+            <div className="bg-[#070d0a] border border-[#1c3026] rounded-2xl p-4 shadow-2xl space-y-2">
+              <div className="flex items-center justify-between border-b border-[#13221b] pb-2">
                 <span className="text-xs font-bold text-white flex items-center gap-2 font-mono">
-                  <Terminal className="w-3.5 h-3.5 text-[#bef264]" />
+                  <Terminal className="w-3.5 h-3.5 text-[#8fd0a4]" />
                   <span>C:\\Program Files\\ClipForge\\resources\\binaries\\win32\\stdout.log</span>
                 </span>
                 <span className="text-[10px] text-neutral-500 font-mono">
@@ -445,7 +446,7 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
                       {item.source}
                     </span>
                     <span className={`${
-                      item.type === 'success' ? 'text-[#bef264]' :
+                      item.type === 'success' ? 'text-[#8fd0a4]' :
                       item.type === 'warn' ? 'text-amber-300' :
                       item.type === 'stderr' ? 'text-rose-400' :
                       'text-neutral-300'
@@ -462,7 +463,7 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
           {/* ========================================================
               CARD 3: PIPELINE 9-STEPS CHECKLIST (Exact match to screenshot 2)
           ======================================================== */}
-          <div className="bg-[#0b0e12] border border-[#191e26] rounded-2xl overflow-hidden shadow-xl divide-y divide-[#161a22]">
+          <div className="bg-[#09110e] border border-[#15251e] rounded-2xl overflow-hidden shadow-xl divide-y divide-[#13211a]">
             {steps.map((step, idx) => {
               if (step.status === 'skipped') return null;
               const isCompleted = step.status === 'completed' || (isFinished && idx <= 8);
@@ -470,13 +471,13 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
               const isStepPaused = isPaused && step.status === 'running';
 
               return (
-                <div key={step.id} className="p-4 px-6 transition-colors hover:bg-[#0f131a]/50">
+                <div key={step.id} className="p-4 px-6 transition-colors hover:bg-[#0d1913]/50">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       {/* Step Indicator Icon */}
                       <div className="w-5 h-5 flex items-center justify-center shrink-0">
                         {isCompleted ? (
-                          <Check className="w-4 h-4 text-[#bef264] stroke-[3]" />
+                          <Check className="w-4 h-4 text-[#8fd0a4] stroke-[3]" />
                         ) : isRunning ? (
                           <div className="w-2.5 h-2.5 rounded-full bg-[#bef264] animate-ping" />
                         ) : isStepPaused ? (
@@ -488,7 +489,7 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
 
                       {/* Step Name */}
                       <span className={`text-xs font-semibold ${
-                        isCompleted ? 'text-white' : isRunning ? 'text-[#bef264]' : 'text-neutral-400'
+                        isCompleted ? 'text-white' : isRunning ? 'text-[#8fd0a4]' : 'text-neutral-400'
                       }`}>
                         {step.name}
                       </span>
@@ -500,15 +501,15 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
                         const sp = isCompleted ? 100 : (step.percent ?? 0);
                         return (
                           <>
-                            <div className="w-24 h-1 bg-[#161a22] rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-300 ${isCompleted ? 'bg-[#bef264]' : isStepPaused ? 'bg-amber-400' : 'bg-[#bef264]/80'}`} style={{ width: `${sp}%` }} />
+                            <div className="w-24 h-1 bg-[#13211a] rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full transition-all duration-300 ${isCompleted ? 'bg-[#bef264]' : isStepPaused ? 'bg-amber-400' : 'bg-[#3f9a5a]/80'}`} style={{ width: `${sp}%` }} />
                             </div>
-                            <span className={`w-9 text-right ${isRunning ? 'text-[#bef264]' : ''}`}>{sp}%</span>
+                            <span className={`w-9 text-right ${isRunning ? 'text-[#8fd0a4]' : ''}`}>{sp}%</span>
                           </>
                         );
                       })()}
                       <span className="w-16 text-right">
-                        {isCompleted && step.duration ? step.duration : isRunning ? <span className="text-[#bef264]">{fmtSecs(activeStepSeconds)}</span> : ''}
+                        {isCompleted && step.duration ? step.duration : isRunning ? <span className="text-[#8fd0a4]">{fmtSecs(activeStepSeconds)}</span> : ''}
                       </span>
                     </div>
                   </div>
@@ -532,7 +533,7 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
               <button
                 type="button"
                 onClick={onViewClips}
-                className="px-6 py-2.5 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs shadow-lg shadow-[#bef264]/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs shadow-lg shadow-[#3f9a5a]/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2 cursor-pointer"
               >
                 <Film className="w-4 h-4" />
                 <span>View Generated Clips ({project.clips?.length || project.clipCount || 4} Ready)</span>
@@ -543,8 +544,8 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
                 onClick={togglePauseResume}
                 className={`px-6 py-2.5 rounded-xl font-extrabold text-xs shadow-lg transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2 cursor-pointer ${
                   isPaused
-                    ? 'bg-[#bef264] hover:bg-[#a3e635] text-black shadow-[#bef264]/20'
-                    : 'bg-[#151a22] hover:bg-[#1e2430] text-white border border-[#2b3342]'
+                    ? 'bg-[#bef264] hover:bg-[#a3e635] text-black shadow-[#3f9a5a]/20'
+                    : 'bg-[#12201a] hover:bg-[#1a2e25] text-white border border-[#273d33]'
                 }`}
               >
                 {isPaused ? (
@@ -564,7 +565,7 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
             <button
               type="button"
               onClick={onNewProject}
-              className="px-5 py-2.5 rounded-xl bg-[#12161d] hover:bg-[#1a202a] text-neutral-200 text-xs font-bold border border-[#222834] transition-colors cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-[#0f1c16] hover:bg-[#172820] text-neutral-200 text-xs font-bold border border-[#1d3228] transition-colors cursor-pointer"
             >
               New project
             </button>

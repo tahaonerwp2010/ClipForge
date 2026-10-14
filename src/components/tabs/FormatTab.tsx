@@ -39,11 +39,11 @@ const SliderRow: React.FC<{ label: string; value: number; unit: string; min: num
   <div>
     <div className="flex justify-between text-neutral-300 mb-1 text-[11px]">
       <span>{label}</span>
-      <span className="font-mono text-[#bef264]">{value}{unit}</span>
+      <span className="font-mono text-[#8fd0a4]">{value}{unit}</span>
     </div>
     <input type="range" min={min} max={max} value={value}
       onChange={(e) => onChange(parseInt(e.target.value))}
-      className="w-full h-1 bg-[#232832] rounded appearance-none accent-[#bef264]" />
+      className="w-full h-1 bg-[#1d3228] rounded appearance-none accent-[#bef264]" />
   </div>
 );
 
@@ -58,7 +58,7 @@ const BackgroundPicker: React.FC<{ framing: InnerFramingConfig; onFramingChange:
             <button key={opt} type="button"
               onClick={(e) => { e.stopPropagation(); onFramingChange({ ...framing, fitBackground: opt }); }}
               className={`px-3 py-1 rounded-full text-[11px] capitalize cursor-pointer transition-colors ${
-                bg === opt ? 'bg-[#182116] border border-[#bef264] text-[#bef264] font-bold' : 'bg-[#12151c] border border-[#232832] text-neutral-400 hover:text-white'}`}>
+                bg === opt ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] font-bold' : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white'}`}>
               {opt === 'blur' ? 'Blurred' : 'Black'}
             </button>
           ))}
@@ -78,11 +78,11 @@ const AutoReframeControls: React.FC<{ framing: InnerFramingConfig; onFramingChan
     <div className="space-y-2 text-[11px]" onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-white font-semibold flex items-center gap-1.5"><UserCheck className="w-3.5 h-3.5 text-[#bef264]" />AI Auto-Reframing</div>
+          <div className="text-white font-semibold flex items-center gap-1.5"><UserCheck className="w-3.5 h-3.5 text-[#8fd0a4]" />AI Auto-Reframing</div>
           <div className="text-neutral-400">Follows the speaker's face and keeps them centred.</div>
         </div>
         <button type="button" onClick={() => onFramingChange({ ...framing, autoReframing: !on })}
-          className={`w-11 h-6 rounded-full p-0.5 transition-all cursor-pointer shrink-0 ${on ? 'bg-[#bef264]' : 'bg-[#222834]'}`}
+          className={`w-11 h-6 rounded-full p-0.5 transition-all cursor-pointer shrink-0 ${on ? 'bg-[#bef264]' : 'bg-[#1d3228]'}`}
           title={on ? 'Turn off AI auto-reframing' : 'Turn on AI auto-reframing'}>
           <div className={`w-5 h-5 rounded-full bg-black transition-transform ${on ? 'translate-x-5' : 'translate-x-0'}`} />
         </button>
@@ -92,7 +92,7 @@ const AutoReframeControls: React.FC<{ framing: InnerFramingConfig; onFramingChan
           {([['smart-cut', 'Smart Cut (instant)'], ['smooth-pan', 'Smooth Pan']] as const).map(([id, label]) => (
             <button key={id} type="button" onClick={() => onFramingChange({ ...framing, trackingStyle: id })}
               className={`py-1.5 px-2 rounded-lg border text-[11px] font-bold cursor-pointer transition-all ${
-                (framing.trackingStyle || 'smart-cut') === id ? 'bg-[#bef264] text-black border-[#bef264]' : 'bg-[#111612] text-neutral-300 border-[#22331e] hover:border-[#344d2d]'}`}>
+                (framing.trackingStyle || 'smart-cut') === id ? 'bg-[#bef264] text-black border-[#3f9a5a]' : 'bg-[#0d1712] text-neutral-300 border-[#1b2f26] hover:border-[#2c4439]'}`}>
               {label}
             </button>
           ))}
@@ -161,10 +161,10 @@ export const FormatTab: React.FC<FormatTabProps> = ({
   };
 
   return (
-    <div className="space-y-6 text-neutral-200 text-xs">
+    <div className="space-y-4 text-neutral-200 text-xs">
       
       {/* 1. PROCESSING SECTION */}
-      <section className="space-y-2">
+      <section className="space-y-2 p-4 rounded-2xl bg-[#0b1611] border border-[#17291f]">
         <h3 className="font-bold uppercase tracking-wider text-neutral-400 text-[11px]">
           Processing
         </h3>
@@ -177,7 +177,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
               useHardware === 'gpu'
                 ? 'bg-[#bef264] text-black font-bold'
-                : 'bg-[#151921] text-neutral-400 hover:text-white border border-[#232832]'
+                : 'bg-[#122019] text-neutral-400 hover:text-white border border-[#1d3228]'
             }`}
           >
             Graphics card
@@ -188,7 +188,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
               useHardware === 'cpu'
                 ? 'bg-[#bef264] text-black font-bold shadow-sm'
-                : 'bg-[#151921] text-neutral-400 hover:text-white border border-[#232832]'
+                : 'bg-[#122019] text-neutral-400 hover:text-white border border-[#1d3228]'
             }`}
           >
             Processor only
@@ -202,17 +202,17 @@ export const FormatTab: React.FC<FormatTabProps> = ({
       </section>
 
       {split && onSplitChange && (
-        <section className="space-y-3 pt-2 border-t border-[#1a1e24]">
+        <section className="space-y-3 p-4 rounded-2xl bg-[#0b1611] border border-[#17291f]">
           <h3 className="font-bold uppercase tracking-wider text-neutral-400 text-[11px]">Split screen layout</h3>
           <p className="text-[11px] text-neutral-500 leading-relaxed">Drag the lime bar in the phone preview to resize the two sections. Drag inside a section to move its picture, and scroll over it to zoom.</p>
           {(() => {
             const set = (patch: Partial<SplitConfig>) => onSplitChange({ ...split, ...patch });
-            const chip = (on: boolean) => `px-3 py-1 rounded-full text-xs cursor-pointer transition-colors ${on ? 'bg-[#182116] border border-[#bef264] text-[#bef264] font-bold' : 'bg-[#12151c] border border-[#232832] text-neutral-400 hover:text-white'}`;
+            const chip = (on: boolean) => `px-3 py-1 rounded-full text-xs cursor-pointer transition-colors ${on ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] font-bold' : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white'}`;
             const view = (pos: 'top' | 'bottom', label: string) => (
               <div className="flex items-center gap-2">
                 <span className="w-28 text-neutral-400">{label} zoom</span>
                 <input type="range" min={1} max={3} step={0.05} value={split[pos].zoom} onChange={(e) => set({ [pos]: { ...split[pos], zoom: parseFloat(e.target.value) } } as any)} className="flex-1 accent-[#bef264]" />
-                <span className="w-10 text-right font-mono text-[#bef264]">{split[pos].zoom.toFixed(2)}x</span>
+                <span className="w-10 text-right font-mono text-[#8fd0a4]">{split[pos].zoom.toFixed(2)}x</span>
                 <button type="button" onClick={() => set({ [pos]: { zoom: 1, panX: 0, panY: 0 } } as any)} className="text-[10px] text-neutral-400 hover:text-white underline cursor-pointer">Reset</button>
               </div>
             );
@@ -227,20 +227,20 @@ export const FormatTab: React.FC<FormatTabProps> = ({
                 <div className="flex items-center gap-2">
                   <span className="w-28 text-neutral-400">Top height</span>
                   <input type="range" min={25} max={75} step={1} value={split.splitPct} onChange={(e) => set({ splitPct: parseInt(e.target.value) })} className="flex-1 accent-[#bef264]" />
-                  <span className="w-20 text-right font-mono text-[#bef264]">{split.splitPct}% / {100 - split.splitPct}%</span>
+                  <span className="w-20 text-right font-mono text-[#8fd0a4]">{split.splitPct}% / {100 - split.splitPct}%</span>
                 </div>
                 {view('top', 'Top')}
                 {view('bottom', 'Bottom')}
                 <div className="flex items-center gap-2">
                   <span className="w-28 text-neutral-400">Divider</span>
                   <input type="range" min={0} max={24} step={1} value={split.gap} onChange={(e) => set({ gap: parseInt(e.target.value) })} className="flex-1 accent-[#bef264]" />
-                  <span className="w-10 text-right font-mono text-[#bef264]">{split.gap}px</span>
-                  <input type="color" value={split.gapColor || '#000000'} onChange={(e) => set({ gapColor: e.target.value })} className="w-7 h-7 bg-transparent border border-[#232832] rounded cursor-pointer" />
+                  <span className="w-10 text-right font-mono text-[#8fd0a4]">{split.gap}px</span>
+                  <input type="color" value={split.gapColor || '#000000'} onChange={(e) => set({ gapColor: e.target.value })} className="w-7 h-7 bg-transparent border border-[#1d3228] rounded cursor-pointer" />
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-28 text-neutral-400">Facecam corners</span>
                   <input type="range" min={0} max={80} step={2} value={split.radius} onChange={(e) => set({ radius: parseInt(e.target.value) })} className="flex-1 accent-[#bef264]" />
-                  <span className="w-10 text-right font-mono text-[#bef264]">{split.radius}px</span>
+                  <span className="w-10 text-right font-mono text-[#8fd0a4]">{split.radius}px</span>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="w-28 text-neutral-400">{split.mode === 'single' ? 'Game view' : 'Second video'}</span>
@@ -254,7 +254,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
                       <button key={v} type="button" onClick={() => set({ audio: v })} className={chip(split.audio === v)}>{l}</button>
                     ))}
                     <span className="ml-2 text-neutral-400">Offset</span>
-                    <input type="number" step={0.1} value={split.offset} onChange={(e) => set({ offset: parseFloat(e.target.value) || 0 })} className="w-20 bg-[#12151c] border border-[#232832] rounded-lg px-2 py-1 font-mono text-white text-center focus:outline-none" />
+                    <input type="number" step={0.1} value={split.offset} onChange={(e) => set({ offset: parseFloat(e.target.value) || 0 })} className="w-20 bg-[#0f1c16] border border-[#1d3228] rounded-lg px-2 py-1 font-mono text-white text-center focus:outline-none" />
                     <span className="text-neutral-400">s</span>
                   </div>
                 )}
@@ -272,7 +272,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
 
       {!split && (<>
       {/* 2. FORMAT / ASPECT RATIO (Every button works and updates preview immediately!) */}
-      <section className="space-y-2.5 pt-2 border-t border-[#1a1e24]">
+      <section className="space-y-2.5 p-4 rounded-2xl bg-[#0b1611] border border-[#17291f]">
         <h3 className="font-bold uppercase tracking-wider text-neutral-400 text-[11px]">
           Format
         </h3>
@@ -289,8 +289,8 @@ export const FormatTab: React.FC<FormatTabProps> = ({
                   onClick={() => onCanvasRatioChange(item.id)}
                   className={`px-3.5 py-1 rounded-full text-xs transition-all cursor-pointer font-semibold ${
                     isSelected
-                      ? 'bg-[#182116] border border-[#bef264] text-[#bef264] shadow-sm ring-1 ring-[#bef264]/40 scale-105'
-                      : 'bg-[#12151c] border border-[#232832] text-neutral-400 hover:text-white hover:border-[#384354]'
+                      ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] shadow-sm ring-1 ring-[#3f9a5a]/40 scale-105'
+                      : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white hover:border-[#324f41]'
                   }`}
                   title={item.desc}
                 >
@@ -299,7 +299,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
               );
             })}
           </div>
-          <div className="text-[11px] text-[#bef264] font-mono mt-1.5 flex items-center gap-1.5">
+          <div className="text-[11px] text-[#8fd0a4] font-mono mt-1.5 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-[#bef264]" />
             <span>Target frame: {getDimensionLabel()}</span>
           </div>
@@ -317,16 +317,16 @@ export const FormatTab: React.FC<FormatTabProps> = ({
               onClick={() => onFramingChange({ ...framing, mode: 'fit-blur' })}
               className={`p-3 rounded-xl border cursor-pointer transition-all ${
                 framing.mode === 'fit-blur'
-                  ? 'bg-[#141b12] border-[#bef264] ring-1 ring-[#bef264]/40'
-                  : 'bg-[#101318] border-[#1d222a] hover:border-[#2b3340]'
+                  ? 'bg-[#0e1b15] border-[#3f9a5a] ring-1 ring-[#3f9a5a]/40'
+                  : 'bg-[#0d1813] border-[#182921] hover:border-[#263c32]'
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="font-bold text-white flex items-center gap-2">
-                  <Layers className="w-3.5 h-3.5 text-[#bef264]" />
+                  <Layers className="w-3.5 h-3.5 text-[#8fd0a4]" />
                   <span>Fit</span>
                 </span>
-                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#bef264]/20 text-[#bef264] font-bold">
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#3f9a5a]/20 text-[#8fd0a4] font-bold">
                   POPULAR
                 </span>
               </div>
@@ -335,7 +335,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
               </p>
 
               {framing.mode === 'fit-blur' && (
-                <div className="mt-3 pt-2.5 border-t border-[#232832] space-y-3 text-[11px]">
+                <div className="mt-3 pt-2.5 border-t border-[#1d3228] space-y-3 text-[11px]">
                   <BackgroundPicker framing={framing} onFramingChange={onFramingChange} />
                   <SliderRow label="Corner Radius" value={framing.innerBorderRadius} unit="px" min={0} max={24}
                     onChange={(v) => onFramingChange({ ...framing, innerBorderRadius: v })} />
@@ -348,13 +348,13 @@ export const FormatTab: React.FC<FormatTabProps> = ({
               onClick={() => onFramingChange({ ...framing, mode: 'fill-crop' })}
               className={`p-3 rounded-xl border cursor-pointer transition-all ${
                 framing.mode === 'fill-crop'
-                  ? 'bg-[#141b12] border-[#bef264] ring-1 ring-[#bef264]/40'
-                  : 'bg-[#101318] border-[#1d222a] hover:border-[#2b3340]'
+                  ? 'bg-[#0e1b15] border-[#3f9a5a] ring-1 ring-[#3f9a5a]/40'
+                  : 'bg-[#0d1813] border-[#182921] hover:border-[#263c32]'
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="font-bold text-white flex items-center gap-2">
-                  <Crop className="w-3.5 h-3.5 text-[#bef264]" />
+                  <Crop className="w-3.5 h-3.5 text-[#8fd0a4]" />
                   <span>Full Crop & Pan (Face Focus)</span>
                 </span>
               </div>
@@ -363,7 +363,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
               </p>
 
               {framing.mode === 'fill-crop' && (
-                <div className="mt-3 pt-2.5 border-t border-[#232832] space-y-3">
+                <div className="mt-3 pt-2.5 border-t border-[#1d3228] space-y-3">
                   <AutoReframeControls framing={framing} onFramingChange={onFramingChange} />
                   {!framing.autoReframing && (
                     <SliderRow label="Horizontal Pan" value={framing.panX} unit="%" min={-50} max={50}
@@ -373,38 +373,18 @@ export const FormatTab: React.FC<FormatTabProps> = ({
               )}
             </div>
 
-            {/* Mode C: Split Screen */}
-            <div
-              onClick={() => onFramingChange({ ...framing, mode: 'split-screen' })}
-              className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                framing.mode === 'split-screen'
-                  ? 'bg-[#141b12] border-[#bef264] ring-1 ring-[#bef264]/40'
-                  : 'bg-[#101318] border-[#1d222a] hover:border-[#2b3340]'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-white flex items-center gap-2">
-                  <Split className="w-3.5 h-3.5 text-[#bef264]" />
-                  <span>Split Screen (Dual Stack)</span>
-                </span>
-              </div>
-              <p className="text-[11px] text-neutral-400 mt-1">
-                Top half shows your video, bottom half plays viral satisfying footage / gameplay for 2x retention.
-              </p>
-            </div>
-
             {/* Mode D: Custom */}
             <div
               onClick={() => onFramingChange({ ...framing, mode: 'custom-scale' })}
               className={`p-3 rounded-xl border cursor-pointer transition-all ${
                 framing.mode === 'custom-scale'
-                  ? 'bg-[#141b12] border-[#bef264] ring-1 ring-[#bef264]/40'
-                  : 'bg-[#101318] border-[#1d222a] hover:border-[#2b3340]'
+                  ? 'bg-[#0e1b15] border-[#3f9a5a] ring-1 ring-[#3f9a5a]/40'
+                  : 'bg-[#0d1813] border-[#182921] hover:border-[#263c32]'
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="font-bold text-white flex items-center gap-2">
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-[#bef264]" />
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-[#8fd0a4]" />
                   <span>Custom</span>
                 </span>
               </div>
@@ -413,7 +393,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
               </p>
 
               {framing.mode === 'custom-scale' && (
-                <div className="mt-3 pt-2.5 border-t border-[#232832] space-y-3 text-[11px]">
+                <div className="mt-3 pt-2.5 border-t border-[#1d3228] space-y-3 text-[11px]">
                   <SliderRow label="Zoom" value={framing.customScale} unit="%" min={50} max={250}
                     onChange={(v) => onFramingChange({ ...framing, customScale: v })} />
                   <div className="grid grid-cols-2 gap-3">
@@ -427,7 +407,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
                   <SliderRow label="Corner Radius" value={framing.innerBorderRadius} unit="px" min={0} max={24}
                     onChange={(v) => onFramingChange({ ...framing, innerBorderRadius: v })} />
                   <BackgroundPicker framing={framing} onFramingChange={onFramingChange} />
-                  <div className="pt-2 border-t border-[#232832]">
+                  <div className="pt-2 border-t border-[#1d3228]">
                     <AutoReframeControls framing={framing} onFramingChange={onFramingChange} />
                   </div>
                   <button type="button"
@@ -446,7 +426,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
 
       {!shortsMode && (<>
       {/* 3. CLIP LENGTH */}
-      <section className="space-y-2 pt-2 border-t border-[#1a1e24]">
+      <section className="space-y-2 p-4 rounded-2xl bg-[#0b1611] border border-[#17291f]">
         <div className="flex items-center gap-2">
           <span className="font-bold uppercase tracking-wider text-neutral-300 text-[11px]">CLIP LENGTH</span>
           <span className="text-[11px] text-neutral-500">a target, not a hard cut</span>
@@ -460,8 +440,8 @@ export const FormatTab: React.FC<FormatTabProps> = ({
               onClick={() => onClipLengthChange(len)}
               className={`px-3 py-1 rounded-full text-xs capitalize transition-colors cursor-pointer ${
                 clipLength === len
-                  ? 'bg-[#182116] border border-[#bef264] text-[#bef264] font-bold'
-                  : 'bg-[#12151c] border border-[#232832] text-neutral-400 hover:text-white'
+                  ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] font-bold'
+                  : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white'
               }`}
             >
               {len}
@@ -471,7 +451,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
       </section>
 
       {/* 4. NUMBER OF CLIPS (INPUT ONLY, MAX 50 LIMIT AS REQUESTED!) */}
-      <section className="space-y-2 pt-2 border-t border-[#1a1e24]">
+      <section className="space-y-2 p-4 rounded-2xl bg-[#0b1611] border border-[#17291f]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="font-bold uppercase tracking-wider text-neutral-300 text-[11px]">NUMBER OF CLIPS</span>
@@ -489,7 +469,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
                 max={50}
                 value={clipsCount}
                 onChange={handleClipsInputChange}
-                className="w-28 bg-[#12151c] border border-[#232832] focus:border-[#bef264] rounded-lg px-3 py-1.5 text-sm font-bold text-white font-mono text-center focus:outline-none transition-colors"
+                className="w-28 bg-[#0f1c16] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-3 py-1.5 text-sm font-bold text-white font-mono text-center focus:outline-none transition-colors"
               />
               <span className="ml-2 text-xs text-neutral-400 font-medium">clips</span>
             </div>
@@ -506,7 +486,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
       </section>
 
       {/* AI PROMPT (optional) */}
-      <section className="space-y-2 pt-2 border-t border-[#1a1e24]">
+      <section className="space-y-2 p-4 rounded-2xl bg-[#0b1611] border border-[#17291f]">
         <div className="flex items-center gap-2">
           <span className="font-bold uppercase tracking-wider text-neutral-300 text-[11px]">AI PROMPT</span>
           <span className="text-[10px] text-neutral-500">optional</span>
@@ -516,7 +496,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
           onChange={(e) => onAiPromptChange(e.target.value.slice(0, 600))}
           rows={3}
           placeholder="Tell the AI the scenario or scene you want, e.g. “funny moments about money” or “the podcast host (curly hair) must appear in the first 5 seconds”"
-          className="w-full bg-[#12151c] border border-[#232832] focus:border-[#bef264] rounded-lg px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none resize-none transition-colors"
+          className="w-full bg-[#0f1c16] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none resize-none transition-colors"
         />
         <p className="text-[10px] text-neutral-500 leading-relaxed">Leave it empty and ClipForge picks the best moments by itself. With a prompt, AI Boost (Gemini) finds, cuts and reframes clips to match it. Without a Gemini key only the topic words are used.</p>
       </section>
@@ -524,7 +504,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
       </>)}
 
       {/* 5. CAPTION LANGUAGE */}
-      <section className="space-y-2 pt-2 border-t border-[#1a1e24]">
+      <section className="space-y-2 p-4 rounded-2xl bg-[#0b1611] border border-[#17291f]">
         <div className="flex items-center gap-2">
           <span className="font-bold uppercase tracking-wider text-neutral-300 text-[11px]">CAPTION LANGUAGE</span>
           <span className="text-[11px] text-neutral-500">Spoken language is detected automatically</span>
@@ -538,8 +518,8 @@ export const FormatTab: React.FC<FormatTabProps> = ({
               onClick={() => onLanguageChange(langItem)}
               className={`px-3 py-1 rounded-full text-xs transition-colors cursor-pointer ${
                 language === langItem || (language === 'auto' && langItem === 'As spoken')
-                  ? 'bg-[#182116] border border-[#bef264] text-[#bef264] font-bold'
-                  : 'bg-[#12151c] border border-[#232832] text-neutral-400 hover:text-white'
+                  ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] font-bold'
+                  : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white'
               }`}
             >
               {langItem}

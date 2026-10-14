@@ -229,6 +229,9 @@ export interface SpeechModelItem {
   status: 'active' | 'downloaded' | 'not_downloaded' | 'downloading';
   downloadProgress?: number;
   recommended?: boolean;
+  kind?: 'speech' | 'aligner';
+  note?: string;
+  langs?: { lang: string; stars: number; label: string }[];   // accuracy per language (1-5)
 }
 
 export interface BundledBinary {

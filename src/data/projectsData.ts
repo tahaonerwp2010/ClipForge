@@ -1,66 +1,17 @@
 import { ProjectItem, SpeechModelItem, BundledBinary, MachineSpecs } from '../types/clipper';
 
-export const INITIAL_PROJECTS: ProjectItem[] = [
-  {
-    id: 'proj-1',
-    name: "Scaling AI Rocketships_ ElevenLabs' Mati Staniszewski _ Lovable's Anton Osika.mp4",
-    sourceVideoName: "Scaling AI Rocketships_ ElevenLabs' Mati Staniszewski _ Lovable's Anton Osika.mp4",
-    sourceVideoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-    thumbnail: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=600&auto=format&fit=crop&q=80',
-    diskSize: '35 MB',
-    sourceDuration: 3430,
-    clipCount: 4,
-    status: 'Processing',
-    currentStep: 1,
-    progressPercent: 12,
-    createdAt: 'today',
-    lastEdited: 'Just now',
-    framingMode: 'fill-crop',
-    steps: [
-      { id: 1, name: 'Reading video metadata', duration: '0.2s', detail: '1920×1080 @ 25fps, 3430.1s, h264/aac', status: 'completed' },
-      { id: 2, name: 'Extracting audio', duration: '4.0s', status: 'completed' },
-      { id: 3, name: 'Transcribing speech', status: 'running' },
-      { id: 4, name: 'Translating captions', status: 'pending' },
-      { id: 5, name: 'Converting to Roman script', status: 'pending' },
-      { id: 6, name: 'Finding moments & titles', status: 'pending' },
-      { id: 7, name: 'Cutting clips', status: 'pending' },
-      { id: 8, name: 'Reframing to vertical', status: 'pending' },
-      { id: 9, name: 'Rendering clips', status: 'pending' }
-    ]
-  },
-  {
-    id: 'proj-2',
-    name: '-T53flsWrrs.mp4',
-    sourceVideoName: '-T53flsWrrs.mp4',
-    sourceVideoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    thumbnail: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=600&auto=format&fit=crop&q=80',
-    diskSize: '2.0 GB',
-    sourceDuration: 1920,
-    clipCount: 3,
-    status: 'Finished',
-    currentStep: 9,
-    progressPercent: 100,
-    createdAt: 'yesterday',
-    lastEdited: 'yesterday',
-    framingMode: 'fit-blur',
-    steps: [
-      { id: 1, name: 'Reading video metadata', duration: '0.2s', detail: '1920×1080 @ 25fps, 1920.0s, h264/aac', status: 'completed' },
-      { id: 2, name: 'Extracting audio', duration: '3.8s', status: 'completed' },
-      { id: 3, name: 'Transcribing speech', duration: '14.2s', status: 'completed' },
-      { id: 4, name: 'Translating captions', duration: '4.1s', status: 'completed' },
-      { id: 5, name: 'Converting to Roman script', duration: '1.9s', status: 'completed' },
-      { id: 6, name: 'Finding moments & titles', duration: '8.4s', status: 'completed' },
-      { id: 7, name: 'Cutting clips', duration: '5.1s', status: 'completed' },
-      { id: 8, name: 'Reframing to vertical', duration: '12.0s', status: 'completed' },
-      { id: 9, name: 'Rendering clips', duration: '18.5s', status: 'completed' }
-    ]
-  }
-];
+export const INITIAL_PROJECTS: ProjectItem[] = [];
 
 export const INITIAL_MODELS: SpeechModelItem[] = [
-  { id: 'small', name: 'Small', diskSize: '488 MB', werScore: 'Good accuracy, fastest', ramRequirement: '~2 GB RAM', status: 'not_downloaded', recommended: true },
-  { id: 'medium', name: 'Medium', diskSize: '1.5 GB', werScore: 'Better accuracy, slower', ramRequirement: '~4 GB RAM', status: 'not_downloaded' },
-  { id: 'large-v3-turbo', name: 'Large', diskSize: '1.6 GB', werScore: 'Best accuracy, slowest', ramRequirement: '~5 GB RAM', status: 'not_downloaded' }
+  { id: 'small', name: 'Small', kind: 'speech', diskSize: '488 MB', werScore: 'Fastest. Good for English, weaker for Urdu and Hindi', ramRequirement: '~2 GB RAM', status: 'not_downloaded', recommended: true,
+    langs: [{ lang: 'English', stars: 4, label: 'Very good' }, { lang: 'Hinglish', stars: 3, label: 'Good' }, { lang: 'Hindi', stars: 2, label: 'Fair' }, { lang: 'Urdu', stars: 2, label: 'Fair' }] },
+  { id: 'medium', name: 'Medium', kind: 'speech', diskSize: '1.5 GB', werScore: 'Better accuracy, about 3x slower than Small', ramRequirement: '~4 GB RAM', status: 'not_downloaded',
+    langs: [{ lang: 'English', stars: 4, label: 'Very good' }, { lang: 'Hinglish', stars: 4, label: 'Very good' }, { lang: 'Hindi', stars: 3, label: 'Good' }, { lang: 'Urdu', stars: 3, label: 'Good' }] },
+  { id: 'large-v3-turbo', name: 'Large', kind: 'speech', diskSize: '1.6 GB', werScore: 'Best accuracy, slowest', ramRequirement: '~5 GB RAM', status: 'not_downloaded',
+    langs: [{ lang: 'English', stars: 5, label: 'Excellent' }, { lang: 'Hinglish', stars: 4, label: 'Very good' }, { lang: 'Hindi', stars: 4, label: 'Very good' }, { lang: 'Urdu', stars: 3, label: 'Good' }] },
+  { id: 'aligner', name: 'Caption sync', kind: 'aligner', diskSize: '95 MB', werScore: 'Places every caption word exactly when it is spoken (like CapCut). Works together with the speech model.', ramRequirement: '~0.5 GB RAM', status: 'not_downloaded', recommended: true,
+    note: 'Download once. Used automatically for every video.',
+    langs: [{ lang: 'English', stars: 5, label: 'Excellent' }, { lang: 'Hinglish', stars: 5, label: 'Excellent' }, { lang: 'Hindi', stars: 4, label: 'Very good' }, { lang: 'Urdu', stars: 3, label: 'Good' }] },
 ];
 
 export const INITIAL_BUNDLED_BINARIES: BundledBinary[] = [

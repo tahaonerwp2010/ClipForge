@@ -66,6 +66,8 @@ async function engine() {
   items.push({ id: 'whisper', name: 'Speech engine (Whisper)', ok: !!wf, required: true, detail: wf ? 'Ready' : 'Missing. Reinstall ClipForge or run get-binaries.ps1.' });
   const yt = P.resolveBin('yt-dlp');
   items.push({ id: 'ytdlp', name: 'YouTube downloader (yt-dlp)', ok: !!yt, required: false, detail: yt ? 'Ready' : 'Not installed yet. It downloads by itself the first time you paste a YouTube link.' });
+  const AL = require('./align.cjs');
+  items.push({ id: 'sync', name: 'Caption sync model', ok: AL.modelReady(), required: false, detail: AL.modelReady() ? 'Ready' : 'Not downloaded. Get it in Settings → Speech Models for exact caption timing.' });
   items.push({ id: 'fonts', name: 'Caption fonts', ok: !!P.fontsDir(), required: false, detail: P.fontsDir() ? 'Ready' : 'Missing. Captions will use a basic font.' });
   items.push({ id: 'emoji', name: 'Emoji images', ok: !!P.emojiDir(), required: false, detail: P.emojiDir() ? 'Ready' : 'Missing. Emojis will not show on videos.' });
   const missing = items.filter(i => !i.ok && i.required);

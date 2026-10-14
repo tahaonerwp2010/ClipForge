@@ -119,4 +119,4 @@ function refineWords(words, wavPath, { maxShift = 0.15 } = {}) {
   }
   return out;
 }
-module.exports = { refineWords };
+module.exports = { refineWords, readWav };

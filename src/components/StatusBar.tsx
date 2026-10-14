@@ -1,52 +1,22 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { SoftwareManager } from '../services/softwareManager';
 
-interface StatusBarProps {
-  statusText?: string;
-  hardwareText?: string;
-  modelText?: string;
-  encoderText?: string;
-  cloudBoostText?: string;
-}
+const shortCpu = (n: string) => n.replace(/\((R|TM|tm)\)/g, '').replace(/\s+(CPU|Processor)\b/gi, '').replace(/@.*$/, '').replace(/\s+/g, ' ').trim();
 
-export const StatusBar: React.FC<StatusBarProps> = ({
-  statusText = 'Ready',
-  hardwareText = 'Core i7-6600U · 7GB',
-  modelText = 'Small',
-  encoderText = 'libopenh264 (software)',
-  cloudBoostText = 'On by default'
-}) => {
+export const StatusBar: React.FC = () => {
+  const [hw, setHw] = useState('');
+  const [model, setModel] = useState('');
+  useEffect(() => {
+    window.electronAPI?.getSystemSpecs?.().then(s => { if (s) setHw(`${shortCpu(s.cpuName)} · ${s.ramTotal}`); }).catch(() => {});
+    const id = SoftwareManager.getActiveModelId?.();
+    const m = SoftwareManager.getModels?.().find(x => x.id === id);
+    setModel(m ? m.name.replace(/^Whisper\s*/i, '') : id || '');
+  }, []);
   return (
-    <footer className="h-7 bg-[#050608] border-t border-[#14181f] flex items-center justify-between px-4 text-[11px] text-neutral-400 select-none font-mono shrink-0">
-      <div className="flex items-center gap-5">
-        {/* Ready with green dot */}
-        <div className="flex items-center gap-1.5 text-neutral-300">
-          <span className="w-2 h-2 rounded-full bg-[#bef264]" />
-          <span className="font-medium text-neutral-200">{statusText}</span>
-        </div>
-
-        {/* Hardware in amber */}
-        <div className="text-[#f59e0b] font-medium">
-          {hardwareText}
-        </div>
-
-        {/* Model */}
-        <div className="text-neutral-400">
-          <span>Model — </span>
-          <span className="text-neutral-200">{modelText}</span>
-        </div>
-
-        {/* Encoder in amber */}
-        <div>
-          <span className="text-neutral-500">Encoder — </span>
-          <span className="text-[#f59e0b] font-medium">{encoderText}</span>
-        </div>
-
-        {/* Cloud Boost */}
-        <div className="hidden sm:block text-neutral-400">
-          <span>Cloud Boost — </span>
-          <span className="text-neutral-300">{cloudBoostText}</span>
-        </div>
-      </div>
+    <footer className="h-7 bg-[#050b08] border-t border-[#122219] flex items-center px-4 gap-5 text-[11px] text-neutral-500 select-none font-mono shrink-0">
+      {hw && <span className="text-neutral-400 truncate">{hw}</span>}
+      {model && <span>Speech model <span className="text-neutral-300">{model}</span></span>}
+      <span className="ml-auto hidden sm:block">Cloud Boost <span className="text-neutral-300">on by default</span></span>
     </footer>
   );
 };

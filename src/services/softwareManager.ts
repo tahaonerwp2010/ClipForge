@@ -98,11 +98,11 @@ export class SoftwareManager {
         this.models = this.models.map(m => {
           const onDisk = !!real[m.id]?.exists;
           let status: SpeechModelItem['status'] = onDisk ? 'downloaded' : 'not_downloaded';
-          if (onDisk && m.id === wanted) { status = 'active'; activeSet = true; }
+          if (onDisk && m.id === wanted && m.kind !== 'aligner') { status = 'active'; activeSet = true; }
           return { ...m, status };
         });
         if (!activeSet) {
-          const first = this.models.find(m => m.status === 'downloaded');
+          const first = this.models.find(m => m.status === 'downloaded' && m.kind !== 'aligner');
           if (first) { first.status = 'active'; this.setActiveModelId(first.id); }
         }
       } catch { /* keep defaults */ }

@@ -1,5 +1,5 @@
 const HK = require('./hook.cjs');
-const G = require('./gemini.cjs');
+const G = require('./ai.cjs');
 // Viral moments: Gemini (if key) -> offline sentence-aware heuristic.
 const HOOK = /\b(secret|mistake|never|always|truth|biggest|nobody|everyone|stop|why|how|worst|best|insane|crazy|million|billion|free|fail|lesson|warning|problem|actually|honestly)\b/i;
 
@@ -70,7 +70,7 @@ function chunkWords(words, maxCalls = 8) {
   }
   return out;
 }
-async function gemini(words, count, clipLen, { apiKey, model }, log = () => {}, userPrompt = '') {
+async function gemini(words, count, clipLen, g, log = () => {}, userPrompt = '') {
   const chunks = chunkWords(words);
   const per = chunks.length === 1 ? Math.min(count * 2, count + 4) : Math.max(2, Math.min(4, Math.ceil(count / chunks.length) + 1));
   const req = userPrompt ? `\nTOP PRIORITY — THE EDITOR'S REQUEST: "${userPrompt}"\nThis request overrides every other rule below (virality, hooks, variety). Only pick moments that really match it; a moment that does not match must not be returned, even if it is exciting. If fewer moments match than asked for, return only the matching ones. Give every moment a "fit" score 0-10 = how exactly it satisfies the request (10 = exactly what was asked, 0 = unrelated). Judge only what is SAID / the topic here (anything about how people look or what is on screen is checked separately).\n` : '';
@@ -85,7 +85,8 @@ Return ONLY a JSON array of objects: {${userPrompt ? '"fit":0-10,' : ''}"start":
 
 ${transcriptForLLM(ch)}`;
     try {
-      const r = await G.generate({ apiKey, model, prompt, json: true });
+      const r = await G.generate(g, { prompt, json: true });
+      if (r.providerName) r.model = r.providerName + ' · ' + r.model;
       used = r.model;
       const out = G.parseJson(r.text);
       all.push(...(Array.isArray(out) ? out : (out.clips || out.moments || [])));
@@ -96,7 +97,7 @@ ${transcriptForLLM(ch)}`;
     }
   }
   if (!all.length) throw new Error('Gemini returned no moments');
-  log(`Gemini answered with ${used} (${chunks.length} part${chunks.length > 1 ? 's' : ''} of the video searched)`, 'success');
+  log(`AI answered with ${used} (${chunks.length} part${chunks.length > 1 ? 's' : ''} of the video searched)`, 'success');
   return all;
 }
 
@@ -124,7 +125,7 @@ Return ONLY JSON: {"hasVisualCondition":boolean,"subject":string,"candidates":[{
     for (const f of frames.slice(0, 5)) parts.push({ inlineData: { mimeType: 'image/jpeg', data: require('fs').readFileSync(f).toString('base64') } });
     try { require('fs').rmSync(require('path').join(workDir, `vr${i}`), { recursive: true, force: true }); } catch {}
   }
-  const r = await G.generate({ apiKey: g.apiKey, model: g.model, parts, json: true, timeoutMs: 180000 });
+  const r = await G.generate(g, { parts, json: true, timeoutMs: 180000 });
   const out = G.parseJson(r.text);
   if (!out || !out.hasVisualCondition) { log('The prompt has no on-screen condition → using it for topic only', 'info'); return { cands, subject: '' }; }
   const match = new Map((out.candidates || []).map(x => [+x.id, Math.max(0, Math.min(10, +x.match || 0))]));
@@ -167,12 +168,14 @@ async function ollamaModel() {
     return names.find(n => /qwen2\.5|llama3\.2|gemma|phi|mistral|qwen/i.test(n)) || names[0] || null;
   } catch { return null; }
 }
-async function ollamaTitle(model, text) {
-  const prompt = `Write ONE punchy viral short-video headline (max 8 words, no quotes, no emojis, no hashtags) for this clip transcript. Output only the headline.\n\nTranscript:\n${text.slice(0, 900)}`;
-  const r = await fetch('http://127.0.0.1:11434/api/generate', { method: 'POST', signal: AbortSignal.timeout(120000),
-    body: JSON.stringify({ model, prompt, stream: false, options: { num_predict: 28, temperature: 0.6 } }) });
+// Local AI (Ollama): same system prompt as Gemini, one clip at a time, JSON answer.
+async function ollamaMeta(model, text) {
+  const system = META_SYSTEM.replace('a JSON array with one object per clip, in the same order:', 'ONE JSON object for this clip:');
+  const r = await fetch('http://127.0.0.1:11434/api/generate', { method: 'POST', signal: AbortSignal.timeout(180000),
+    body: JSON.stringify({ model, system, prompt: `Clip transcript:\n${text.slice(0, 1400)}`, stream: false, format: 'json', options: { num_predict: 400, temperature: 0.7 } }) });
   const j = await r.json();
-  return String(j.response || '').split('\n')[0].replace(/^["'“”\s]+|["'“”.\s]+$/g, '').trim();
+  const o = G.parseJson(j.response || '{}');
+  return Array.isArray(o) ? o[0] : o;
 }
 const EM = require('./emoji.cjs');
 const clipText = (c, words) => words.filter(w => w.start >= c.start && w.end <= c.end + 0.2).map(w => w.word).join(' ');
@@ -185,7 +188,7 @@ Output format: a JSON array with one object per clip, in the same order: {"title
 async function geminiTitles(clips, words, g, log) {
   const items = clips.map((c, i) => `#${i} (${Math.round(c.end - c.start)}s): ${clipText(c, words).slice(0, 700)}`).join('\n\n');
   const prompt = `Clip analysis and context for each clip (write metadata for EACH one, same order):\n\n${items}`;
-  const r = await G.generate({ apiKey: g.apiKey, model: g.model, system: META_SYSTEM, prompt, json: true });
+  const r = await G.generate(g, { system: META_SYSTEM, prompt, json: true });
   const out = G.parseJson(r.text);
   const arr = Array.isArray(out) ? out : (out.titles || out.clips || []);
   if (arr.length < clips.length) throw new Error('Gemini returned too few titles');
@@ -193,15 +196,20 @@ async function geminiTitles(clips, words, g, log) {
 }
 async function localTitles(clips, words, log) {
   const model = await ollamaModel();
-  log(model ? `Local AI (Ollama: ${model}) writing clip titles…` : 'Gemini unavailable and no local AI running → using the built-in title writer', 'info');
+  log(model ? `Local AI (Ollama: ${model}) writing title, hook, description and hashtags…` : 'AI providers unavailable and no local AI running → the built-in writer reads each transcript and writes the title, hook, description and hashtags', 'info');
+  const LW = require('./localwriter.cjs');
   for (const c of clips) {
     const text = clipText(c, words);
-    let t = '';
-    if (model) { try { t = await ollamaTitle(model, text); } catch (e) { log(`Ollama failed (${String(e.message).slice(0, 60)}), using built-in writer`, 'warn'); } }
-    if (!t || t.length < 6) t = titleFromText(text).replace(/…$/, '');
-    t = t.replace(/[\s,;:]+(a|an|the|to|of|and|or|but|in|on|at|for|with|every|is|are|was|that|this|it|so|because)$/i, '').replace(/[\s,;:]+(a|an|the|to|of|and|or|in|on|at|for|with|every)$/i, '');
-    t = t.replace(/\b(\w)(\w*)/g, (m, a, b) => a.toUpperCase() + b.toLowerCase());
-    c.title = t.slice(0, 70); c.hookText = text.split(/\s+/).slice(0, 10).join(' ');
+    const base = LW.write(text);                                   // always available, based on what is really said
+    let o = null;
+    if (model) { try { o = await ollamaMeta(model, text); } catch (e) { log(`Ollama failed (${String(e.message).slice(0, 60)}), using the built-in writer`, 'warn'); } }
+    const ok = (v, min) => typeof v === 'string' && v.trim().length >= min;
+    c.title = (ok(o && o.title, 6) ? o.title.trim() : base.title).slice(0, 90);
+    c.hookText = ok(o && o.hookText, 8) ? o.hookText.trim() : base.hookText;
+    c.description = ok(o && o.description, 15) ? o.description.trim().slice(0, 300) : base.description;
+    c.hashtags = Array.isArray(o && o.hashtags) && o.hashtags.length ? o.hashtags : undefined;      // finalTags fills the rest from the topic
+    c.keywords = Array.isArray(o && o.keywords) && o.keywords.length ? o.keywords.map(String).slice(0, 12) : base.keywords;
+    c.__topic = base.topic;
   }
 }
 // ---- description + hashtags (offline helpers) ----
@@ -221,7 +229,7 @@ function localDescription(text) {
 }
 async function writeTitles(clips, words, g, log) {
   let engine = 'local';
-  if (g && g.enabled && g.apiKey) {
+  if (G.ready(g)) {
     try {
       const arr = await geminiTitles(clips, words, g, log);
       clips.forEach((c, i) => {
@@ -233,8 +241,8 @@ async function writeTitles(clips, words, g, log) {
           if (Array.isArray(t.hashtags)) c.hashtags = t.hashtags;
         } else c.__weak = true;
       });
-      engine = 'gemini'; log('Titles written by Gemini', 'success');
-    } catch (e) { log(`Gemini title writing failed (${String(e.message).slice(0, 100)}) → local fallback`, 'warn'); clips.forEach(c => { c.__weak = true; }); }
+      engine = 'gemini'; log('Titles written by AI', 'success');
+    } catch (e) { log(`AI title writing failed (${String(e.message).slice(0, 100)}) → local fallback`, 'warn'); clips.forEach(c => { c.__weak = true; }); }
   } else clips.forEach(c => { c.__weak = true; });
   const weak = clips.filter(c => c.__weak);
   if (weak.length) { await localTitles(weak, words, log); if (weak.length < clips.length) engine = 'gemini+local'; }
@@ -242,7 +250,7 @@ async function writeTitles(clips, words, g, log) {
     delete c.__weak;
     const txt = clipText(c, words);
     if (!c.description || c.description.length < 15) c.description = localDescription(txt);
-    c.hashtags = finalTags(c.hashtags, txt + ' ' + c.title);
+    c.hashtags = finalTags(c.hashtags, (c.__topic || '') + ' ' + c.title + ' ' + txt); delete c.__topic;
     { const he = EM.splitTitle(String(c.hookText || '')).emojis; c.hookText = HK.hookTwoLines(c.hookText, c.title); if (he && he.length) c.hookText += ' ' + he.slice(0, 2).join(''); }
     if (!hasEmoji(c.title)) c.title = `${c.title} ${EM.emojiForText(clipText(c, words) + ' ' + c.title)}`;
   }
@@ -257,26 +265,26 @@ async function findClips(words, { count = 4, clipLen = 30, gemini: g, log = () =
     const extra = dedupe(sanitize(offline(words, count * 4, clipLen, kws), words), picked).slice(0, count - picked.length);
     return [...picked, ...extra];
   };
-  if (g && g.enabled && g.apiKey) {
+  if (G.ready(g)) {
     try {
-      let cands = dedupe(sanitize(await gemini(words, count, clipLen, g, (m, k) => log('Gemini', m, k), userPrompt), words));
+      let cands = dedupe(sanitize(await gemini(words, count, clipLen, g, (m, k) => log('AI', m, k), userPrompt), words));
       let subject = '';
       if (userPrompt && cands.some(c => c.fit != null)) {                       // the request comes first: fit decides, virality only breaks ties
         cands.forEach(c => { c.rank = (c.fit ?? 5) * 10 + (c.viralityScore || 60) * 0.2; });
         const good = cands.filter(c => (c.fit ?? 5) >= 5);
         cands = (good.length >= count ? good : cands).sort((a, b) => b.rank - a.rank);
-        log('Gemini', `Your prompt decides the order: ${cands.slice(0, count).map(c => c.fit ?? '?').join(', ')} (fit 0-10)`, 'info');
+        log('AI', `Your prompt decides the order: ${cands.slice(0, count).map(c => c.fit ?? '?').join(', ')} (fit 0-10)`, 'info');
       }
       if (userPrompt && cands.length && filePath) {
         try {
           const pool = cands.slice(0, Math.min(cands.length, Math.max(count * 2, count + 4), 12));
-          const vr = await visualRank(pool, { filePath, workDir, userPrompt, g, log: (m, k) => log('Gemini', m, k) });
+          const vr = await visualRank(pool, { filePath, workDir, userPrompt, g, log: (m, k) => log('AI', m, k) });
           if (vr.visual) {
             const good = vr.cands.filter(c => c.match >= 4);
             cands = (good.length >= count ? good : vr.cands).sort((a, b) => b.rank - a.rank);
             subject = vr.subject;
           }
-        } catch (e) { log('Gemini', `Visual check skipped (${String(e.message).slice(0, 90)}); the prompt is used for the topic only`, 'warn'); }
+        } catch (e) { log('AI', `Visual check skipped (${String(e.message).slice(0, 90)}); the prompt is used for the topic only`, 'warn'); }
       }
       let picked = topUp(cands.slice(0, count));
       picked = picked.slice(0, count);
@@ -287,7 +295,7 @@ async function findClips(words, { count = 4, clipLen = 30, gemini: g, log = () =
         return { clips: picked, engine: 'gemini', titleEngine: te };
       }
       log('Gemini returned no usable clips, using offline analysis', 'warn');
-    } catch (e) { log(`Gemini failed (${e.message}) → offline analysis`, 'warn'); }
+    } catch (e) { log(`AI failed (${e.message}) → offline analysis`, 'warn'); }
   }
   if (userPrompt) log('Offline mode: only the topic words of your prompt are used (on-screen conditions need AI Boost)', 'warn');
   const local = sanitize(offline(words, count, clipLen, kws), words);

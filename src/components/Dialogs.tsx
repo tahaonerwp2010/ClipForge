@@ -14,7 +14,7 @@ interface ConfirmProps {
 
 const Overlay: React.FC<{ children: React.ReactNode; onClose: () => void }> = ({ children, onClose }) => (
   <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onMouseDown={onClose}>
-    <div className="w-full max-w-md bg-[#0b0e12] border border-[#232936] rounded-2xl p-6 shadow-2xl space-y-4" onMouseDown={(e) => e.stopPropagation()}>
+    <div className="w-full max-w-md bg-[#09110e] border border-[#20322a] rounded-2xl p-6 shadow-2xl space-y-4" onMouseDown={(e) => e.stopPropagation()}>
       {children}
     </div>
   </div>
@@ -25,7 +25,7 @@ export const ConfirmDialog: React.FC<ConfirmProps> = ({ open, title, message, co
   return (
     <Overlay onClose={onCancel}>
       <div className="flex items-start gap-3">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${danger ? 'bg-rose-950/60 text-rose-300' : 'bg-[#bef264]/10 text-[#bef264]'}`}>
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${danger ? 'bg-rose-950/60 text-rose-300' : 'bg-[#3f9a5a]/10 text-[#8fd0a4]'}`}>
           {danger ? <Trash2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
         </div>
         <div className="space-y-1.5">
@@ -34,7 +34,7 @@ export const ConfirmDialog: React.FC<ConfirmProps> = ({ open, title, message, co
         </div>
       </div>
       <div className="flex justify-end gap-2 pt-1">
-        <button type="button" onClick={onCancel} className="px-4 py-2 rounded-xl bg-[#14181f] hover:bg-[#1d232e] text-neutral-200 font-bold text-xs border border-[#222834] cursor-pointer">
+        <button type="button" onClick={onCancel} className="px-4 py-2 rounded-xl bg-[#111e18] hover:bg-[#192c23] text-neutral-200 font-bold text-xs border border-[#1d3228] cursor-pointer">
           {cancelLabel}
         </button>
         <button type="button" onClick={onConfirm}
@@ -63,7 +63,7 @@ export const ModelRequiredDialog: React.FC<{ open: boolean; onOpenSettings: () =
         </div>
       </div>
       <div className="flex justify-end gap-2 pt-1">
-        <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl bg-[#14181f] hover:bg-[#1d232e] text-neutral-200 font-bold text-xs border border-[#222834] cursor-pointer">
+        <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl bg-[#111e18] hover:bg-[#192c23] text-neutral-200 font-bold text-xs border border-[#1d3228] cursor-pointer">
           Later
         </button>
         <button type="button" onClick={onOpenSettings} className="px-4 py-2 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs cursor-pointer">

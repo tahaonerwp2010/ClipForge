@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { AiService } from './services/aiService';
 import { 
   OuterCanvasRatio, 
   InnerFramingConfig, 
@@ -18,8 +19,8 @@ import {
 } from './types/clipper';
 import { SAMPLE_VIDEOS, DEFAULT_TRANSCRIPT_SEGMENTS, INITIAL_PRESET_CLIPS } from './data/sampleVideos';
 import { INITIAL_PROJECTS } from './data/projectsData';
-import { WindowsTitlebar } from './components/WindowsTitlebar';
-import { FloatingSidebar, ActiveNavView } from './components/SidebarRail';
+import { Sidebar, ActiveNavView } from './components/SidebarRail';
+import { RecentProjects, TipCard, HomeAside } from './components/HomeExtras';
 import { StatusBar } from './components/StatusBar';
 import { LandingStartPage } from './components/LandingStartPage';
 import { StudioHeader } from './components/StudioHeader';
@@ -48,7 +49,7 @@ export default function App() {
 
   // Projects State
   const [projects, setProjects] = useState<ProjectItem[]>(INITIAL_PROJECTS);
-  const [activeProjectId, setActiveProjectId] = useState<string>('proj-1');
+  const [activeProjectId, setActiveProjectId] = useState<string>('');
 
   // Theme
 
@@ -305,6 +306,7 @@ export default function App() {
     if (!(await hasModel())) { setModelDialogOpen(true); return; }
     setIsGenerateModalOpen(true);
   };
+  useEffect(() => { AiService.refreshAll().catch(() => {}); const t = setInterval(() => AiService.refreshAll().catch(() => {}), 180000); return () => clearInterval(t); }, []);
   useEffect(() => { hasModel().then(ok => { if (!ok) setModelDialogOpen(true); }); }, []);
 
   const startRun = (id: string) => {
@@ -370,33 +372,41 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#000000] text-neutral-100 font-sans overflow-hidden select-none">
-      {/* 1. Native Windows Clean Header */}
-      <WindowsTitlebar />
-
-      {/* 2. Main Canvas Body */}
+    <div className="h-screen w-screen flex flex-col bg-[#07100c] text-neutral-100 font-sans overflow-hidden select-none">
+      {/* Main body: sidebar + content */}
       <div className="flex-1 relative flex overflow-hidden">
-        {/* Floating Sidebar Dock (Only Plus, Projects, Settings as requested!) */}
-        <FloatingSidebar
+        <Sidebar
           activeView={activeView}
           onSelectView={(view) => setActiveView(view)}
           projectsCount={projects.length}
+          busy={queue.length > 0 || projects.some(p => p.status === 'Processing')}
         />
 
         {/* VIEW 1: HOME LANDING PAGE */}
         {activeView === 'home' && (
-          <main className="flex-1 flex flex-col overflow-y-auto pl-16">
-            <LandingStartPage
-              selectedVideo={selectedVideo}
-              onSelectVideo={(video) => setSelectedVideo(video)}
-              onVideoSelectedAndContinue={handleProceedToStudio}
-            />
+          <main className="flex-1 overflow-y-auto">
+            <div className="flex flex-col xl:flex-row gap-5 px-6 py-6 max-w-[1280px] mx-auto">
+              <div className="flex-1 min-w-0">
+                <LandingStartPage
+                  selectedVideo={selectedVideo}
+                  onSelectVideo={(video) => setSelectedVideo(video)}
+                  onVideoSelectedAndContinue={handleProceedToStudio}
+                />
+                <RecentProjects
+                  projects={projects}
+                  onOpen={(p) => { setActiveProjectId(p.id); setActiveView(p.status === 'Finished' ? 'clips' : 'progress'); }}
+                  onViewAll={() => setActiveView('my_projects')}
+                />
+                <TipCard />
+              </div>
+              <HomeAside projects={projects} onNew={() => document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' })} onSettings={() => setActiveView('settings')} />
+            </div>
           </main>
         )}
 
         {/* VIEW 2: MY PROJECTS */}
         {activeView === 'my_projects' && (
-          <main className="flex-1 flex flex-col overflow-y-auto pl-16">
+          <main className="flex-1 flex flex-col overflow-y-auto">
             <MyProjectsView
               projects={projects}
               onOpenClips={(proj) => {
@@ -420,7 +430,7 @@ export default function App() {
           if (!p) return null;
           const visible = activeView === 'progress' && activeProjectId === id;
           return (
-            <main key={`${id}:${runKeys[id]}`} className={`${visible ? 'flex' : 'hidden'} flex-1 flex-col overflow-hidden pl-16`}>
+            <main key={`${id}:${runKeys[id]}`} className={`${visible ? 'flex' : 'hidden'} flex-1 flex-col overflow-hidden`}>
               <GenerationProgressView
                 project={p}
                 onBack={() => setActiveView('my_projects')}
@@ -435,19 +445,19 @@ export default function App() {
 
         {/* Queued project: waiting screen */}
         {activeView === 'progress' && activeProject && activeProject.status === 'Queued' && (
-          <main className="flex-1 flex flex-col items-center justify-center pl-16 text-center space-y-3">
+          <main className="flex-1 flex flex-col items-center justify-center text-center space-y-3">
             <div className="text-lg font-bold text-white">Waiting in queue</div>
             <p className="text-xs text-neutral-400 max-w-sm">
               ClipForge processes one project at a time to keep your computer responsive. This project will start automatically when the current one finishes.
             </p>
-            <button type="button" onClick={() => setActiveView('my_projects')} className="px-4 py-2 rounded-xl bg-[#14181f] hover:bg-[#1d232e] text-neutral-200 font-bold text-xs border border-[#222834] cursor-pointer">
+            <button type="button" onClick={() => setActiveView('my_projects')} className="px-4 py-2 rounded-xl bg-[#111e18] hover:bg-[#192c23] text-neutral-200 font-bold text-xs border border-[#1d3228] cursor-pointer">
               Back to Projects
             </button>
           </main>
         )}
 
         {activeView === 'progress' && activeProject && runKeys[activeProject.id] === undefined && activeProject.status !== 'Queued' && (
-          <main className="flex-1 flex flex-col overflow-hidden pl-16">
+          <main className="flex-1 flex flex-col overflow-hidden">
             <GenerationProgressView
               project={activeProject}
               onBack={() => setActiveView('my_projects')}
@@ -471,7 +481,7 @@ export default function App() {
 
         {/* VIEW 6: DEDICATED CLIPS LIBRARY */}
         {activeView === 'clips' && activeProject && (
-          <main className="flex-1 flex flex-col overflow-hidden pl-16">
+          <main className="flex-1 flex flex-col overflow-hidden">
             <ClipsLibrary
               clips={getProjectClips(activeProject)}
               projectName={activeProject.name}
@@ -503,14 +513,14 @@ export default function App() {
 
         {/* VIEW 3: SETTINGS */}
         {activeView === 'settings' && (
-          <main className="flex-1 flex flex-col overflow-y-auto pl-16">
+          <main className="flex-1 flex flex-col overflow-y-auto">
             <SettingsView />
           </main>
         )}
 
         {/* VIEW 4: STUDIO WORKSTATION (SINGLE UNIFIED SCROLL CONTAINER AS REQUESTED!) */}
         {activeView === 'studio' && selectedVideo && (
-          <main className="flex-1 flex flex-col overflow-hidden pl-16">
+          <main className="flex-1 flex flex-col overflow-hidden">
             
             {/* Studio Header (floating) */}
             <StudioHeader
@@ -602,11 +612,11 @@ export default function App() {
             </div>
 
             {/* Pinned Bottom Bar: Generate clips */}
-            <div className="h-14 bg-[#0a0d11] border-t border-[#14181f] px-8 flex items-center justify-between shrink-0 select-none">
+            <div className="h-14 bg-[#09100d] border-t border-[#111e18] px-8 flex items-center justify-between shrink-0 select-none">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => requestGenerate()}
-                  className="px-6 py-2 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs shadow-md shadow-[#bef264]/20 transition-all active:scale-95 cursor-pointer"
+                  className="px-6 py-2 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs shadow-md shadow-[#3f9a5a]/20 transition-all active:scale-95 cursor-pointer"
                 >
                   Generate clips
                 </button>
@@ -654,8 +664,8 @@ export default function App() {
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-10 right-6 z-50 bg-[#14181f] border border-[#bef264]/60 text-white text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
-          <Check className="w-4 h-4 text-[#bef264]" />
+        <div className="fixed bottom-10 right-6 z-50 bg-[#111e18] border border-[#3f9a5a]/60 text-white text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+          <Check className="w-4 h-4 text-[#8fd0a4]" />
           <span>{toastMessage}</span>
         </div>
       )}

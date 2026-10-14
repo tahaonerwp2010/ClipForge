@@ -9,8 +9,8 @@
 
   body {
     font-family: var(--font-sans);
-    background-color: #0c0e12;
-    color: #e2e8f0;
+    background-color: #0a120e;
+    color: #e6efe9;
     overflow: hidden;
     user-select: none;
     -webkit-font-smoothing: antialiased;
@@ -37,12 +37,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #232832;
+  background: #1d3228;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #333a48;
+  background: #2c4539;
 }
 
 /* Crisp hairline borders */

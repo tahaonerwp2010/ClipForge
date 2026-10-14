@@ -18,21 +18,21 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
   onNewProject
 }) => {
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#000000] text-neutral-100 overflow-y-auto font-sans select-none p-8 md:p-12">
-      {/* Header (Exact match to screenshot 3: "My clips  2 projects • 2.1 GB on disk") */}
+    <div className="flex-1 flex flex-col h-full bg-[#050b08] text-neutral-100 overflow-y-auto font-sans select-none p-8 md:p-12">
+      {/* Header (Exact match to screenshot 3: "My clips  2 projects") */}
       <div className="flex items-baseline gap-4 mb-8">
         <h1 className="text-3xl font-bold text-white tracking-tight">
           My clips
         </h1>
         <span className="text-xs text-neutral-400 font-mono-num">
-          {projects.length} {projects.length === 1 ? 'project' : 'projects'} • 2.1 GB on disk
+          {projects.length} {projects.length === 1 ? 'project' : 'projects'}
         </span>
       </div>
 
       {/* Projects Grid (Exact match to screenshot 3) */}
       {projects.length === 0 ? (
-        <div className="max-w-md p-10 rounded-2xl bg-[#0c0f14] border border-[#1a1f28] text-center space-y-4">
-          <div className="w-12 h-12 rounded-xl bg-[#161a22] text-neutral-400 flex items-center justify-center mx-auto">
+        <div className="max-w-md p-10 rounded-2xl bg-[#0a130f] border border-[#16271f] text-center space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-[#13211a] text-neutral-400 flex items-center justify-center mx-auto">
             <Film className="w-6 h-6" />
           </div>
           <h3 className="text-sm font-bold text-white">No projects yet</h3>
@@ -62,7 +62,7 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
             return (
               <div
                 key={project.id}
-                className="bg-[#0b0e12] border border-[#191e26] hover:border-[#262e3b] rounded-2xl p-6 flex flex-col justify-between transition-all space-y-4 shadow-xl"
+                className="bg-[#09110e] border border-[#15251e] hover:border-[#23362d] rounded-2xl p-6 flex flex-col justify-between transition-all space-y-4 shadow-xl"
               >
                 {/* Title & Metadata */}
                 <div className="space-y-1.5">
@@ -77,12 +77,12 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
                     {project.createdAt.toLowerCase().includes('today') || project.createdAt.toLowerCase().includes('yesterday')
                       ? project.createdAt 
                       : 'today'}{' '}
-                    57 min source{' '}
-                    {project.diskSize ? project.diskSize.replace(' on disk', '') : '35 MB'}
+                    {project.sourceDuration ? `${Math.max(1, Math.round(project.sourceDuration / 60))} min source` : ''}{' '}
+                    {project.diskSize ? project.diskSize.replace(' on disk', '') : ''}
                   </div>
 
                   <div className={`text-xs font-semibold pt-1 ${
-                    isFinished ? 'text-[#bef264]' : project.status === 'Failed' ? 'text-rose-400' : project.status === 'Queued' ? 'text-amber-300' : 'text-neutral-300'
+                    isFinished ? 'text-[#8fd0a4]' : project.status === 'Failed' ? 'text-rose-400' : project.status === 'Queued' ? 'text-amber-300' : 'text-neutral-300'
                   }`}>
                     {statusLabel}
                   </div>
@@ -94,7 +94,7 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onOpenClips(project)}
-                    className="px-5 py-2 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs shadow-md shadow-[#bef264]/15 transition-all active:scale-95 cursor-pointer"
+                    className="px-5 py-2 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs shadow-md shadow-[#3f9a5a]/15 transition-all active:scale-95 cursor-pointer"
                   >
                     Clips
                   </button>
@@ -103,7 +103,7 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onOpenProgress(project)}
-                    className="px-4 py-2 rounded-xl bg-[#14181f] hover:bg-[#1d232e] text-neutral-200 hover:text-white font-bold text-xs border border-[#222834] transition-colors active:scale-95 cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-[#111e18] hover:bg-[#192c23] text-neutral-200 hover:text-white font-bold text-xs border border-[#1d3228] transition-colors active:scale-95 cursor-pointer"
                   >
                     Progress
                   </button>
@@ -112,7 +112,7 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onDeleteProject(project.id)}
-                    className="px-4 py-2 rounded-xl bg-[#14181f] hover:bg-rose-950/60 hover:border-rose-800 text-neutral-300 hover:text-rose-300 font-bold text-xs border border-[#222834] transition-colors active:scale-95 cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-[#111e18] hover:bg-rose-950/60 hover:border-rose-800 text-neutral-300 hover:text-rose-300 font-bold text-xs border border-[#1d3228] transition-colors active:scale-95 cursor-pointer"
                   >
                     Delete
                   </button>

@@ -247,7 +247,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
   const nextHint = activeCard === 'long' ? 'Choose a video to continue.' : activeCard === 'short' ? 'Add at least one short clip to continue.' : activeCard === 'split' ? (spMode === 'single' ? 'Choose a video and select the facecam area to continue.' : 'Choose both videos to continue.') : (ytState === 'downloading' ? 'Downloading… Next unlocks when it finishes.' : 'Paste a link and download the video to continue.');
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-between px-8 py-6 max-w-5xl mx-auto w-full select-none text-neutral-200">
+    <div className="flex flex-col items-stretch w-full select-none text-neutral-200">
       <input 
         ref={fileInputRef}
         type="file"
@@ -264,158 +264,71 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
         onChange={(e) => handleShortFiles(e.target.files)}
       />
 
-      {/* 1. HERO TITLE & PITCH */}
-      <div className="flex flex-col items-center text-center mt-2 max-w-2xl">
-        <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-white font-sans">
-          ClipForge
-        </h1>
-        
-        {/* Creator tag */}
-        <div className="mt-2.5 px-3 py-0.5 rounded-full bg-[#161a20] border border-[#232832] text-xs font-mono text-neutral-400">
-          @creator.ai
+      {/* HERO */}
+      <section className="relative w-full overflow-hidden rounded-2xl border border-[#1d3228] bg-gradient-to-br from-[#0f2018] via-[#0b1812] to-[#08110d] px-7 py-6">
+        <svg className="absolute right-0 bottom-0 h-full w-[48%] opacity-60 pointer-events-none" viewBox="0 0 400 200" preserveAspectRatio="xMaxYMax slice" aria-hidden>
+          <defs>
+            <linearGradient id="hz" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#2f6b47" stopOpacity="0.55" /><stop offset="1" stopColor="#0b1812" stopOpacity="0" /></linearGradient>
+            <linearGradient id="hf" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#0b1812" stopOpacity="1" /><stop offset="0.55" stopColor="#0b1812" stopOpacity="0" /></linearGradient>
+          </defs>
+          <path d="M0 150 L70 70 L110 110 L170 30 L240 120 L290 80 L400 150 L400 200 L0 200Z" fill="url(#hz)" />
+          {[40, 95, 150, 215, 270, 330, 375].map((x, i) => (
+            <path key={i} d={`M${x} 200 L${x - 16 - (i % 3) * 3} 200 L${x} ${118 - (i % 4) * 16} L${x + 16 + (i % 3) * 3} 200Z`} fill="#06100b" opacity={0.85} />
+          ))}
+          <rect width="400" height="200" fill="url(#hf)" />
+        </svg>
+        <div className="relative max-w-md">
+          <div className="text-[10px] font-bold tracking-[0.22em] text-[#8fd0a4]">WELCOME TO CLIPFORGE</div>
+          <h1 className="mt-2 text-[28px] leading-[1.15] font-bold tracking-tight text-white">
+            Turn long videos into<br /><span className="text-[#bef264]">short, engaging clips</span>
+          </h1>
+          <p className="mt-3 text-xs leading-relaxed text-neutral-300/90">
+            Transcribed, cut, reframed and captioned on this computer. Nothing is uploaded unless you turn Cloud Boost on.
+          </p>
         </div>
+      </section>
 
-        <p className="mt-4 text-xs md:text-sm text-neutral-300 leading-relaxed max-w-xl">
-          Long videos into short clips — transcribed, cut, reframed and captioned on this computer. Free, and nothing is uploaded unless you turn Cloud Boost on.
-        </p>
+      {/* START A NEW PROJECT */}
+      <div className="w-full mt-6">
+        <h2 className="text-base font-bold text-white tracking-tight">Start a new project</h2>
+        <p className="text-xs text-neutral-400 mt-0.5">Choose how you want to begin. Captions, styling and preview come next.</p>
+      </div>
 
-        {/* 2. SLICK TIMELINE GRAPHIC (Exact match to screenshot illustration!) */}
-        <div className="mt-6 w-full max-w-md p-4 rounded-2xl bg-[#0a0d11] border border-[#1a1e24] shadow-2xl relative overflow-hidden">
-          {/* Timeline horizontal track */}
-          <div className="h-6 w-full rounded-md bg-[#161a22] relative flex items-center justify-around px-2">
-            {/* 3 Green clip segments */}
-            <div className="h-3.5 w-14 rounded-md bg-[#bef264] shadow-sm shadow-[#bef264]/30" />
-            <div className="h-3.5 w-14 rounded-md bg-[#bef264] shadow-sm shadow-[#bef264]/30" />
-            <div className="h-3.5 w-14 rounded-md bg-[#bef264] shadow-sm shadow-[#bef264]/30" />
-
-            {/* Playhead line */}
-            <div className="absolute right-14 top-0 bottom-0 w-0.5 bg-white shadow-md" />
-          </div>
-
-          {/* 3 Vertical Phone Mockup Cards dropping down from timeline */}
-          <div className="flex items-center justify-around mt-3 px-2">
-            {[0, 1, 2].map((idx) => (
-              <div 
-                key={idx}
-                className="w-11 h-16 rounded-lg bg-[#11141a] border border-[#232832] p-1 flex flex-col justify-end items-center shadow-inner"
-              >
-                <div className="w-6 h-1 rounded-full bg-[#bef264]/90 mb-1" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 w-full mt-3">
+        {([
+          { id: 'long' as const, Icon: Clapperboard, title: 'Clips from a long video', text: 'Let AI find the best moments and cut them into short clips.', points: ['Automatic moment finding', 'Smart captions', 'Face-tracking reframe'], badge: 'Popular' },
+          { id: 'short' as const, Icon: Scissors, title: 'Edit already cut clips', text: 'Add captions and styling to clips you have already made.', points: ['Your edit stays untouched', 'Captions and style only', 'Up to 30 clips at once'] },
+          { id: 'split' as const, Icon: Rows2, title: 'Split screen', text: 'Facecam on top, game or footage below.', points: ['Finds the facecam for you', 'Two videos synced by sound', 'Adjustable layout'] },
+          { id: 'youtube' as const, Icon: LinkIcon, title: 'Paste a YouTube link', text: 'For videos you own or have permission to use.', points: ['Imported up to 1080p', 'Live download progress', 'Then works like a long video'] },
+        ]).map(c => {
+          const on = activeCard === c.id;
+          return (
+            <button key={c.id} type="button" onClick={() => setActiveCard(c.id)}
+              className={`relative text-left p-4 rounded-2xl border transition-all cursor-pointer flex flex-col ${on ? 'bg-[#0f1f17] border-[#3f9a5a] shadow-[0_0_0_1px_rgba(63,154,90,0.35),0_8px_30px_-12px_rgba(190,242,100,0.25)]' : 'bg-[#0b1611] border-[#17291f] hover:border-[#2a4a38] hover:bg-[#0d1a14]'}`}>
+              {c.badge && <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#bef264] text-black">{c.badge}</span>}
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 border ${on ? 'bg-[#bef264] text-black border-transparent' : 'bg-[#13241b] text-[#8fd0a4] border-[#1d3228]'}`}>
+                <c.Icon className="w-[18px] h-[18px]" />
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* 3. SECTION HEADING */}
-      <div className="text-center mt-5">
-        <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">
-          What are you starting with?
-        </h2>
-        <p className="text-xs text-neutral-400 mt-1">
-          Everything else — captions, styling, aspect ratio — comes next, with a preview.
-        </p>
-      </div>
-
-      {/* 4. THREE MAIN STARTING CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 w-full mt-4">
-        {/* Card 1: Upload a long video */}
-        <div
-          onClick={() => setActiveCard('long')}
-          className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
-            activeCard === 'long'
-              ? 'bg-[#101419] border-[#bef264] ring-1 ring-[#bef264]/40 shadow-lg shadow-[#bef264]/5'
-              : 'bg-[#0f1217] border-[#1d222b] hover:border-[#2e3644]'
-          }`}
-        >
-          <div>
-            <div className="w-10 h-10 rounded-xl bg-[#bef264] text-black flex items-center justify-center mb-4 shadow-md shadow-[#bef264]/20">
-              <Clapperboard className="w-5 h-5" />
-            </div>
-
-            <h3 className="text-base font-bold text-white">
-              Upload a long video
-            </h3>
-            <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-              A podcast, lecture, interview or livestream. ClipForge finds the moments worth posting.
-            </p>
-          </div>
-        </div>
-
-        {/* Card 2: Upload short clips */}
-        <div
-          onClick={() => setActiveCard('short')}
-          className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
-            activeCard === 'short'
-              ? 'bg-[#101419] border-[#bef264] ring-1 ring-[#bef264]/40 shadow-lg shadow-[#bef264]/5'
-              : 'bg-[#0f1217] border-[#1d222b] hover:border-[#2e3644]'
-          }`}
-        >
-          <div>
-            <div className="w-10 h-10 rounded-xl bg-[#181d24] text-neutral-400 flex items-center justify-center mb-4 border border-[#2b3340]">
-              <Scissors className="w-5 h-5" />
-            </div>
-
-            <h3 className="text-base font-bold text-white">
-              Upload short clips
-            </h3>
-            <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-              Already cut it yourself? Captions and styling only — your edit is left alone.
-            </p>
-          </div>
-        </div>
-
-        {/* Card 3: Split screen */}
-        <div
-          onClick={() => setActiveCard('split')}
-          className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
-            activeCard === 'split'
-              ? 'bg-[#101419] border-[#bef264] ring-1 ring-[#bef264]/40 shadow-lg shadow-[#bef264]/5'
-              : 'bg-[#0f1217] border-[#1d222b] hover:border-[#2e3644]'
-          }`}
-        >
-          <div>
-            <div className="w-10 h-10 rounded-xl bg-[#181d24] text-neutral-400 flex items-center justify-center mb-4 border border-[#2b3340]">
-              <Rows2 className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-bold text-white">Split screen</h3>
-            <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-              Facecam on top, game or footage below. Finds the facecam for you.
-            </p>
-          </div>
-        </div>
-
-        {/* Card 4: Paste a YouTube URL */}
-        <div
-          onClick={() => setActiveCard('youtube')}
-          className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
-            activeCard === 'youtube'
-              ? 'bg-[#101419] border-[#bef264] ring-1 ring-[#bef264]/40 shadow-lg shadow-[#bef264]/5'
-              : 'bg-[#0f1217] border-[#1d222b] hover:border-[#2e3644]'
-          }`}
-        >
-          <div>
-            <div className="w-10 h-10 rounded-xl bg-[#181d24] text-neutral-400 flex items-center justify-center mb-4 border border-[#2b3340]">
-              <LinkIcon className="w-5 h-5" />
-            </div>
-
-            <h3 className="text-base font-bold text-white">
-              Paste a YouTube URL
-            </h3>
-            <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-              For videos you own or have permission to use. Imported at up to 1080p.
-            </p>
-          </div>
-        </div>
+              <h3 className="text-[13px] font-bold text-white leading-snug">{c.title}</h3>
+              <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">{c.text}</p>
+              <ul className="mt-3 space-y-1">
+                {c.points.map(pt => (
+                  <li key={pt} className="flex items-center gap-1.5 text-[11px] text-neutral-300"><Check className="w-3 h-3 text-[#3f9a5a] shrink-0" />{pt}</li>
+                ))}
+              </ul>
+            </button>
+          );
+        })}
       </div>
 
       {/* 5. DYNAMIC INPUT AREA BELOW CARDS */}
       <div className="w-full mt-4">
         {activeCard === 'long' && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-[#0f1216] border border-[#1e232a]">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-[#0c1611] border border-[#182a22]">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="px-5 py-2.5 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs shadow-md shadow-[#bef264]/20 transition-all active:scale-95 flex items-center gap-2"
+                className="px-5 py-2.5 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs shadow-md shadow-[#3f9a5a]/20 transition-all active:scale-95 flex items-center gap-2"
               >
                 <Upload className="w-4 h-4 stroke-[2.5]" />
                 <span>Choose a video...</span>
@@ -426,7 +339,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
               <span className="text-[11px] text-neutral-500">Instant test:</span>
               <button
                 onClick={() => onSelectVideo(SAMPLE_VIDEOS[0])}
-                className="px-2.5 py-1 rounded bg-[#181d24] hover:bg-[#252b36] text-[11px] text-[#bef264] font-medium border border-[#2b3340] transition-colors flex items-center gap-1"
+                className="px-2.5 py-1 rounded bg-[#14231c] hover:bg-[#21332a] text-[11px] text-[#8fd0a4] font-medium border border-[#263c32] transition-colors flex items-center gap-1"
               >
                 <Sparkles className="w-3 h-3" />
                 <span>Podcast Sample</span>
@@ -436,13 +349,13 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
         )}
 
         {activeCard === 'short' && (
-          <div className="rounded-xl bg-[#0f1216] border border-[#1e232a] p-3 space-y-2.5">
+          <div className="rounded-xl bg-[#0c1611] border border-[#182a22] p-3 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => shortsInputRef.current?.click()}
                   disabled={shortBusy || shortFiles.length >= MAX_SHORTS}
-                  className="px-5 py-2.5 rounded-xl bg-[#bef264] hover:bg-[#a3e635] disabled:opacity-50 disabled:cursor-not-allowed text-black font-extrabold text-xs shadow-md shadow-[#bef264]/20 transition-all active:scale-95 flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-[#bef264] hover:bg-[#a3e635] disabled:opacity-50 disabled:cursor-not-allowed text-black font-extrabold text-xs shadow-md shadow-[#3f9a5a]/20 transition-all active:scale-95 flex items-center gap-2"
                 >
                   <Upload className="w-4 h-4 stroke-[2.5]" />
                   <span>{shortBusy ? 'Reading clips...' : shortFiles.length ? 'Add more clips...' : 'Choose clips...'}</span>
@@ -463,13 +376,13 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
             {shortFiles.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-44 overflow-y-auto pr-1">
                 {shortFiles.map((f, i) => (
-                  <div key={f.id} className="flex items-center gap-2 p-1.5 rounded-lg bg-[#12161c] border border-[#1d222b]">
+                  <div key={f.id} className="flex items-center gap-2 p-1.5 rounded-lg bg-[#0f1c16] border border-[#182a22]">
                     <img src={f.thumbnail} alt="" className="w-7 h-10 rounded object-cover bg-black shrink-0" />
                     <div className="min-w-0 flex-1">
                       <div className="text-[11px] text-white truncate">{i + 1}. {f.name}</div>
                       <div className="text-[10px] text-neutral-500 font-mono">{fmtClock(f.duration)}</div>
                     </div>
-                    <button onClick={() => removeShort(f.id)} title="Remove" className="p-1 rounded hover:bg-[#232832] text-neutral-500 hover:text-white cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => removeShort(f.id)} title="Remove" className="p-1 rounded hover:bg-[#1d3228] text-neutral-500 hover:text-white cursor-pointer"><X className="w-3.5 h-3.5" /></button>
                   </div>
                 ))}
               </div>
@@ -478,13 +391,13 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
         )}
 
         {activeCard === 'split' && (
-          <div className="rounded-xl bg-[#0f1216] border border-[#1e232a] p-3 space-y-3">
+          <div className="rounded-xl bg-[#0c1611] border border-[#182a22] p-3 space-y-3">
             <input ref={splitMainRef} type="file" accept="video/*,.mkv,.mov,.m4v" className="hidden" onChange={(e) => pickSplitMain(e.target.files)} />
             <input ref={splitSecondRef} type="file" accept="video/*,.mkv,.mov,.m4v" className="hidden" onChange={(e) => pickSplitSecond(e.target.files)} />
             <div className="flex flex-wrap gap-1.5">
               {([['single', 'One video (facecam inside)'], ['two', 'Two videos (facecam + game)'], ['bg', 'Video + background footage']] as const).map(([m, label]) => (
                 <button key={m} type="button" onClick={() => switchSpMode(m)}
-                  className={`px-3 py-1.5 rounded-full text-xs cursor-pointer transition-colors ${spMode === m ? 'bg-[#182116] border border-[#bef264] text-[#bef264] font-bold' : 'bg-[#12151c] border border-[#232832] text-neutral-400 hover:text-white'}`}>{label}</button>
+                  className={`px-3 py-1.5 rounded-full text-xs cursor-pointer transition-colors ${spMode === m ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] font-bold' : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white'}`}>{label}</button>
               ))}
             </div>
 
@@ -496,7 +409,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
               {spMain && <span className="text-xs text-white truncate max-w-[16rem]">{spMain.name} <span className="text-neutral-500 font-mono">{fmtClock(spMain.duration)}</span></span>}
               {spMode !== 'single' && (
                 <>
-                  <button onClick={() => splitSecondRef.current?.click()} className="px-4 py-2 rounded-xl bg-[#181d24] hover:bg-[#252b36] border border-[#2b3340] text-neutral-100 font-bold text-xs flex items-center gap-2 cursor-pointer">
+                  <button onClick={() => splitSecondRef.current?.click()} className="px-4 py-2 rounded-xl bg-[#14231c] hover:bg-[#21332a] border border-[#263c32] text-neutral-100 font-bold text-xs flex items-center gap-2 cursor-pointer">
                     <Upload className="w-4 h-4" />
                     <span>{spSecond ? 'Change' : 'Choose'} {spMode === 'two' ? 'game video' : 'background footage'}...</span>
                   </button>
@@ -507,13 +420,13 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
 
             {spMode === 'single' && spMain && (
               <div className="flex flex-wrap items-start gap-3">
-                <div className="relative w-56 shrink-0 rounded-lg overflow-hidden bg-black border border-[#1d222b]" style={{ aspectRatio: String((spMain.w || 16) / (spMain.h || 9)) }}>
+                <div className="relative w-56 shrink-0 rounded-lg overflow-hidden bg-black border border-[#182a22]" style={{ aspectRatio: String((spMain.w || 16) / (spMain.h || 9)) }}>
                   <img src={spFrame || spMain.thumb} alt="" className="absolute inset-0 w-full h-full object-fill" />
-                  {spRect && <div className="absolute border-2 border-[#bef264]" style={{ left: `${spRect.x * 100}%`, top: `${spRect.y * 100}%`, width: `${spRect.w * 100}%`, height: `${spRect.h * 100}%` }} />}
+                  {spRect && <div className="absolute border-2 border-[#3f9a5a]" style={{ left: `${spRect.x * 100}%`, top: `${spRect.y * 100}%`, width: `${spRect.w * 100}%`, height: `${spRect.h * 100}%` }} />}
                 </div>
                 <div className="space-y-2 text-xs min-w-[14rem] flex-1">
                   {spDetect === 'detecting' && <div className="text-neutral-300">Looking for a facecam…</div>}
-                  {spDetect === 'found' && <div className="flex items-center gap-1.5 text-[#bef264] font-semibold"><Check className="w-4 h-4" /> Facecam detected</div>}
+                  {spDetect === 'found' && <div className="flex items-center gap-1.5 text-[#8fd0a4] font-semibold"><Check className="w-4 h-4" /> Facecam detected</div>}
                   {(spDetect === 'notfound' || spDetect === 'error') && (
                     <div className="p-2 rounded-lg bg-amber-950/40 border border-amber-500/40 text-amber-200 flex items-start gap-1.5">
                       <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-px" />
@@ -522,13 +435,13 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
                   )}
                   {spDetect !== 'detecting' && (
                     <div className="flex flex-wrap gap-2">
-                      <button onClick={() => setSpEditor(true)} className="px-3 py-1.5 rounded-lg bg-[#181d24] hover:bg-[#252b36] border border-[#2b3340] text-neutral-100 font-bold flex items-center gap-1.5 cursor-pointer">
-                        <Crop className="w-3.5 h-3.5 text-[#bef264]" /> {spRect ? 'Adjust facecam area' : 'Select the facecam area manually'}
+                      <button onClick={() => setSpEditor(true)} className="px-3 py-1.5 rounded-lg bg-[#14231c] hover:bg-[#21332a] border border-[#263c32] text-neutral-100 font-bold flex items-center gap-1.5 cursor-pointer">
+                        <Crop className="w-3.5 h-3.5 text-[#8fd0a4]" /> {spRect ? 'Adjust facecam area' : 'Select the facecam area manually'}
                       </button>
                       {spDetect !== 'found' && (
-                        <button onClick={() => setSpMode('two')} className="px-3 py-1.5 rounded-lg bg-[#181d24] hover:bg-[#252b36] border border-[#2b3340] text-neutral-100 font-bold cursor-pointer">Use two separate videos instead</button>
+                        <button onClick={() => setSpMode('two')} className="px-3 py-1.5 rounded-lg bg-[#14231c] hover:bg-[#21332a] border border-[#263c32] text-neutral-100 font-bold cursor-pointer">Use two separate videos instead</button>
                       )}
-                      <button onClick={() => runDetect(spMain)} className="px-3 py-1.5 rounded-lg bg-[#12151c] border border-[#232832] text-neutral-400 hover:text-white cursor-pointer">Detect again</button>
+                      <button onClick={() => runDetect(spMain)} className="px-3 py-1.5 rounded-lg bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white cursor-pointer">Detect again</button>
                     </div>
                   )}
                 </div>
@@ -538,13 +451,13 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
             {spMode === 'two' && spMain && spSecond && (
               <div className="space-y-1.5 text-xs">
                 <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={autoSync} disabled={spSync.state === 'working'} className="px-3 py-1.5 rounded-lg bg-[#181d24] hover:bg-[#252b36] border border-[#2b3340] text-neutral-100 font-bold cursor-pointer disabled:opacity-50">Auto sync</button>
+                  <button onClick={autoSync} disabled={spSync.state === 'working'} className="px-3 py-1.5 rounded-lg bg-[#14231c] hover:bg-[#21332a] border border-[#263c32] text-neutral-100 font-bold cursor-pointer disabled:opacity-50">Auto sync</button>
                   <span className="text-neutral-400">Game video offset</span>
                   <input type="number" step={0.1} value={spOffset} onChange={(e) => setSpOffset(parseFloat(e.target.value) || 0)}
-                    className="w-24 bg-[#12151c] border border-[#232832] focus:border-[#bef264] rounded-lg px-2 py-1 font-mono text-white text-center focus:outline-none" />
+                    className="w-24 bg-[#0f1c16] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-2 py-1 font-mono text-white text-center focus:outline-none" />
                   <span className="text-neutral-400">seconds</span>
                 </div>
-                {spSync.text && <div className={spSync.state === 'error' ? 'text-amber-300' : 'text-[#bef264]'}>{spSync.text}</div>}
+                {spSync.text && <div className={spSync.state === 'error' ? 'text-amber-300' : 'text-[#8fd0a4]'}>{spSync.text}</div>}
                 <div className="text-[11px] text-neutral-500">Auto sync needs both recordings to share the same sound. Otherwise set it by hand: + skips ahead in the game video, − delays it.</div>
               </div>
             )}
@@ -553,14 +466,14 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
         )}
 
         {activeCard === 'youtube' && (
-          <div className="rounded-xl bg-[#0f1216] border border-[#1e232a] p-3 space-y-2.5">
+          <div className="rounded-xl bg-[#0c1611] border border-[#182a22] p-3 space-y-2.5">
             <input
               type="text"
               value={ytUrl}
               disabled={ytState === 'downloading'}
               onChange={(e) => { setYtUrl(e.target.value); if (ytState !== 'idle') { setYtState('idle'); setYtVideo(null); setYtError(''); setYtProg(null); } }}
               placeholder="Paste the long video link: https://www.youtube.com/watch?v=..."
-              className="w-full bg-[#12151c] border border-[#232832] focus:border-[#bef264] rounded-lg px-3 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none disabled:opacity-60"
+              className="w-full bg-[#0f1c16] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-3 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none disabled:opacity-60"
             />
             <div className="flex items-center gap-2">
               <button
@@ -568,14 +481,14 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
                 disabled={!validUrl || ytState === 'downloading' || !inDesktop}
                 onClick={startYtDownload}
                 className={`px-5 py-2 rounded-lg font-extrabold text-xs flex items-center gap-2 transition-all ${
-                  validUrl && ytState !== 'downloading' && inDesktop ? 'bg-[#bef264] hover:bg-[#a3e635] text-black cursor-pointer active:scale-95' : 'bg-[#364323] text-neutral-400 opacity-60 cursor-not-allowed'
+                  validUrl && ytState !== 'downloading' && inDesktop ? 'bg-[#bef264] hover:bg-[#a3e635] text-black cursor-pointer active:scale-95' : 'bg-[#13241b] text-neutral-500 cursor-not-allowed'
                 }`}
               >
                 <Download className="w-4 h-4" />
                 <span>{ytState === 'downloading' ? 'Downloading...' : ytState === 'done' ? 'Download again' : 'Download'}</span>
               </button>
               {ytState === 'downloading' && (
-                <button type="button" onClick={cancelYt} className="px-3 py-2 rounded-lg bg-[#181d24] hover:bg-[#252b36] border border-[#2b3340] text-xs text-neutral-300 cursor-pointer">Cancel</button>
+                <button type="button" onClick={cancelYt} className="px-3 py-2 rounded-lg bg-[#14231c] hover:bg-[#21332a] border border-[#263c32] text-xs text-neutral-300 cursor-pointer">Cancel</button>
               )}
               {!inDesktop && <span className="text-[11px] text-neutral-500">Downloading works in the desktop app.</span>}
               {inDesktop && ytFolder && ytState !== 'downloading' && <span className="text-[11px] text-neutral-500 truncate">Saves to: <span className="text-neutral-400">{ytFolder}</span> (change in Settings → Folders)</span>}
@@ -583,7 +496,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
 
             {ytState === 'downloading' && ytProg && (
               <div className="space-y-1">
-                <div className="h-1.5 rounded-full bg-[#1a1f27] overflow-hidden">
+                <div className="h-1.5 rounded-full bg-[#16261e] overflow-hidden">
                   <div className="h-full bg-[#bef264] transition-all" style={{ width: `${Math.max(2, Math.min(100, ytProg.percent || 0))}%` }} />
                 </div>
                 <div className="flex flex-wrap justify-between gap-x-4 text-[11px] text-neutral-400 font-mono">
@@ -602,8 +515,8 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
               <div className="p-2 rounded-lg bg-rose-950/40 border border-rose-500/40 text-[11px] text-rose-300 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-px" /><span>{ytError}</span></div>
             )}
             {ytState === 'done' && ytVideo && (
-              <div className="p-2 rounded-lg bg-[#141812] border border-[#bef264]/40 flex items-center gap-2 text-xs">
-                <Check className="w-4 h-4 text-[#bef264] shrink-0" />
+              <div className="p-2 rounded-lg bg-[#0e1914] border border-[#3f9a5a]/40 flex items-center gap-2 text-xs">
+                <Check className="w-4 h-4 text-[#8fd0a4] shrink-0" />
                 <span className="text-white truncate">{ytVideo.title}</span>
                 <span className="ml-auto font-mono text-[11px] text-neutral-400 shrink-0">{fmtClock(ytVideo.duration)}</span>
               </div>
@@ -614,11 +527,11 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
 
       {/* Selected video indicator (long video) */}
       {activeCard === 'long' && longSelected && (
-        <div className="w-full mt-2 p-2 px-4 rounded-xl bg-[#141812] border border-[#bef264]/40 flex items-center justify-between text-xs text-neutral-200">
+        <div className="w-full mt-2 p-2 px-4 rounded-xl bg-[#0e1914] border border-[#3f9a5a]/40 flex items-center justify-between text-xs text-neutral-200">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#bef264]" />
             <span className="font-semibold text-white">Selected:</span>
-            <span className="text-[#bef264] truncate max-w-md">{longSelected.title}</span>
+            <span className="text-[#8fd0a4] truncate max-w-md">{longSelected.title}</span>
           </div>
           <span className="font-mono text-[11px] text-neutral-400">{fmtClock(longSelected.duration)}</span>
         </div>
@@ -636,8 +549,8 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
           onClick={() => nextVideo && onVideoSelectedAndContinue(nextVideo)}
           className={`px-6 py-2.5 rounded-xl font-extrabold text-xs transition-all shadow-md flex items-center gap-2 ${
             nextVideo
-              ? 'bg-[#bef264] hover:bg-[#a3e635] text-black shadow-[#bef264]/20 cursor-pointer active:scale-95'
-              : 'bg-[#364323] text-neutral-400 opacity-60 cursor-not-allowed'
+              ? 'bg-[#bef264] hover:bg-[#a3e635] text-black shadow-[#3f9a5a]/20 cursor-pointer active:scale-95'
+              : 'bg-[#13241b] text-neutral-500 cursor-not-allowed'
           }`}
         >
           <span>Next</span>
