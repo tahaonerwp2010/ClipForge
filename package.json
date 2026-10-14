@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.5.0",
+  "version": "1.6.0",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -29,13 +29,19 @@
     ],
     "forceCodeSigning": false,
     "win": {
-      "target": "portable",
-      "artifactName": "${productName}-windows-${arch}.${ext}",
+      "target": [
+        {
+          "target": "nsis"
+        },
+        {
+          "target": "portable"
+        }
+      ],
       "signAndEditExecutable": false,
       "icon": "build/icon.ico"
     },
     "portable": {
-      "artifactName": "${productName}-windows-${arch}.${ext}"
+      "artifactName": "ClipForge-windows-${arch}.${ext}"
     },
     "extraResources": [
       {
@@ -49,6 +55,10 @@
       {
         "from": "assets/emoji",
         "to": "emoji"
+      },
+      {
+        "from": "build/icon.png",
+        "to": "icon.png"
       }
     ],
     "asarUnpack": [
@@ -71,6 +81,20 @@
       "category": "AudioVideo",
       "artifactName": "${productName}-linux-${arch}.${ext}",
       "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ClipForge",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "ClipForge-Setup-windows-${arch}.${ext}"
     }
   },
   "dependencies": {

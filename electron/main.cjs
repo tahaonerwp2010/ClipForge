@@ -29,7 +29,7 @@ function createWindow() {
     minHeight: 700,
     autoHideMenuBar: true,
     backgroundColor: '#07100c',
-    icon: path.join(__dirname, '..', 'build', 'icon.png'),
+    icon: appIcon(),
     title: 'ClipForge',
     webPreferences: {
       nodeIntegration: false,
@@ -136,6 +136,12 @@ function createWindow() {
   });
 }
 
+// window / taskbar icon: loaded from the real resources folder (native code cannot read files inside app.asar)
+function appIcon() {
+  const c = [path.join(process.resourcesPath || '', 'icon.png'), path.join(__dirname, '..', 'build', 'icon.png')];
+  return c.find(f => { try { return fs.existsSync(f) && !/app\.asar/.test(f); } catch { return false; } }) || c[1];
+}
+if (process.platform === 'win32') app.setAppUserModelId('com.clipforge.desktop');
 if (process.platform === 'linux') app.commandLine.appendSwitch('no-sandbox');   // AppImage on newer Ubuntu blocks the sandbox
 app.whenReady().then(() => {
   Paths.configure({ userData: app.getPath('userData'), appPath: app.getAppPath(), resourcesPath: process.resourcesPath || '' });

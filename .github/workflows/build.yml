@@ -13,9 +13,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: windows-latest, name: windows, flag: --win, plat: win32 }
-          - { os: ubuntu-22.04,   name: linux,   flag: --linux, plat: linux }
-          - { os: macos-latest,   name: mac-arm, flag: --mac, plat: darwin }
+          - { os: windows-latest, name: windows, flag: --win, plat: win32, extra: '--config.win.signAndEditExecutable=true' }
+          - { os: ubuntu-22.04,   name: linux,   flag: --linux, plat: linux, extra: '' }
+          - { os: macos-latest,   name: mac-arm, flag: --mac, plat: darwin, extra: '' }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -69,7 +69,7 @@ jobs:
 
       - run: node scripts/prune-onnx.cjs ${{ matrix.plat }}
       - run: npx vite build
-      - run: npx electron-builder ${{ matrix.flag }} --publish never
+      - run: npx electron-builder ${{ matrix.flag }} ${{ matrix.extra }} --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
