@@ -25,7 +25,7 @@
       "dist/**/*",
       "electron/**/*",
       "package.json",
-      "build/icon.png"
+      "assets/icons/icon.png"
     ],
     "forceCodeSigning": false,
     "win": {
@@ -38,7 +38,7 @@
         }
       ],
       "signAndEditExecutable": false,
-      "icon": "build/icon.ico"
+      "icon": "assets/icons/icon.ico"
     },
     "portable": {
       "artifactName": "ClipForge-windows-${arch}.${ext}"
@@ -57,7 +57,7 @@
         "to": "emoji"
       },
       {
-        "from": "build/icon.png",
+        "from": "assets/icons/icon.png",
         "to": "icon.png"
       }
     ],
@@ -72,7 +72,7 @@
       ],
       "category": "public.app-category.video",
       "artifactName": "${productName}-mac-${arch}.${ext}",
-      "icon": "build/icon.png"
+      "icon": "assets/icons/icon.png"
     },
     "linux": {
       "target": [
@@ -80,7 +80,7 @@
       ],
       "category": "AudioVideo",
       "artifactName": "${productName}-linux-${arch}.${ext}",
-      "icon": "build/icon.png"
+      "icon": "assets/icons/icon.png"
     },
     "nsis": {
       "oneClick": false,
@@ -89,9 +89,9 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "ClipForge",
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico",
+      "installerIcon": "assets/icons/icon.ico",
+      "uninstallerIcon": "assets/icons/icon.ico",
+      "installerHeaderIcon": "assets/icons/icon.ico",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
       "artifactName": "ClipForge-Setup-windows-${arch}.${ext}"

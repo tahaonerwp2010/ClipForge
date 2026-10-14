@@ -138,7 +138,7 @@ function createWindow() {
 
 // window / taskbar icon: loaded from the real resources folder (native code cannot read files inside app.asar)
 function appIcon() {
-  const c = [path.join(process.resourcesPath || '', 'icon.png'), path.join(__dirname, '..', 'build', 'icon.png')];
+  const c = [path.join(process.resourcesPath || '', 'icon.png'), path.join(__dirname, '..', 'assets', 'icons', 'icon.png')];
   return c.find(f => { try { return fs.existsSync(f) && !/app\.asar/.test(f); } catch { return false; } }) || c[1];
 }
 if (process.platform === 'win32') app.setAppUserModelId('com.clipforge.desktop');
