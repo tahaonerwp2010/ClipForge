@@ -400,8 +400,25 @@ ipcMain.handle('update-download', async (e, { url, name }) => {
     const dir = path.join(app.getPath('downloads'), 'ClipForge Update'); fs.mkdirSync(dir, { recursive: true });
     const dest = path.join(dir, String(name || 'ClipForge-update.exe').replace(/[\\/:*?"<>|]/g, '_')), tmp = dest + '.part';
     await fetchToFile(url, tmp, (d, t) => send('update-progress', { done: d, total: t, percent: t ? Math.round(d / t * 100) : 0 }));
-    fs.renameSync(tmp, dest); shell.showItemInFolder(dest);
+    fs.renameSync(tmp, dest);
     return { ok: true, path: dest };
+  } catch (err) { return { ok: false, error: String(err.message || err) }; }
+});
+// Installs the downloaded update by itself: silent installer for an installed app (it keeps the install folder, then reopens ClipForge).
+ipcMain.handle('update-install', async (e, { filePath }) => {
+  try {
+    const f = String(filePath || ''); if (!f || !fs.existsSync(f)) return { ok: false, error: 'The update file was not found.' };
+    if (process.platform === 'win32' && /\.exe$/i.test(f)) {
+      const installed = fs.existsSync(path.join(path.dirname(process.execPath), 'Uninstall ClipForge.exe')) && !process.env.PORTABLE_EXECUTABLE_FILE;
+      const { spawn } = require('child_process');
+      const child = spawn(f, installed ? ['/S', '--force-run'] : [], { detached: true, stdio: 'ignore', windowsHide: false });
+      child.unref();
+      setTimeout(() => { try { app.quit(); } catch {} }, 600);
+      setTimeout(() => { try { app.exit(0); } catch {} }, 4000);
+      return { ok: true, mode: installed ? 'silent' : 'installer' };
+    }
+    if (process.platform === 'darwin') { await shell.openPath(f); return { ok: true, mode: 'manual' }; }
+    shell.showItemInFolder(f); return { ok: true, mode: 'manual' };
   } catch (err) { return { ok: false, error: String(err.message || err) }; }
 });
 ipcMain.handle('open-external', async (e, url) => { if (/^https:\/\/github\.com\//i.test(String(url))) { await shell.openExternal(url); return true; } return false; });

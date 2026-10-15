@@ -9,6 +9,7 @@ type Api = {
   isElectron?: boolean;
   updateCheck?: (repo?: string) => Promise<UpdateInfo>;
   updateDownload?: (url: string, name: string) => Promise<{ ok: boolean; path?: string; error?: string }>;
+  updateInstall?: (filePath: string) => Promise<{ ok: boolean; mode?: string; error?: string }>;
   openExternal?: (url: string) => Promise<boolean>;
   onUpdateProgress?: (cb: (d: { done: number; total: number; percent: number }) => void) => () => void;
 };
@@ -24,6 +25,7 @@ export const UpdateChecker: React.FC<{ children: (open: () => void, checking: bo
   const [dl, setDl] = useState<{ percent: number; done: number; total: number } | null>(null);
   const [dlPath, setDlPath] = useState('');
   const [dlError, setDlError] = useState('');
+  const [installing, setInstalling] = useState(false);
   const autoDone = useRef(false);
 
   const runCheck = async (manual: boolean, repo?: string) => {
@@ -54,11 +56,19 @@ export const UpdateChecker: React.FC<{ children: (open: () => void, checking: bo
       setDl({ percent: 0, done: 0, total: info.asset.size || 0 });
       const r = await api.updateDownload(info.asset.url, info.asset.name);
       setDl(null);
-      if (r.ok && r.path) setDlPath(r.path); else setDlError(r.error || 'Download failed. Try again.');
+      if (r.ok && r.path) {
+        setDlPath(r.path);
+        if (api.updateInstall) {                                   // install by itself, ClipForge closes and reopens
+          setInstalling(true);
+          const i = await api.updateInstall(r.path);
+          if (!i.ok) { setInstalling(false); setDlError(i.error || 'Could not start the update.'); }
+          else if (i.mode === 'manual') setInstalling(false);
+        }
+      } else setDlError(r.error || 'Download failed. Try again.');
     } else if (info.pageUrl) { api?.openExternal?.(info.pageUrl); }
   };
   const saveRepo = async (e: React.FormEvent) => { e.preventDefault(); await runCheck(true, repoInput); };
-  const close = () => { if (!dl) { setOpen(false); setDlPath(''); setDlError(''); } };
+  const close = () => { if (!dl && !installing) { setOpen(false); setDlPath(''); setDlError(''); } };
 
   const upToDate = info?.ok && !info.available;
   const hasUpdate = info?.ok && info.available;
@@ -86,14 +96,14 @@ export const UpdateChecker: React.FC<{ children: (open: () => void, checking: bo
                   <div className="flex justify-between"><span className="text-neutral-400">Your version</span><span className="font-mono text-white">v{info.current}</span></div>
                   <div className="flex justify-between"><span className="text-neutral-400">New version</span><span className="font-mono text-[#8fd0a4] font-bold">v{info.latest}</span></div>
                 </div>
-                {info.notes && <p className="whitespace-pre-line text-neutral-400 max-h-32 overflow-y-auto leading-relaxed">{info.notes}</p>}
                 {dl && (
                   <div>
                     <div className="h-1.5 rounded-full bg-[#09100d] overflow-hidden"><div className="h-full bg-[#bef264] transition-all" style={{ width: `${dl.percent}%` }} /></div>
                     <p className="text-[11px] text-neutral-400 mt-1">Downloading… {dl.percent}%{dl.total ? ` (${mb(dl.done)} of ${mb(dl.total)})` : ''}</p>
                   </div>
                 )}
-                {dlPath && <p className="text-[11px] text-[#8fd0a4]">Downloaded. The new version is in your Downloads folder. Close ClipForge and open the new file to finish updating.</p>}
+                {installing && <p className="text-[11px] text-[#8fd0a4] flex items-center gap-1.5"><RotateCw className="w-3 h-3 animate-spin" /> Installing the update. ClipForge will close and open again by itself…</p>}
+                {dlPath && !installing && !dlError && <p className="text-[11px] text-[#8fd0a4]">Update downloaded. Open the file to finish updating.</p>}
                 {dlError && <p className="text-[11px] text-red-300">{dlError}</p>}
               </div>
             )}
@@ -111,10 +121,12 @@ export const UpdateChecker: React.FC<{ children: (open: () => void, checking: bo
             <div className="flex justify-end gap-2 pt-1">
               {hasUpdate ? (
                 <>
-                  <button onClick={close} disabled={!!dl} className="px-4 py-2 rounded-xl bg-[#13211a] hover:bg-[#1c3026] text-neutral-200 text-xs font-semibold border border-[#263c32] cursor-pointer disabled:opacity-40">Later</button>
-                  {dlPath
+                  <button onClick={close} disabled={!!dl || installing} className="px-4 py-2 rounded-xl bg-[#13211a] hover:bg-[#1c3026] text-neutral-200 text-xs font-semibold border border-[#263c32] cursor-pointer disabled:opacity-40">Later</button>
+                  {installing
+                    ? <button disabled className="px-5 py-2 rounded-xl bg-[#bef264] text-black font-extrabold text-xs flex items-center gap-1.5 opacity-60"><RotateCw className="w-3.5 h-3.5 animate-spin" /> Installing…</button>
+                    : dlPath
                     ? <button onClick={() => (window as any).electronAPI?.showInFolder?.(dlPath)} className="px-5 py-2 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs cursor-pointer flex items-center gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> Show file</button>
-                    : <button onClick={download} disabled={!!dl} className="px-5 py-2 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs cursor-pointer flex items-center gap-1.5 disabled:opacity-60"><Download className="w-3.5 h-3.5" /> {dl ? 'Downloading…' : 'Download'}</button>}
+                    : <button onClick={download} disabled={!!dl} className="px-5 py-2 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs cursor-pointer flex items-center gap-1.5 disabled:opacity-60"><Download className="w-3.5 h-3.5" /> {dl ? 'Downloading…' : 'Update now'}</button>}
                 </>
               ) : (
                 <button onClick={close} className="px-5 py-2 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs cursor-pointer">OK</button>

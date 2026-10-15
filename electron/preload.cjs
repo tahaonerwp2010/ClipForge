@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSystemSpecs: () => ipcRenderer.invoke('get-system-specs'),
   engineCheck: () => ipcRenderer.invoke('engine-check'),
   updateCheck: (repo) => ipcRenderer.invoke('update-check', { repo }),
+  updateInstall: (filePath) => ipcRenderer.invoke('update-install', { filePath }),
   updateDownload: (url, name) => ipcRenderer.invoke('update-download', { url, name }),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   onUpdateProgress: (cb) => { const h = (e, d) => cb(d); ipcRenderer.on('update-progress', h); return () => ipcRenderer.removeListener('update-progress', h); },
