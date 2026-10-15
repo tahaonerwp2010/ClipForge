@@ -61,7 +61,7 @@ async function http(url, opt, timeoutMs) {
 async function callOne(provId, key, model, { prompt, parts, system, json, timeoutMs }) {
   const P = REG.providers[provId];
   if (P.kind === 'gemini') {
-    const body = await http(`${P.base}/v1beta/models/${model}:generateContent`, {
+    const body = await http(`${process.env.CF_GEMINI_BASE || P.base}/v1beta/models/${model}:generateContent`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({ ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}), contents: [{ parts: parts || [{ text: prompt }] }], ...(json ? { generationConfig: { responseMimeType: 'application/json' } } : {}) }),
     }, timeoutMs);
@@ -98,20 +98,22 @@ async function generate(g, { prompt, parts, system, json = false, timeoutMs = 60
   const cfg = normalize(g);
   if (!cfg.enabled || !cfg.order.length) throw new AiError('invalid_key', 'No AI key added.');
   const needVision = hasImages(parts);
-  const started = Date.now(); let attempts = 0, last = null;
+  const started = Date.now(); let last = null;
+  const outOfTime = () => Date.now() - started > 240000;
   for (const pid of cfg.order) {
+    if (outOfTime()) break;
     const P = REG.providers[pid], pc = cfg.providers[pid];
     let models = (pc.auto ? [pc.model, ...(pc.extra || []), ...P.models.map(m => m.id)] : [pc.model || P.models[0].id]).filter(Boolean);
     models = [...new Set(models)];
     if (needVision) { const ok = new Set(P.models.filter(m => m.vision).map(m => m.id)); models = models.filter(m => ok.has(m)); }
     if (!models.length) { say(`${P.name}: no image-capable model, skipping`, 'info'); continue; }
-    let providerDown = false;
-    for (let ki = 0; ki < pc.keys.length && !providerDown; ki++) {
+    let providerDown = false, attempts = 0;
+    for (let ki = 0; ki < pc.keys.length && !providerDown && !outOfTime(); ki++) {
       const key = pc.keys[ki];
       if (isDead(pid, key)) continue;
-      let rateHits = 0, tried = 0;
+      let rateHits = 0, otherFails = 0, tried = 0;
       for (const m of models) {
-        if (attempts >= 14 || Date.now() - started > 170000) throw last || new AiError('busy', 'AI took too long.');
+        if (outOfTime() || attempts >= 18) { providerDown = true; break; }   // this provider had its fair share, move on
         attempts++; tried++;
         try {
           const text = await callOne(pid, key, m, { prompt, parts, system, json, timeoutMs: Math.min(timeoutMs, 60000) });
@@ -123,11 +125,18 @@ async function generate(g, { prompt, parts, system, json = false, timeoutMs = 60
           if (k === 'invalid_key') { mark(pid, key, k, 1e12); say(`${P.name} key ${ki + 1} was rejected → ${ki + 1 < pc.keys.length ? 'next key' : 'next provider'}`, 'warn'); break; }
           if (k === 'credits') { mark(pid, key, k, 30 * 60000); say(`${P.name} key ${ki + 1} has no credits → ${ki + 1 < pc.keys.length ? 'next key' : 'next provider'}`, 'warn'); break; }
           if (k === 'network') { providerDown = true; say(`${P.name} could not be reached → next provider`, 'warn'); break; }
-          if (k === 'rate') { rateHits++; say(`${P.name} · ${m} is at its limit${pc.auto ? ' → next model' : ''}`, 'warn'); continue; }
+          if (k === 'rate') {
+            rateHits++; say(`${P.name} · ${m} is at its limit${pc.auto ? ' → next model' : ''}`, 'warn');
+            if (rateHits >= 2) { say(`${P.name} key ${ki + 1} keeps hitting limits → next key`, 'warn'); break; }   // a key that is limited on 2 models is limited on all
+            continue;
+          }
+          otherFails++;
           say(`${P.name} · ${m} failed (${String(e.message).slice(0, 70)})${pc.auto ? ' → next model' : ''}`, 'warn');
         }
       }
-      if (tried && rateHits === tried) { mark(pid, key, 'rate', 2 * 60000); say(`${P.name} key ${ki + 1}: every model is at its limit → ${ki + 1 < pc.keys.length ? 'next key' : 'next provider'}`, 'warn'); }
+      if (rateHits >= 2 || (tried && rateHits === tried)) mark(pid, key, 'rate', 2 * 60000);
+      // every model failed for reasons that are not the key's fault (model missing / service busy): other keys will not help
+      else if (tried && otherFails === tried && !providerDown) { providerDown = true; say(`${P.name}: no model answered → next provider`, 'warn'); }
     }
   }
   throw last || new AiError('other', 'No AI provider answered.');

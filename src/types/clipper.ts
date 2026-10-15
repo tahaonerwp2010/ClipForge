@@ -27,6 +27,7 @@ export interface CaptionConfig {
   positionY: number;         // 10 to 90 (% from top, default 72)
   uppercase: boolean;
   maxWordsPerBeat: number;   // 1 to 4
+  syncOffset?: number;       // seconds, -0.3..0.3 (+ = captions later)
   highlightColor: string;    // e.g. #FACC15, #BEF264, etc.
   showEmoji: boolean;
   outlineWidth: number;

@@ -76,7 +76,8 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
   if (branding.showWatermark && branding.watermarkType !== 'image' && branding.creatorHandle)
     L.push(`Dialogue: 2,${ts(0)},${ts(dur)},Mark,,0,0,0,,${pos(branding.watermarkPositionX ?? 20, branding.watermarkPositionY ?? 92)}${esc(branding.creatorHandle)}`);
   if (captions.enabled) {
-    const cw = words.filter(w => w.start >= clipStart && w.start < clipEnd);
+    const off = Math.max(-0.5, Math.min(0.5, Number(captions.syncOffset) || 0));
+    const cw = words.filter(w => w.start >= clipStart && w.start < clipEnd).map(w => (off ? { ...w, start: w.start + off, end: w.end + off } : w));
     const n = preset.single ? 1 : Math.max(1, captions.maxWordsPerBeat || 2);
     let ci = 0;
     // Timing: a word appears when it is spoken (tiny lead) and never overlaps the next one.

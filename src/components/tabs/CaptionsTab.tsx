@@ -440,6 +440,17 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
                   </div>
                 </div>
 
+                {/* Caption timing fine-tune */}
+                <div className="space-y-1.5 p-3 rounded-lg bg-[#0e1a15] border border-[#1a2c24]">
+                  <div className="flex justify-between items-center text-[11px] text-neutral-300">
+                    <span className="font-semibold">Caption timing</span>
+                    <span className="font-mono text-[#8fd0a4] text-[10px]">{(captions.syncOffset || 0) > 0 ? '+' : ''}{(captions.syncOffset || 0).toFixed(2)}s</span>
+                  </div>
+                  <input type="range" min={-0.3} max={0.3} step={0.05} value={captions.syncOffset || 0}
+                    onChange={(e) => onCaptionsChange({ ...captions, syncOffset: parseFloat(e.target.value) })} className="w-full accent-[#bef264]" />
+                  <p className="text-[10px] text-neutral-500 leading-relaxed">Captions too early? Move right (+). Too late? Move left (−). Each step is 0.05 seconds.</p>
+                </div>
+
                 {/* Scale / Font Size Slider (CAN GO DOWN TO 0 - NO BOTTOM LIMIT!) */}
                 <div className="space-y-1.5 p-3 rounded-lg bg-[#0e1a15] border border-[#1a2c24]">
                   <div className="flex justify-between items-center text-[11px] text-neutral-300">
