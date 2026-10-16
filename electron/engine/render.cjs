@@ -121,7 +121,7 @@ function layoutInfo(f, W, H, srcAspect) {
   return { fgW, fgH, radius };
 }
 
-function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], emojiBox, srcAspect, maskIdx, watermark, splitArgs }) {
+function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], emojiBox, srcAspect, maskIdx, watermark, splitArgs, fxZoom = [], fxFlash = [] }) {
   const f = framing || {}, g = grading || {};
   const mode = f.mode || 'fit-blur';
   let base, note = null;
@@ -154,7 +154,11 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
   if (g.vignette) post.push('vignette=PI/5');
   if (g.grain) post.push('noise=alls=8:allf=t');
   if (hasAss) post.push('ass=captions.ass:fontsdir=fonts');
-  let graph = `${base};[v0]${post.join(',')}[vc]`;
+  let graph;
+  if (fxZoom.length && !splitArgs) {                       // punch-in zoom (video only, captions are added after so they stay still)
+    const Z = fxZoom.map(e => `${e.amp}*if(lt(t,${e.t}),0,if(lt(t,${e.t + 0.09}),(t-${e.t})/0.09,exp(-(t-${e.t + 0.09})*6)))`).join('+');
+    graph = `${base};[v0]scale=w='trunc(${W}*(1+${Z})/2)*2':h='trunc(${H}*(1+${Z})/2)*2':eval=frame:flags=bilinear,crop=${W}:${H},setsar=1[vz];[vz]${post.join(',')}[vc]`;
+  } else graph = `${base};[v0]${post.join(',')}[vc]`;
   let last = 'vc';
   emojiGroups.forEach((g, i) => {
     const en = g.windows.map(([a, b]) => `between(t,${a},${b})`).join('+');
@@ -169,12 +173,13 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
     graph += `;[${watermark.idx}:v]format=rgba,scale=${w}:-2,colorchannelmixer=aa=${op}[wm];[${last}][wm]overlay=x='max(0,min(W-w,${px}-w/2))':y='max(0,min(H-h,${py}-h/2))'[ow]`;
     last = 'ow';
   }
-  graph += `;[${last}]null[v]`;
+  const flashEn = fxFlash.map(t => `between(t,${t},${(t + 0.08).toFixed(2)})`).join('+');
+  graph += flashEn ? `;[${last}]drawbox=x=0:y=0:w=iw:h=ih:color=white@0.5:t=fill:enable='${flashEn}'[v]` : `;[${last}]null[v]`;
   return { graph, note };
 }
 
-async function renderClip({ input, start, end, out, assText, ratio, framing, grading, workDir, hasAudio = true, track, emojis = [], emojiBox, onProgress, srcAspect, fontFamilies = [], watermark, music, split, fps = 30 }) {
-  const [W, H] = ASPECT[ratio] || ASPECT['9:16'];
+async function renderClip({ quality = 1080, input, start, end, out, assText, ratio, framing, grading, workDir, hasAudio = true, track, emojis = [], emojiBox, onProgress, srcAspect, fontFamilies = [], watermark, music, split, fx, fps = 30 }) {
+  const [W, H] = dimsFor(ratio, quality);
   fs.mkdirSync(workDir, { recursive: true });
   if (assText) fs.writeFileSync(path.join(workDir, 'captions.ass'), assText, 'utf8');
   FONTS.stageFonts(path.join(workDir, 'fonts'), fontFamilies);
@@ -232,7 +237,11 @@ async function renderClip({ input, start, end, out, assText, ratio, framing, gra
     }
     splitArgs = { W, H, split, secIdx, fcMaskIdx, fps, dur, lead };
   }
-  const { graph: vGraph, note } = filterGraph({ W, H, framing, grading, hasAss: !!assText, track, emojiGroups, emojiBox, srcAspect, maskIdx, watermark: wmIdx != null ? { ...watermark, idx: wmIdx } : null, splitArgs });
+  // ---- auto effects: sound-effect inputs ----
+  const sfxList = (fx && hasAudio && Array.isArray(fx.sfx) ? fx.sfx : []).filter(e => e.file && fs.existsSync(e.file)).slice(0, 24);
+  const sfxInputs = [];
+  sfxList.forEach(e => { e.idx = nextIdx++; sfxInputs.push('-i', e.file); });          // one input per event (an ffmpeg input can feed only one filter)
+  const { graph: vGraph, note } = filterGraph({ W, H, framing, grading, hasAss: !!assText, track, emojiGroups, emojiBox, srcAspect, maskIdx, watermark: wmIdx != null ? { ...watermark, idx: wmIdx } : null, splitArgs, fxZoom: (fx && fx.zoom) || [], fxFlash: (fx && fx.flashes) || [] });
   let graph = vGraph;
   // audio source for split screen: facecam audio (default), game audio, or both
   let aSrc = '0:a', aMap = '0:a:0';
@@ -243,9 +252,16 @@ async function renderClip({ input, start, end, out, assText, ratio, framing, gra
     else graph += `;[0:a]${fm}[x0];[${secIdx}:a]${fm}${delay}[x1];[x0][x1]amix=inputs=2:duration=first:dropout_transition=0,volume=2[amain]`;
     aSrc = 'amain'; aMap = '[amain]';
   }
+  if (sfxList.length) {                                     // mix the sound effects over the voice
+    const fm = 'aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo';
+    let g = `;[${aSrc}]${fm}[sb]`; const labs = ['[sb]'];
+    sfxList.forEach((e, i) => { const ms = Math.round(e.t * 1000); g += `;[${e.idx}:a]${fm},atrim=duration=3,volume=${Math.max(-40, Math.min(12, e.db))}dB,adelay=${ms}|${ms}[sf${i}]`; labs.push(`[sf${i}]`); });
+    g += `;${labs.join('')}amix=inputs=${labs.length}:duration=first:dropout_transition=0,volume=${labs.length},alimiter=limit=0.97:level=0[asfx]`;
+    graph += g; aSrc = 'asfx'; aMap = '[asfx]';
+  }
   if (musicIdx != null) graph += ';' + musicChain(musicIdx, music, end - start, aSrc);
   const args = ['-y', '-ss', String(start), '-t', String(end - start), '-i', path.resolve(input),
-    ...emojiGroups.flatMap(g => ['-i', g.png]), ...maskArgs, ...splitInputs,
+    ...emojiGroups.flatMap(g => ['-i', g.png]), ...maskArgs, ...splitInputs, ...sfxInputs,
     '-filter_complex', graph, '-map', '[v]', ...(hasAudio ? ['-map', musicIdx != null ? '[aout]' : aMap, '-c:a', 'aac', '-b:a', '160k'] : []),
     ...(await encoderArgs()), '-movflags', '+faststart', path.resolve(out)];
   const total = end - start;
@@ -272,4 +288,5 @@ async function extractFrames(input, start, dur, outDir, fps = 2) {
   await run(ffmpeg(), ['-y', '-ss', String(start), '-t', String(dur), '-i', path.resolve(input), '-vf', `fps=${fps},scale=640:-2`, '-q:v', '5', path.join(outDir, 'f_%04d.jpg')]);
   return fs.readdirSync(outDir).filter(f => f.endsWith('.jpg')).sort().map(f => path.join(outDir, f));
 }
-module.exports = { detectCuts, sliceAudio, extractFrames, probe, extractAudio, renderClip, thumbnail, ASPECT, filterGraph };
+const dimsFor = (ratio, quality = 1080) => { const [w, h] = ASPECT[ratio] || ASPECT['9:16']; const s = Math.max(480, quality) / 1080; const ev = n => Math.max(2, Math.round(n * s / 2) * 2); return [ev(w), ev(h)]; };
+module.exports = { dimsFor, detectCuts, sliceAudio, extractFrames, probe, extractAudio, renderClip, thumbnail, ASPECT, filterGraph };

@@ -26,6 +26,7 @@ export interface PipelineExecutionConfig {
   language?: string;
   aiPrompt?: string;
   canvasRatio?: string;
+  quality?: number;
   split?: SplitConfig;
   resume?: boolean;
 }
@@ -106,6 +107,7 @@ export class PipelineRunner {
         clipLength: config.clipLength || 'auto',
         targetClipsCount,
         ratio: config.split ? '9:16' : (config.canvasRatio || '9:16'),
+        quality: config.quality || 1080,
         split: config.split ? { ...config.split, frame: undefined, secondUrl: undefined } : undefined,
         framing, captions, grading, branding,
         gemini: AiService.forJob()

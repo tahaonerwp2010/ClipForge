@@ -49,6 +49,28 @@ export default function App() {
 
   // Projects State
   const [projects, setProjects] = useState<ProjectItem[]>(INITIAL_PROJECTS);
+  const projectsLoaded = useRef(false);
+  // Projects are saved to disk and restored on the next start
+  useEffect(() => {
+    (async () => {
+      try {
+        const list = window.electronAPI?.projectsLoad ? await window.electronAPI.projectsLoad() : JSON.parse(localStorage.getItem('clipforge_projects') || '[]');
+        if (Array.isArray(list) && list.length) setProjects(prev => {
+          const ids = new Set(prev.map(p => p.id));
+          const old = list.filter((p: ProjectItem) => !ids.has(p.id)).map((p: ProjectItem) => (p.status === 'Processing' || p.status === 'Queued') ? { ...p, status: 'Paused' as const } : p);
+          return [...prev, ...old];
+        });
+      } catch { /* ignore */ }
+      projectsLoaded.current = true;
+    })();
+  }, []);
+  useEffect(() => {
+    if (!projectsLoaded.current) return;
+    const t = setTimeout(() => {
+      try { if (window.electronAPI?.projectsSave) window.electronAPI.projectsSave(projects); else localStorage.setItem('clipforge_projects', JSON.stringify(projects)); } catch { /* ignore */ }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [projects]);
   const [activeProjectId, setActiveProjectId] = useState<string>('');
 
   // Theme
@@ -175,7 +197,8 @@ export default function App() {
     };
   }, []);
 
-  const handleProceedToStudio = (video: VideoSource) => {
+  const handleProceedToStudio = async (video: VideoSource) => {
+    if (!(await hasModel())) { setModelDialogOpen(true); return; }   // no speech model yet: stay here until it is downloaded
     setSelectedVideo(video);
     if (video.shorts || video.split) setCanvasRatio('9:16');
     setSplit(video.split || null);
@@ -300,7 +323,7 @@ export default function App() {
   const hasModel = async (): Promise<boolean> => {
     if (!window.electronAPI?.modelStatus) return true;   // browser preview: nothing to check
     const models = await SoftwareManager.syncModelStatus();
-    return models.some(m => m.status === 'downloaded' || m.status === 'active');
+    return models.some(m => (m as any).kind !== 'aligner' && (m.status === 'downloaded' || m.status === 'active'));
   };
   const requestGenerate = async () => {
     if (!(await hasModel())) { setModelDialogOpen(true); return; }
@@ -325,14 +348,14 @@ export default function App() {
     showToast('Next queued project started');
   }, [projects, queue, runKeys]);
 
-  const handleStartGeneration = () => {
+  const handleStartGeneration = (quality: number = 1080) => {
     setIsGenerateModalOpen(false);
 
     const projTitle = selectedVideo ? selectedVideo.title : 'Untitled project';
     const existing = projects.find(p => p.id === activeProjectId);
     const id = existing ? existing.id : `proj-${Date.now()}`;
 
-    settingsRef.current[id] = { framing, captions, grading, branding, canvasRatio: (selectedVideo?.shorts || selectedVideo?.split) ? '9:16' : canvasRatio, clipLength, targetClipsCount, language, aiPrompt, split: selectedVideo?.split ? split : undefined };
+    settingsRef.current[id] = { framing, captions, grading, branding, canvasRatio: (selectedVideo?.shorts || selectedVideo?.split) ? '9:16' : canvasRatio, quality, clipLength, targetClipsCount, language, aiPrompt, split: selectedVideo?.split ? split : undefined };
     const busy = isBusy(id);
 
     if (!existing) {
@@ -641,6 +664,9 @@ export default function App() {
         onClose={() => setIsGenerateModalOpen(false)}
         onStartGeneration={handleStartGeneration}
         canvasRatio={canvasRatio}
+        filePath={selectedVideo?.filePath}
+        shortsPath={selectedVideo?.shorts?.[0]?.path}
+        mainDims={selectedVideo?.split?.mainDims}
       />
 
       <ConfirmDialog

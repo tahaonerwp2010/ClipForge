@@ -345,7 +345,25 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
 
             {/* Font Size & Positions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-              <div className="space-y-1 text-[10px] text-neutral-500 leading-relaxed">The AI picks the hook text and its size for every clip (always two lines). You only choose where it sits.</div>
+              <div className="space-y-2 md:col-span-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="w-24 text-[11px] text-neutral-400">Lines</span>
+                  {[1, 2, 3].map(n => (
+                    <button key={n} type="button" onClick={() => onBrandingChange({ ...branding, autoTitle: { ...branding.autoTitle, lines: n as 1 | 2 | 3 } })}
+                      className={`px-3 py-1 rounded-full text-[11px] cursor-pointer transition-colors ${(branding.autoTitle?.lines || 2) === n ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] font-bold' : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white'}`}>{n} line{n > 1 ? 's' : ''}</button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="w-24 text-[11px] text-neutral-400">Size</span>
+                  <button type="button" onClick={() => onBrandingChange({ ...branding, autoTitle: { ...branding.autoTitle, size: branding.autoTitle?.size ? undefined : 90 } })}
+                    className={`px-3 py-1 rounded-full text-[11px] cursor-pointer transition-colors ${!branding.autoTitle?.size ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] font-bold' : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white'}`}>Auto</button>
+                  {branding.autoTitle?.size ? (<>
+                    <input type="range" min={40} max={140} value={branding.autoTitle.size} onChange={(e) => onBrandingChange({ ...branding, autoTitle: { ...branding.autoTitle, size: parseInt(e.target.value) } })} className="w-40 h-1.5 bg-[#1d3228] rounded-lg appearance-none accent-[#bef264] cursor-pointer" />
+                    <span className="font-mono text-[11px] text-[#8fd0a4]">{branding.autoTitle.size}</span>
+                  </>) : null}
+                </div>
+                <p className="text-[10px] text-neutral-500 leading-relaxed">The AI writes every hook for the number of lines you choose, in the size you choose. It only makes the text smaller when it would not fit on the screen at all.</p>
+              </div>
 
               {/* Position X */}
               <div className="space-y-1">

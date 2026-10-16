@@ -13,6 +13,7 @@ async function transcribe(wavPath, { modelId = 'small', language = 'auto', workD
   if (!fs.existsSync(model)) throw new Error(`Whisper model "${modelId}" is not downloaded. Settings → Models → Download.`);
   const bin = P.resolveBin('whisper-cli') || P.resolveBin('main');
   if (!bin) throw new Error('The speech engine (whisper-cli) was not found in the "binaries" folder.');
+  if (!/^[a-z]{2,3}$/.test(String(language || ''))) language = 'auto';   // whisper only understands codes like en, hi, ur
   const n = duration > chunkSec * 1.4 && slice ? Math.ceil(duration / chunkSec) : 1;
   const all = [];
   for (let i = 0; i < n; i++) {
@@ -34,6 +35,7 @@ async function transcribe(wavPath, { modelId = 'small', language = 'auto', workD
             cwd: path.dirname(bin),
             onStderr: s => { const m = s.match(/progress\s*=\s*(\d+)%/); if (m && onProgress) onProgress((i + +m[1] / 100) / n); },
           });
+          if (!fs.existsSync(base + '.json')) throw new Error('The speech engine finished without writing a result' + (a < attempts.length - 1 ? ', retrying another way…' : '.'));
           if (dtw) dtwOk = a < attempts.length - 1;
           lastErr = null; break;
         } catch (e) { if (String(e.message) === 'CANCELLED') throw e; lastErr = e; try { fs.unlinkSync(base + '.json'); } catch {} }

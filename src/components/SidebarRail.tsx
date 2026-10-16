@@ -26,7 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, proj
           ? <img src="./logo.png" alt="ClipForge" className="w-10 h-10 rounded-xl" onError={() => setLogoOk(false)} draggable={false} />
           : <div className="w-10 h-10 rounded-xl bg-[#bef264] text-black font-black flex items-center justify-center">C</div>}
         <div className="leading-tight">
-          <div className="text-[17px] font-bold text-white tracking-tight">ClipForge</div>
+          <div className="text-[17px] font-bold text-white tracking-tight">ClipForge <span className="text-[10px] font-semibold text-[#8fd0a4] tracking-normal">by taha.ai</span></div>
           <div className="text-[10px] text-neutral-500">AI clips. Real impact.</div>
         </div>
       </div>

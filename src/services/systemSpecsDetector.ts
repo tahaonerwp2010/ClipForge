@@ -34,6 +34,14 @@ declare global {
       saveClipSheet?: (dir: string, rows: string[][]) => Promise<string>;
       openFolder?: (p: string) => Promise<string>;
       updateInstall?: (filePath: string) => Promise<{ ok: boolean; mode?: string; error?: string }>;
+      sfxList?: () => Promise<{ id: string; name: string; cat: string; auto: boolean; dur: number; builtin: boolean; url: string }[]>;
+      sfxImport?: (folder: string) => Promise<{ ok: boolean; total?: number; added?: number; failed?: number; error?: string }>;
+      sfxSetCat?: (id: string, cat: string) => Promise<boolean>;
+      sfxDelete?: (id: string) => Promise<boolean>;
+      sfxClear?: () => Promise<boolean>;
+      onSfxProgress?: (cb: (d: { done: number; total: number; name?: string }) => void) => () => void;
+      projectsLoad?: () => Promise<any[]>;
+      projectsSave?: (list: any[]) => Promise<boolean>;
       aiTest?: (a: { provider: string; key: string; model: string }) => Promise<{ success: boolean; model?: string; message: string; kind?: string; quotaExhausted?: boolean }>;
       aiPing?: (a: { provider: string; key: string }) => Promise<{ state: string; message: string }>;
       aiListModels?: (a: { provider: string; key: string }) => Promise<{ ok: boolean; models: { id: string; label: string; vision?: boolean }[] }>;

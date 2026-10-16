@@ -169,8 +169,8 @@ async function ollamaModel() {
   } catch { return null; }
 }
 // Local AI (Ollama): same system prompt as Gemini, one clip at a time, JSON answer.
-async function ollamaMeta(model, text) {
-  const system = META_SYSTEM.replace('a JSON array with one object per clip, in the same order:', 'ONE JSON object for this clip:');
+async function ollamaMeta(model, text, n = 2) {
+  const system = metaSystem(n).replace('a JSON array with one object per clip, in the same order:', 'ONE JSON object for this clip:');
   const r = await fetch('http://127.0.0.1:11434/api/generate', { method: 'POST', signal: AbortSignal.timeout(180000),
     body: JSON.stringify({ model, system, prompt: `Clip transcript:\n${text.slice(0, 1400)}`, stream: false, format: 'json', options: { num_predict: 400, temperature: 0.7 } }) });
   const j = await r.json();
@@ -182,19 +182,23 @@ const clipText = (c, words) => words.filter(w => w.start >= c.start && w.end <= 
 const hasEmoji = t => EM.splitTitle(t).emojis.length > 0;
 
 // Title step (required): Gemini first; if it fails -> local AI (Ollama) -> built-in heuristic. Every title ends up with >= 1 emoji.
-const META_SYSTEM = `You are a professional YouTube Shorts metadata writer for a creator targeting English-speaking viewers, especially in the United States. Based ONLY on the clip analysis and shared context given, generate one strong title, a concise description, a small number (3-6) of highly relevant hashtags (always include the # symbol), and relevant discovery keywords. Rules: natural American English; the title must accurately represent the clip and create genuine curiosity without being misleading, include 1-2 well-placed relevant emojis to make it feel lively, avoid ALL CAPS and excessive punctuation; no fake claims; no keyword stuffing; do not add generic filler like "VIRAL" or "USA" or "FYP" unless truly relevant; do not invent facts not present in the analysis/context. Return only the structured JSON. Also give one accurate hook of 8-12 words with at least one emoji that defines main idea of clip. Also the hashtags you generate should EXIST ON YOUTUBE and should be HIGHLY US BASED since the user wants US views and reduce the number of hashtags to a maximum of 3. NO MORE THAN 3.
-Write like a real human creator, not like a bot: the title is the upload title of the short (what viewers see under the video), so make it specific, conversational and click-worthy, the way top Shorts creators phrase it. The description should sound natural, like a person wrote it in one or two sentences.
-Output format: a JSON array with one object per clip, in the same order: {"title":"...","hookText":"...","description":"...","hashtags":["#a","#b","#c"],"keywords":["..."]}. The hook is shown on screen as exactly two short lines, so write it as two balanced lines separated by a \\n character.`;
-async function geminiTitles(clips, words, g, log) {
+const HOOK_LEN = { 1: '3 to 5 words, ONE short line', 2: '6 to 9 words, written as TWO balanced short lines', 3: '9 to 13 words, written as THREE short lines' };
+const META_BASE = `You are a professional YouTube Shorts metadata writer for a creator targeting English-speaking viewers, especially in the United States. Based ONLY on the clip analysis and shared context given, generate one strong title, a concise description, a small number (3-6) of highly relevant hashtags (always include the # symbol), and relevant discovery keywords. Rules: natural American English; the title must accurately represent the clip and create genuine curiosity without being misleading, include 1-2 well-placed relevant emojis to make it feel lively, avoid ALL CAPS and excessive punctuation; no fake claims; no keyword stuffing; do not add generic filler like "VIRAL" or "USA" or "FYP" unless truly relevant; do not invent facts not present in the analysis/context. Return only the structured JSON. The hashtags you generate should EXIST ON YOUTUBE and should be HIGHLY US BASED since the user wants US views; at most 3 hashtags.`;
+const hookRules = (n) => `
+HOOK (field "hookText") is the text shown on screen in the first seconds. Its only job is to make a scrolling viewer stop and keep watching. Length: ${HOOK_LEN[n] || HOOK_LEN[2]}. Write it as EITHER (a) a curiosity question that this exact clip answers, or (b) a bold, specific statement that creates an open loop (a surprising claim, a number, a warning, a contradiction, "nobody tells you…" style). Never a plain summary or a topic label. It must be true to what is said in the clip and make the viewer need the payoff. Use the clip's own strongest words/numbers. Good examples: "Why do 90% of startups die in year one?", "This one habit made him a millionaire", "Stop doing this before it costs you everything", "She lost everything. Then this happened.". Bad examples: "A talk about startups", "Interesting thoughts on money", "Watch this video". Add one fitting emoji at the end. Do not use hashtags in the hook.`;
+const metaSystem = (n) => META_BASE + hookRules(n) + `
+Output format: a JSON array with one object per clip, in the same order: {"title":"...","hookText":"...","description":"...","hashtags":["#a","#b","#c"],"keywords":["..."]}.` + (n === 1 ? '' : ` Separate the hook lines with a \\n character.`);
+
+async function geminiTitles(clips, words, g, log, n = 2) {
   const items = clips.map((c, i) => `#${i} (${Math.round(c.end - c.start)}s): ${clipText(c, words).slice(0, 700)}`).join('\n\n');
   const prompt = `Clip analysis and context for each clip (write metadata for EACH one, same order):\n\n${items}`;
-  const r = await G.generate(g, { system: META_SYSTEM, prompt, json: true });
+  const r = await G.generate(g, { system: metaSystem(n), prompt, json: true });
   const out = G.parseJson(r.text);
   const arr = Array.isArray(out) ? out : (out.titles || out.clips || []);
   if (arr.length < clips.length) throw new Error('Gemini returned too few titles');
   return arr;
 }
-async function localTitles(clips, words, log) {
+async function localTitles(clips, words, log, n = 2) {
   const model = await ollamaModel();
   log(model ? `Local AI (Ollama: ${model}) writing title, hook, description and hashtags…` : 'AI providers unavailable and no local AI running → the built-in writer reads each transcript and writes the title, hook, description and hashtags', 'info');
   const LW = require('./localwriter.cjs');
@@ -202,7 +206,7 @@ async function localTitles(clips, words, log) {
     const text = clipText(c, words);
     const base = LW.write(text);                                   // always available, based on what is really said
     let o = null;
-    if (model) { try { o = await ollamaMeta(model, text); } catch (e) { log(`Ollama failed (${String(e.message).slice(0, 60)}), using the built-in writer`, 'warn'); } }
+    if (model) { try { o = await ollamaMeta(model, text, n); } catch (e) { log(`Ollama failed (${String(e.message).slice(0, 60)}), using the built-in writer`, 'warn'); } }
     const ok = (v, min) => typeof v === 'string' && v.trim().length >= min;
     c.title = (ok(o && o.title, 6) ? o.title.trim() : base.title).slice(0, 90);
     c.hookText = ok(o && o.hookText, 8) ? o.hookText.trim() : base.hookText;
@@ -227,11 +231,12 @@ function localDescription(text) {
   let d = (sents.slice(0, 2).join(' ') || text).slice(0, 180).replace(/[,;:\s]+$/, '');
   return d + (/[.!?]$/.test(d) ? '' : '.');
 }
-async function writeTitles(clips, words, g, log) {
+async function writeTitles(clips, words, g, log, hookLines = 2) {
+  const HN = hookLines === 1 || hookLines === 3 ? hookLines : 2;
   let engine = 'local';
   if (G.ready(g)) {
     try {
-      const arr = await geminiTitles(clips, words, g, log);
+      const arr = await geminiTitles(clips, words, g, log, HN);
       clips.forEach((c, i) => {
         const t = arr[i] || {};
         if (t.title && String(t.title).trim().length > 3) {
@@ -245,19 +250,19 @@ async function writeTitles(clips, words, g, log) {
     } catch (e) { log(`AI title writing failed (${String(e.message).slice(0, 100)}) → local fallback`, 'warn'); clips.forEach(c => { c.__weak = true; }); }
   } else clips.forEach(c => { c.__weak = true; });
   const weak = clips.filter(c => c.__weak);
-  if (weak.length) { await localTitles(weak, words, log); if (weak.length < clips.length) engine = 'gemini+local'; }
+  if (weak.length) { await localTitles(weak, words, log, HN); if (weak.length < clips.length) engine = 'gemini+local'; }
   for (const c of clips) {
     delete c.__weak;
     const txt = clipText(c, words);
     if (!c.description || c.description.length < 15) c.description = localDescription(txt);
     c.hashtags = finalTags(c.hashtags, (c.__topic || '') + ' ' + c.title + ' ' + txt); delete c.__topic;
-    { const he = EM.splitTitle(String(c.hookText || '')).emojis; c.hookText = HK.hookTwoLines(c.hookText, c.title); if (he && he.length) c.hookText += ' ' + he.slice(0, 2).join(''); }
+    { const he = EM.splitTitle(String(c.hookText || '')).emojis; c.hookText = HK.hookLines(c.hookText, c.title, HN); if (he && he.length) c.hookText += ' ' + he.slice(0, 2).join(''); }
     if (!hasEmoji(c.title)) c.title = `${c.title} ${EM.emojiForText(clipText(c, words) + ' ' + c.title)}`;
   }
   return engine;
 }
 
-async function findClips(words, { count = 4, clipLen = 30, gemini: g, log = () => {}, userPrompt = '', filePath = '', workDir = '' }) {
+async function findClips(words, { hookLines = 2, count = 4, clipLen = 30, gemini: g, log = () => {}, userPrompt = '', filePath = '', workDir = '' }) {
   if (!words.length) return { clips: [], engine: 'none' };
   const kws = keywordsOf(userPrompt);
   const topUp = (picked) => {                                  // fewer than asked (after removing duplicates)? fill from the offline finder, never overlapping
@@ -291,7 +296,7 @@ async function findClips(words, { count = 4, clipLen = 30, gemini: g, log = () =
       if (picked.length) {
         if (subject) picked.forEach(c => { c.subject = subject; });
         picked.sort((a, b) => a.start - b.start);
-        const te = await writeTitles(picked, words, g, log);
+        const te = await writeTitles(picked, words, g, log, hookLines);
         return { clips: picked, engine: 'gemini', titleEngine: te };
       }
       log('Gemini returned no usable clips, using offline analysis', 'warn');
@@ -299,7 +304,7 @@ async function findClips(words, { count = 4, clipLen = 30, gemini: g, log = () =
   }
   if (userPrompt) log('Offline mode: only the topic words of your prompt are used (on-screen conditions need AI Boost)', 'warn');
   const local = sanitize(offline(words, count, clipLen, kws), words);
-  const te = await writeTitles(local, words, g, log);
+  const te = await writeTitles(local, words, g, log, hookLines);
   return { clips: local, engine: 'offline', titleEngine: te };
 }
 module.exports = { findClips, offline, writeTitles };

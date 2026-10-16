@@ -16,7 +16,7 @@ import {
 } from '../types/clipper';
 import { SplitPreview } from './SplitPreview';
 import { SECONDARY_FOOTAGE } from '../data/sampleVideos';
-import { getContextualEmoji, CAPCUT_DYNAMIC_COLORS, hookTwoLines, hookFontPx } from '../utils/captionHelpers';
+import { getContextualEmoji, CAPCUT_DYNAMIC_COLORS, hookLines, hookFontPx } from '../utils/captionHelpers';
 
 interface PhonePreviewProps {
   videoUrl: string;
@@ -842,14 +842,14 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                   style={{
                     animation: (() => { const i = branding.autoTitle.animIn || 'none', o = branding.autoTitle.animOut || 'none'; const parts = []; if (i !== 'none') parts.push(`cft-in-${i} 450ms ease-out both`); if (o !== 'none') parts.push(`cft-out-${o} 450ms ease-in 1.6s both`); return parts.join(', ') || undefined; })(),
                     color: branding.autoTitle.color || '#ffffff',
-                    fontSize: `${Math.round(hookFontPx(hookTwoLines(branding.autoTitle.title || clipTitle || 'THE VIRAL TRUTH'), scrW))}px`,
+                    fontSize: `${Math.round(hookFontPx(hookLines(branding.autoTitle.title || clipTitle || 'THE VIRAL TRUTH', branding.autoTitle.lines || 2), scrW, branding.autoTitle.size))}px`,
                     fontFamily: getFontFamily(branding.autoTitle.fontFamily),
                     width: 'max-content', maxWidth: `${Math.round(scrW * 0.86)}px`, whiteSpace: 'normal', overflowWrap: 'break-word',
                     textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.7)'
                   }}
                   className="font-black uppercase tracking-tight text-center leading-tight"
                 >
-                  {hookTwoLines(branding.autoTitle.title || clipTitle || 'THE VIRAL TRUTH').map((l, i) => <div key={i}>{l}</div>)}
+                  {hookLines(branding.autoTitle.title || clipTitle || 'THE VIRAL TRUTH', branding.autoTitle.lines || 2).map((l, i) => <div key={i}>{l}</div>)}
                 </div>
               </div>
             </div>

@@ -307,7 +307,7 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <span className="text-xs font-bold text-neutral-200 tracking-wide">ClipForge Pipeline Engine</span>
+          <span className="text-xs font-bold text-neutral-200 tracking-wide">ClipForge Pipeline Engine <span className="text-[10px] font-semibold text-[#8fd0a4]">by taha.ai</span></span>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">

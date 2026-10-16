@@ -44,6 +44,16 @@ export interface VideoGradingConfig {
   grain: boolean;
   vignette: boolean;
   speedBoost: number; // 1.0 or 1.05
+  fx?: AutoFxConfig;
+}
+
+export interface AutoFxConfig {
+  enabled: boolean;
+  intensity: 'subtle' | 'balanced' | 'wild';
+  zoom: boolean;
+  flash: boolean;
+  sfx: boolean;
+  sfxDb: number;
 }
 
 export interface InnerFramingConfig {
@@ -74,6 +84,8 @@ export interface AutoTitleConfig {
   animIn?: 'none' | 'fade' | 'pop' | 'slide-up';   // default none
   animOut?: 'none' | 'fade' | 'shrink';              // default none
   showSeconds?: number;                              // 0 / undefined = whole clip
+  lines?: 1 | 2 | 3;                                 // how many lines the hook is written in (default 2)
+  size?: number;                                     // user's hook size in px at 1080 wide; undefined = automatic
 }
 
 export interface BrandingConfig {

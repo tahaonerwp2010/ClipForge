@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { OuterCanvasRatio } from '../types/clipper';
 import { 
   Check, 
@@ -13,46 +13,53 @@ import {
 interface GenerateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onStartGeneration: (resolution: '1080p' | '720p' | 'auto') => void;
+  onStartGeneration: (quality: number) => void;
   canvasRatio: OuterCanvasRatio;
+  filePath?: string;
+  shortsPath?: string;
+  mainDims?: [number, number];
 }
+
+const CLASSES: { q: number; label: string; dims: string }[] = [
+  { q: 2160, label: '4K', dims: '3840×2160' },
+  { q: 1440, label: '1440p', dims: '2560×1440' },
+  { q: 1080, label: '1080p', dims: '1920×1080' },
+  { q: 720, label: '720p', dims: '1280×720' },
+  { q: 480, label: '480p', dims: '854×480' },
+];
 
 export const GenerateModal: React.FC<GenerateModalProps> = ({
   isOpen,
   onClose,
   onStartGeneration,
-  canvasRatio
+  canvasRatio,
+  filePath,
+  shortsPath,
+  mainDims
 }) => {
-  const [selectedRes, setSelectedRes] = useState<'1080p' | '720p' | 'auto'>('auto');
+  const [selected, setSelected] = useState<number>(0);   // 0 = Auto
+  const [src, setSrc] = useState<[number, number] | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSelected(0);
+    if (mainDims) { setSrc(mainDims); return; }
+    const p = filePath || shortsPath;
+    setSrc(null);
+    if (p && window.electronAPI?.probeVideo) window.electronAPI.probeVideo(p).then(i => setSrc([i.width, i.height])).catch(() => setSrc(null));
+  }, [isOpen, filePath, shortsPath, mainDims]);
 
   if (!isOpen) return null;
 
-  const resolutionOptions = [
-    {
-      id: 'auto' as const,
-      label: 'Auto',
-      dimensions: '1080×1920',
-      badge: 'RECOMMENDED',
-      desc: 'Matches native source pixels 1:1 without upscaling artifacts.'
-    },
-    {
-      id: '1080p' as const,
-      label: '1080p',
-      dimensions: '1080×1920',
-      desc: 'Full HD vertical master for YouTube Shorts & Instagram.'
-    },
-    {
-      id: '720p' as const,
-      label: '720p',
-      dimensions: '720×1280',
-      desc: 'Faster rendering, smaller disk size (~60% smaller).'
-    }
-  ];
-
-  const getTargetDims = () => {
-    if (selectedRes === '720p') return '720×1280';
-    return '1080×1920';
-  };
+  // Quality = the source's shorter side (1080 for a 1920×1080 video, 2160 for 4K). Only sizes up to the source are offered, so nothing is upscaled.
+  const srcShort = src ? Math.min(src[0], src[1]) : 1080;
+  let avail = CLASSES.filter(c => srcShort >= c.q * 0.93);
+  if (!avail.length) avail = [{ q: Math.max(240, Math.round(srcShort / 2) * 2), label: `${srcShort}p`, dims: src ? `${Math.max(src[0], src[1])}×${srcShort}` : '' }];
+  const autoQ = (avail.find(c => c.q <= 1080) || avail[avail.length - 1]).q;
+  const options = [{ q: 0, label: 'Auto', dims: (avail.find(c => c.q === autoQ) || avail[0]).dims, badge: true }, ...avail.map(c => ({ ...c, badge: false }))];
+  const effective = selected === 0 ? autoQ : selected;
+  const effLabel = (avail.find(c => c.q === effective) || avail[0]).label;
+  const srcText = src ? `${Math.max(src[0], src[1])}×${Math.min(src[0], src[1])}` : '…';
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
@@ -62,7 +69,7 @@ export const GenerateModal: React.FC<GenerateModalProps> = ({
           <div>
             <h3 className="text-lg font-bold text-white tracking-tight">How big should the clips be?</h3>
             <p className="text-xs text-neutral-400 mt-1">
-              Your source is 1920×1080 (16:9). Target output is {canvasRatio} Mobile Canvas.
+              Your source is {srcText}. Clips are exported as {canvasRatio} (vertical).
             </p>
           </div>
           <button
@@ -76,12 +83,12 @@ export const GenerateModal: React.FC<GenerateModalProps> = ({
         {/* Resolution Options */}
         <div className="p-6 space-y-4">
           <div className="grid grid-cols-3 gap-2.5">
-            {resolutionOptions.map((opt) => {
-              const isSelected = selectedRes === opt.id;
+            {options.map((opt) => {
+              const isSelected = selected === opt.q;
               return (
                 <button
-                  key={opt.id}
-                  onClick={() => setSelectedRes(opt.id)}
+                  key={opt.q}
+                  onClick={() => setSelected(opt.q)}
                   className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
                     isSelected
                       ? 'bg-neutral-800/90 border-emerald-500 shadow-md ring-1 ring-emerald-500/50'
@@ -100,7 +107,7 @@ export const GenerateModal: React.FC<GenerateModalProps> = ({
                       )}
                     </div>
                     <div className="font-mono text-[10px] text-neutral-400 mt-1">
-                      {opt.dimensions}
+                      {opt.dims}
                     </div>
                   </div>
                 </button>
@@ -114,7 +121,7 @@ export const GenerateModal: React.FC<GenerateModalProps> = ({
               <span>Zero-Cloud Local Processing</span>
             </div>
             <p>
-              Auto keeps the footage's own crisp pixels — never stretched, never interpolated. All clips render directly in your browser with hardware acceleration.
+              Auto picks the best size for your computer (up to 1080p). Higher sizes such as 4K look sharper but take much longer to render. Only sizes your video can really provide are shown, so nothing is stretched.
             </p>
           </div>
         </div>
@@ -129,10 +136,10 @@ export const GenerateModal: React.FC<GenerateModalProps> = ({
           </button>
 
           <button
-            onClick={() => onStartGeneration(selectedRes)}
+            onClick={() => onStartGeneration(effective)}
             className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-95"
           >
-            <span>Generate at {getTargetDims()}</span>
+            <span>Generate at {effLabel}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

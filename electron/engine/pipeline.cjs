@@ -14,6 +14,29 @@ const SUBJ = require('./subject.cjs');
 const TR = require('./translate.cjs');
 const AL = require('./align.cjs');
 const AI = require('./ai.cjs');
+const FX = require('./fx.cjs');
+const SFX = require('./sfxlib.cjs');
+
+// The UI sends labels ('Hinglish', 'English', 'As spoken') or a language code; whisper only understands codes.
+function normalizeJob(job) {
+  const raw = String(job.language || 'auto').trim(), k = raw.toLowerCase();
+  if (k === 'hinglish') { job.language = 'hi'; if (job.captions && job.captions.enabled) job.captions = { ...job.captions, romanScript: true }; }
+  else if (k === 'english') job.language = 'en';
+  else if (/^[a-z]{2,3}$/.test(k)) job.language = k;
+  else job.language = 'auto';
+  return job;
+}
+
+async function planFx(job, words, s, e, seed, log) {
+  const o = job.grading && job.grading.fx;
+  if (!o || !o.enabled) return undefined;
+  try {
+    if (o.sfx !== false) await SFX.ensureBuiltin();
+    const f = FX.plan(words, s, e, o, seed);
+    if (f && f.events) log('FFmpeg', `Auto effects: ${f.events} moment${f.events === 1 ? '' : 's'}`);
+    return f;
+  } catch (err) { log('FFmpeg', 'Auto effects skipped: ' + (err && err.message), 'warn'); return undefined; }
+}
 const { checkCancel } = require('./proc.cjs');
 // Each project gets its own folder; a different project with the same name gets _2, _3 ...
 function uniqueDir(base, id) {
@@ -59,8 +82,10 @@ async function runInner(job, emit, deps = {}) {
   const saveMeta = () => writeJson('meta.json', meta);
 
   // ---- progress model: weighted steps, monotonic overall %, ETA ----
+  normalizeJob(job);
   const ratio = job.split ? '9:16' : (job.ratio || '9:16');
-  const [Wd, Ht] = R.ASPECT[ratio] || R.ASPECT['9:16'];
+  const quality = +job.quality || 1080;
+  const [Wd, Ht] = R.dimsFor(ratio, quality);
   const pct = new Array(9).fill(0);
   let wantTrack = false;                       // set after probe
   const weights = () => [1, 3, 45, (job.captions?.enabled && job.captions.translateTo) ? 3 : 0, (job.captions?.enabled && job.captions.romanScript) ? 3 : 0, 6, 0, wantTrack ? 14 : 1, 30];
@@ -155,7 +180,7 @@ async function runInner(job, emit, deps = {}) {
     if (meta.steps[i] && cached) { restore(i); capWords = cached; continue; }
     startWork(); begin(i);
     try {
-      if (!gOk) throw new Error('needs AI Boost (add an API key in Settings)');
+      if (label === 'translate' && !gOk) throw new Error('needs AI Boost (add an API key in Settings)');
       if (label === 'translate') capWords = await TR.translate(capWords, job.captions.translateTo, job.gemini, p => setPct(i, p));
       else capWords = await TR.toRoman(capWords, job.gemini, p => setPct(i, p));
       writeJson('capwords.json', capWords);
@@ -173,7 +198,7 @@ async function runInner(job, emit, deps = {}) {
   else {
     startWork(); begin(5);
     const clipLen = { '15s': 15, '30s': 30, '45s': 45, '60s': 60, '90s': 90 }[job.clipLength] || 35;
-    const r = await A.findClips(words, { count: job.targetClipsCount || 4, clipLen, gemini: job.gemini, log, userPrompt: (job.aiPrompt || '').trim(), filePath: job.filePath, workDir: work });
+    const r = await A.findClips(words, { hookLines: job.branding?.autoTitle?.lines, count: job.targetClipsCount || 4, clipLen, gemini: job.gemini, log, userPrompt: (job.aiPrompt || '').trim(), filePath: job.filePath, workDir: work });
     clips = r.clips;
     if (!clips.length) throw new Error('Could not find any suitable moments.');
     writeJson('clips.json', clips);
@@ -259,7 +284,8 @@ async function runInner(job, emit, deps = {}) {
     const ass = ASS.build({ words: capWords, clipStart: c.start, clipEnd: c.end, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText });
     const emojis = [...(useEmoji ? EMOJI.plan(capWords === words ? words : words, c.start, c.end, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
       ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur: c.end - c.start })];
-    const { note } = await R.renderClip({ input: job.filePath, start: c.start, end: c.end, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
+    const fx = await planFx(job, capWords, c.start, c.end, i + 1, log);
+    const { note } = await R.renderClip({ quality, fx, input: job.filePath, start: c.start, end: c.end, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
       workDir: path.join(work, `c${n}`), track: tracks[i], emojis, emojiBox, srcAspect: info.width / info.height, fontFamilies, watermark, music, split, fps: Math.round(info.fps || 30) || 30, onProgress: p => setPct(8, (i + p * 0.97) / clips.length) });
     if (note && i === 0) log('FFmpeg', note, 'warn');
     let thumb; try { thumb = await R.thumbnail(out, path.join(work, `t${n}.jpg`)); } catch {}
@@ -296,7 +322,9 @@ async function runShortsInner(job, emit, deps = {}) {
   const meta = readJson('meta.json') || { steps: {} };
   const saveMeta = () => writeJson('meta.json', meta);
   const N = files.length;
-  const [Wd, Ht] = R.ASPECT['9:16'];
+  normalizeJob(job);
+  const quality = +job.quality || 1080;
+  const [Wd, Ht] = R.dimsFor('9:16', quality);
   const ratio = '9:16';
   const pct = new Array(9).fill(0);
   let wantTrackAny = false;
@@ -389,7 +417,7 @@ async function runShortsInner(job, emit, deps = {}) {
     if (meta.steps[i] && cachedCap) { restore(i); capFlat = cachedCap; continue; }
     startWork(); begin(i);
     try {
-      if (!gOk) throw new Error('needs AI Boost (add an API key in Settings)');
+      if (label === 'translate' && !gOk) throw new Error('needs AI Boost (add an API key in Settings)');
       if (label === 'translate') capFlat = await TR.translate(capFlat, job.captions.translateTo, job.gemini, p => setPct(i, p));
       else capFlat = await TR.toRoman(capFlat, job.gemini, p => setPct(i, p));
       writeJson('capwords_s.json', capFlat);
@@ -415,7 +443,7 @@ async function runShortsInner(job, emit, deps = {}) {
     clips = files.map((x, i) => ({ start: 0, end: infos[i].duration, title: names[i], hookText: names[i], viralityScore: 0, reason: '', category: 'Storytelling', _o: offs[i] }));
     const tl = clips.map((c, i) => ({ ...c, start: c._o, end: c._o + infos[i].duration }));
     let eng = 'local';
-    try { eng = await A.writeTitles(tl, merged, job.gemini, (m, k) => log('Titles', m, k)); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('Titles', `Title writing failed: ${String(e.message).slice(0, 100)}`, 'warn'); }
+    try { eng = await A.writeTitles(tl, merged, job.gemini, (m, k) => log('Titles', m, k), job.branding?.autoTitle?.lines); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('Titles', `Title writing failed: ${String(e.message).slice(0, 100)}`, 'warn'); }
     clips.forEach((c, i) => { const t = tl[i]; c.title = t.title; c.hookText = t.hookText || t.title; c.description = t.description || ''; c.hashtags = t.hashtags || []; c.category = t.category || c.category; c.sourceName = names[i]; delete c._o; });
     // a clip with no speech keeps its file name as the title
     clips.forEach((c, i) => { if (!words[i].length) { c.title = names[i]; c.hookText = names[i]; } });
@@ -489,7 +517,8 @@ async function runShortsInner(job, emit, deps = {}) {
     const ass = ASS.build({ words: cw, clipStart: 0, clipEnd: dur, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText });
     const emojis = [...(useEmoji ? EMOJI.plan(words[i], 0, dur, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
       ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur })];
-    const { note } = await R.renderClip({ input: files[i].path, start: 0, end: dur, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
+    const fx = await planFx(job, cw, 0, dur, i + 1, log);
+    const { note } = await R.renderClip({ quality, fx, input: files[i].path, start: 0, end: dur, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
       workDir: path.join(work, `c${n}`), track: tracks[i], emojis, emojiBox, srcAspect: infos[i].width / infos[i].height, hasAudio: infos[i].hasAudio, fontFamilies, watermark, music, onProgress: p => setPct(8, (i + p * 0.97) / N) });
     if (note && i === 0) log('FFmpeg', note, 'warn');
     let thumb; try { thumb = await R.thumbnail(out, path.join(work, `t${n}.jpg`)); } catch {}

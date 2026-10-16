@@ -294,7 +294,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
         <p className="text-xs text-neutral-400 mt-0.5">Choose how you want to begin. Captions, styling and preview come next.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 w-full mt-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mt-3">
         {([
           { id: 'long' as const, Icon: Clapperboard, title: 'Clips from a long video', text: 'Let AI find the best moments and cut them into short clips.', points: ['Automatic moment finding', 'Smart captions', 'Face-tracking reframe'], badge: 'Popular' },
           { id: 'short' as const, Icon: Scissors, title: 'Edit already cut clips', text: 'Add captions and styling to clips you have already made.', points: ['Your edit stays untouched', 'Captions and style only', 'Up to 30 clips at once'] },

@@ -88,8 +88,8 @@ const ROUTES = [
   { name: 'tv', args: ['--extractor-args', 'youtube:player_client=tv'] },
   { name: 'ios', args: ['--extractor-args', 'youtube:player_client=ios'] },
 ];
-const SLOW_BPS = 250 * 1024;                       // below this for ~9 s = throttled
-const FAST_ARGS = ['-N', '8', '--http-chunk-size', '10M', '--retries', '10', '--fragment-retries', '10', '--socket-timeout', '20', '--throttled-rate', '100K'];
+const SLOW_BPS = 80 * 1024;                        // below this for ~15 s = really throttled (a merely slow connection is left alone)
+const FAST_ARGS = ['-N', '4', '--http-chunk-size', '10M', '--retries', '15', '--fragment-retries', '15', '--retry-sleep', '2', '--socket-timeout', '60'];
 
 async function download(url, dir, onProgress) {
   url = String(url || '').trim();
@@ -101,17 +101,26 @@ async function download(url, dir, onProgress) {
   const ff = P.resolveBin('ffmpeg');
   const fmt = 'bv*[height<=1080]+ba/b[height<=1080]/b';
   let lastErr = '';
-  for (let r = 0; r < ROUTES.length; r++) {
-    onProgress({ phase: 'prepare', percent: 0, text: r === 0 ? 'Reading video info…' : 'Slow connection to YouTube — trying a faster route…' });
+  const NET = /Unable to download|getaddrinfo|Temporary failure|timed out|Network|Connection (reset|aborted)|Read timed out|IncompleteRead|HTTP Error 5\d\d|EOF occurred/i;
+  // Routes 0..n-1 may be abandoned when throttled. The last pass (default route, patient) never gives up because of speed.
+  const passes = [...ROUTES.map((rt, i) => ({ rt, canSwitch: i < ROUTES.length - 1 })), { rt: ROUTES[0], canSwitch: false, last: true }];
+  for (let r = 0; r < passes.length; r++) {
+    const { rt, canSwitch, last } = passes[r];
+    onProgress({ phase: 'prepare', percent: 0, text: r === 0 ? 'Reading video info…' : (last ? 'Continuing the download…' : 'Slow connection to YouTube — trying another route…') });
     if (cancelled) throw new Error('Cancelled');
-    const grand = await probeSize(bin, url, fmt, ROUTES[r].args);
+    const grand = await probeSize(bin, url, fmt, rt.args);
     if (cancelled) throw new Error('Cancelled');
-    const res = await attempt(bin, url, dir, fmt, ff, ROUTES[r], grand, onProgress, r < ROUTES.length - 1);
+    let res;
+    for (let t = 0; t < 3; t++) {                               // brief network hiccups: retry the same route (the partial file is resumed)
+      res = await attempt(bin, url, dir, fmt, ff, rt, grand, onProgress, canSwitch);
+      if (res.ok || res.cancelled || cancelled || res.slow || !NET.test(res.error || '')) break;
+      onProgress({ phase: 'prepare', percent: 0, text: 'Connection dropped — reconnecting…' });
+      await new Promise(ok => setTimeout(ok, 2500));
+    }
     if (res.ok) return res.value;
     if (res.cancelled || cancelled) throw new Error('Cancelled');
-    lastErr = res.error || lastErr;
-    if (!res.slow && r > 0) break;                  // a real error on a fallback route: stop
-    if (!res.slow && /Private video|Sign in|unavailable|Unsupported URL/i.test(lastErr)) break;
+    lastErr = res.slow ? lastErr : (res.error || lastErr);
+    if (!res.slow && /Private video|Sign in|unavailable|Unsupported URL/i.test(res.error || '') && r === 0) break;
   }
   throw new Error(friendly(lastErr));
 }
@@ -140,7 +149,7 @@ function attempt(bin, url, dir, fmt, ff, route, grand, onProgress, canSwitch) {
         if (!tStart) tStart = now;
         if (speed != null) ema = ema ? ema * 0.7 + speed * 0.3 : speed;
         // throttled? (slow for 9 s in a row while a lot is still left) -> switch route and resume
-        if (canSwitch && ema && ema < SLOW_BPS && total - overall > 8 * 1024 * 1024 && now - tStart > 4000) { if (!slowSince) slowSince = now; if (now - slowSince > 9000) { slowFlag = true; killTree(p); return; } }
+        if (canSwitch && ema && ema < SLOW_BPS && total - overall > 8 * 1024 * 1024 && now - tStart > 4000) { if (!slowSince) slowSince = now; if (now - slowSince > 15000) { slowFlag = true; killTree(p); return; } }
         else slowSince = 0;
         if (now - lastEmit < 120 && status !== 'finished') return;
         lastEmit = now;

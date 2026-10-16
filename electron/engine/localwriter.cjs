@@ -92,6 +92,7 @@ function write(text) {
   }
   if (hook.split(' ').length < 8) hook += ' and why it matters';
   hook = hook.split(' ').slice(0, 12).join(' ');
+  if (!/[?!]$/.test(hook) && seed % 2 === 0) hook = pick([`Why does nobody talk about ${topic}?`, `Did you know this about ${topic}?`, `Is this why ${topic} never works?`], seed + 3);
 
   // description: what the clip says, in natural words
   const leadS = stmt ? stmt.s : best;

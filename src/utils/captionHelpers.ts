@@ -253,22 +253,30 @@ export const POPULAR_CAPTION_PRESETS: PresetStyleMeta[] = [
   }
 ];
 
-// ---- Auto Hook: always two lines, size chosen from the text (mirrors electron/engine/hook.cjs) ----
-export function hookTwoLines(text: string): string[] {
+// ---- Auto Hook: 1, 2 or 3 lines chosen by the user (mirrors electron/engine/hook.cjs) ----
+const HOOK_MAXW: Record<number, number> = { 1: 5, 2: 10, 3: 14 };
+export function hookLines(text: string, n: number = 2): string[] {
+  const N = n === 1 || n === 3 ? n : 2;
   const raw = String(text || '').replace(/\\n/g, '\n');
-  if (/\n/.test(raw)) { const p = raw.split(/\n+/).map(x => x.trim()).filter(Boolean); if (p.length === 2) return p; }
-  let words = raw.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).slice(0, 8);
-  if (words.length < 2) words = ['WATCH', 'THIS'];
-  let best = 1, bs = 1e9;
-  for (let i = 1; i < words.length; i++) {
-    const a = words.slice(0, i).join(' ').length, b = words.slice(i).join(' ').length;
-    const sc = Math.max(a, b) * 10 + Math.abs(a - b);
-    if (sc < bs) { bs = sc; best = i; }
-  }
-  return [words.slice(0, best).join(' '), words.slice(best).join(' ')];
+  let words: string[];
+  if (/\n/.test(raw)) { const p = raw.split(/\n+/).map(x => x.trim()).filter(Boolean); if (p.length === N) return p; words = p.join(' ').split(' ').filter(Boolean); }
+  else words = raw.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  words = words.slice(0, HOOK_MAXW[N]);
+  if (words.length < N) words = ['WATCH', 'THIS', 'NOW'].slice(0, Math.max(N, 2));
+  if (N === 1) return [words.join(' ')];
+  const len = (i: number, j: number) => words.slice(i, j).join(' ').length;
+  const W = words.length;
+  let best: { sc: number; cuts: number[] } | null = null;
+  if (N === 2) { for (let i = 1; i < W; i++) { const m = Math.max(len(0, i), len(i, W)), d = Math.abs(len(0, i) - len(i, W)); if (!best || m * 10 + d < best.sc) best = { sc: m * 10 + d, cuts: [i] }; } }
+  else { for (let i = 1; i < W - 1; i++) for (let j = i + 1; j < W; j++) { const a = len(0, i), b = len(i, j), c = len(j, W), m = Math.max(a, b, c), d = m - Math.min(a, b, c); if (!best || m * 10 + d < best.sc) best = { sc: m * 10 + d, cuts: [i, j] }; } }
+  const cuts = [0, ...(best ? best.cuts : [Math.ceil(W / 2)]), W];
+  return cuts.slice(1).map((c, i) => words.slice(cuts[i], c).join(' '));
 }
-/** font size in px for a screen that is `screenW` px wide (1080 = the real video width) */
-export function hookFontPx(lines: string[], screenW: number): number {
+export const hookTwoLines = (text: string): string[] => hookLines(text, 2);
+/** font size in px for a screen that is `screenW` px wide (1080 = the real video width). userSize = the size the user chose. */
+export function hookFontPx(lines: string[], screenW: number, userSize?: number): number {
   const maxLen = Math.max(4, ...lines.map(l => l.length));
+  const fit = (1080 * 0.92) / (maxLen * 0.64);
+  if (userSize && userSize > 0) return Math.max(24, Math.min(userSize, fit)) * screenW / 1080;
   return Math.max(52, Math.min(124, (1080 * 0.88) / (maxLen * 0.64))) * screenW / 1080;
 }

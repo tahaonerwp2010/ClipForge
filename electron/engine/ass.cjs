@@ -67,8 +67,8 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
     const fin = (ai === 'fade' || ai === 'slide-up') ? 320 : 0, fout = ao === 'fade' ? 350 : 0;
     if (fin || fout) fx += `\\fad(${fin},${fout})`;
     if (ao === 'shrink') fx += `\\t(${Math.max(0, ms - 300)},${ms},\\fscx10\\fscy10\\alpha&HFF&)`;
-    const hk = HK.hookTwoLines(title).split('\n');
-    const hs = HK.hookFontPx(hk.join('\n'), W);
+    const hk = HK.hookLines(title, '', at.lines).split('\n');
+    const hs = HK.hookFontPx(hk.join('\n'), W, at.size);
     L.push(`Dialogue: 2,${ts(0)},${ts(tShow)},Title,,0,0,0,,${place}{\\fs${hs}}${fx ? '{' + fx + '}' : ''}${hk.map(l => esc(l.toUpperCase())).join('\\N')}`);
   }
   if (branding.showHookTitle && branding.hookTitle)

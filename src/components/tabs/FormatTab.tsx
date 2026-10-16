@@ -510,25 +510,26 @@ export const FormatTab: React.FC<FormatTabProps> = ({
           <span className="text-[11px] text-neutral-500">Spoken language is detected automatically</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          {['As spoken', 'Hinglish', 'English', 'Other language...'].map((langItem) => (
-            <button
-              key={langItem}
-              type="button"
-              onClick={() => onLanguageChange(langItem)}
-              className={`px-3 py-1 rounded-full text-xs transition-colors cursor-pointer ${
-                language === langItem || (language === 'auto' && langItem === 'As spoken')
-                  ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] font-bold'
-                  : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white'
-              }`}
-            >
-              {langItem}
-            </button>
-          ))}
-        </div>
+        {(() => {
+          const OTHER: [string, string][] = [['ur', 'Urdu'], ['hi', 'Hindi'], ['ar', 'Arabic'], ['bn', 'Bengali'], ['pa', 'Punjabi'], ['es', 'Spanish'], ['fr', 'French'], ['de', 'German'], ['pt', 'Portuguese'], ['it', 'Italian'], ['tr', 'Turkish'], ['ru', 'Russian'], ['id', 'Indonesian'], ['ja', 'Japanese'], ['ko', 'Korean'], ['zh', 'Chinese'], ['fa', 'Persian'], ['ta', 'Tamil'], ['te', 'Telugu'], ['nl', 'Dutch'], ['pl', 'Polish']];
+          const cur = ['auto', 'As spoken', 'Hinglish', 'hinglish', 'English', 'en'].includes(language) ? (language === 'Hinglish' ? 'hinglish' : language === 'English' ? 'en' : language === 'As spoken' ? 'auto' : language) : 'other';
+          const chip = (active: boolean) => `px-3 py-1 rounded-full text-xs transition-colors cursor-pointer ${active ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] font-bold' : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white'}`;
+          return (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button type="button" onClick={() => onLanguageChange('auto')} className={chip(cur === 'auto')}>As spoken</button>
+              <button type="button" onClick={() => onLanguageChange('hinglish')} className={chip(cur === 'hinglish')}>Hinglish</button>
+              <button type="button" onClick={() => onLanguageChange('en')} className={chip(cur === 'en')}>English</button>
+              <select value={cur === 'other' ? language : ''} onChange={(e) => e.target.value && onLanguageChange(e.target.value)}
+                className={`${chip(cur === 'other')} appearance-none pr-6`}>
+                <option value="">Other language…</option>
+                {OTHER.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+              </select>
+            </div>
+          );
+        })()}
 
         <p className="text-[11px] text-neutral-400 leading-relaxed pt-1">
-          Captions in whichever language the video is spoken in.
+          Hinglish = Hindi/Urdu speech written in English letters (Roman). Other languages are written in their own script.
           The spoken language is detected from the first 30 seconds — that is all the model reads. If the video changes language part-way through, set it by hand above.
         </p>
       </section>
