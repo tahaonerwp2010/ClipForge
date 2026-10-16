@@ -1,3 +1,4 @@
+import { LicenseService } from '../../services/licenseService';
 import React, { useState } from 'react';
 import { 
   OuterCanvasRatio, 
@@ -375,7 +376,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
 
             {/* Mode D: Custom */}
             <div
-              onClick={() => onFramingChange({ ...framing, mode: 'custom-scale' })}
+              onClick={() => { if (framing.mode !== 'custom-scale' && !LicenseService.guard()) return; onFramingChange({ ...framing, mode: 'custom-scale' }); }}
               className={`p-3 rounded-xl border cursor-pointer transition-all ${
                 framing.mode === 'custom-scale'
                   ? 'bg-[#0e1b15] border-[#3f9a5a] ring-1 ring-[#3f9a5a]/40'

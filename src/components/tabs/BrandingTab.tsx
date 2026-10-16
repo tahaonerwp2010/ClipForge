@@ -1,3 +1,4 @@
+import { LicenseService } from '../../services/licenseService';
 import React, { useEffect, useRef, useState } from 'react';
 import { BrandingConfig } from '../../types/clipper';
 import { 
@@ -191,6 +192,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
   };
 
   const handleToggleAutoTitle = () => {
+    if (!isAutoTitleOn && !LicenseService.guard()) return;
     onBrandingChange({
       ...branding,
       autoTitle: {

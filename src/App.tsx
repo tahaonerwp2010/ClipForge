@@ -39,6 +39,7 @@ import { ConfirmDialog, ModelRequiredDialog } from './components/Dialogs';
 import { BuyProModal, OwnerLogin, OwnerPanel } from './components/ProOwner';
 import { LicenseService, useLicense } from './services/licenseService';
 import { X } from 'lucide-react';
+import { PRO_ENFORCED } from './config/proConfig';
 import { SoftwareManager } from './services/softwareManager';
 import { PipelineRunner } from './services/pipelineRunner';
 
@@ -55,7 +56,6 @@ export default function App() {
   const projectsLoaded = useRef(false);
   // Pro licence + owner access
   const lic = useLicense();
-  const [buyOpen, setBuyOpen] = useState(false);
   const [ownerLoginOpen, setOwnerLoginOpen] = useState(false);
   const [cmsOpen, setCmsOpen] = useState(false);
   const versionTaps = useRef<number[]>([]);
@@ -420,8 +420,9 @@ export default function App() {
           projectsCount={projects.length}
           busy={queue.length > 0 || projects.some(p => p.status === 'Processing')}
           pro={lic.pro}
+          showBuy={PRO_ENFORCED}
           owner={!!lic.ownerPw}
-          onBuyPro={() => setBuyOpen(true)}
+          onBuyPro={() => LicenseService.openBuy()}
           onVersionTap={onVersionTap}
           onOpenCms={() => setCmsOpen(true)}
         />
@@ -696,7 +697,7 @@ export default function App() {
         mainDims={selectedVideo?.split?.mainDims}
       />
 
-      {buyOpen && !lic.pro && <BuyProModal onClose={() => setBuyOpen(false)} />}
+      {lic.buyOpen && !lic.pro && <BuyProModal onClose={() => LicenseService.closeBuy()} />}
       {ownerLoginOpen && <OwnerLogin onClose={() => setOwnerLoginOpen(false)} onOk={() => { setOwnerLoginOpen(false); showToast('Owner access on'); }} />}
       {cmsOpen && lic.ownerPw && <OwnerPanel onClose={() => setCmsOpen(false)} />}
       <ConfirmDialog

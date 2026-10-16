@@ -15,3 +15,13 @@ export const CONTACTS = {
   whatsapp: { label: 'WhatsApp', handle: '+92 3XX XXXXXXX', url: 'https://wa.me/923XXXXXXXXX' },
   instagram: { label: 'Instagram', handle: '@your_instagram', url: 'https://www.instagram.com/your_instagram/' },
 };
+
+// Pro switch. false = everyone can use everything and no Buy Pro button is shown (the system only collects PC ids).
+// Set to true when the paid launch starts: the features below then need Pro.
+export const PRO_ENFORCED = false;
+export const PRO_FEATURES: Record<string, string> = {
+  split: 'Split screen (dual video)',
+  customFormat: 'Custom format',
+  emojiCaptions: 'Emoji captions',
+  autoHook: 'Auto Hook',
+};

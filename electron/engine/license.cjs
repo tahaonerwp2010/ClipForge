@@ -8,7 +8,7 @@ const P = require('./paths.cjs');
 
 let cfg = {};
 try { cfg = require('./license-config.json'); } catch {}
-const URL_ = String(process.env.CF_SUPABASE_URL || cfg.supabaseUrl || '').replace(/\/+$/, '');
+const URL_ = String(process.env.CF_SUPABASE_URL || cfg.supabaseUrl || '').trim().replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
 const KEY = String(process.env.CF_SUPABASE_KEY || cfg.anonKey || '');
 const configured = () => !!(URL_ && KEY);
 const CACHE_DAYS = 30;                                  // how long "pro" is trusted while offline
@@ -50,10 +50,12 @@ async function rpc(name, body) {
 }
 
 // Is this PC pro? Asks Supabase; when offline, a recent "pro" answer is still trusted for a while.
+let registered = false;
 async function status() {
   const id = deviceId(), c = readCache();
   if (!configured()) return { id, pro: false, configured: false, online: false };
   try {
+    if (!registered) { await rpc('cf_register', { p_id: id }); registered = true; }   // every PC that opens ClipForge is stored (starts as free)
     const pro = (await rpc('cf_get_pro', { p_id: id })) === true;
     writeCache({ pro, checkedAt: Date.now(), id });
     return { id, pro, configured: true, online: true };

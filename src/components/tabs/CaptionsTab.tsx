@@ -1,3 +1,4 @@
+import { LicenseService } from '../../services/licenseService';
 import React, { useState } from 'react';
 import { CaptionConfig } from '../../types/clipper';
 import { 
@@ -140,11 +141,11 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
                     return (
                       <div
                         key={preset.id}
-                        onClick={() => onCaptionsChange({
+                        onClick={() => { if (preset.id === 'capcut-emoji' && !LicenseService.guard()) return; onCaptionsChange({
                           ...captions,
                           style: preset.id,
                           highlightColor: preset.highlight
-                        })}
+                        }); }}
                         className={`p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
                           isSelected
                             ? 'bg-[#101d17] border-[#3f9a5a] ring-1 ring-[#3f9a5a]/50 shadow-md shadow-[#3f9a5a]/10'
