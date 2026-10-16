@@ -278,6 +278,14 @@ ipcMain.handle('pick-folder', async () => {
 const projectsFile = () => path.join(app.getPath('userData'), 'projects.json');
 ipcMain.handle('projects-load', async () => { try { return JSON.parse(fs.readFileSync(projectsFile(), 'utf8')); } catch { return []; } });
 ipcMain.handle('projects-save', async (e, list) => { try { const f = projectsFile(); fs.writeFileSync(f + '.tmp', JSON.stringify(list)); fs.renameSync(f + '.tmp', f); return true; } catch { return false; } });
+// ---- Pro licence (Supabase) ----
+const LIC = require('./engine/license.cjs');
+ipcMain.handle('license-status', async () => LIC.status());
+ipcMain.handle('license-register', async () => LIC.register());
+ipcMain.handle('owner-check', async (e, pw) => LIC.owner.check(pw));
+ipcMain.handle('owner-lookup', async (e, a) => LIC.owner.lookup(a.pw, a.id));
+ipcMain.handle('owner-suggest', async (e, a) => LIC.owner.suggest(a.pw, a.q));
+ipcMain.handle('owner-set', async (e, a) => LIC.owner.set(a.pw, a.id, a.pro));
 // ---- Sound effects library ----
 const SFXLIB = require('./engine/sfxlib.cjs');
 ipcMain.handle('sfx-list', async () => { try { await SFXLIB.ensureBuiltin(); } catch {} return SFXLIB.list().map(x => ({ id: x.id, name: x.name, cat: x.cat, auto: x.auto, dur: x.dur, builtin: !!x.builtin, url: require('url').pathToFileURL(x.path).toString() })); });
@@ -432,7 +440,7 @@ ipcMain.handle('update-install', async (e, { filePath }) => {
     shell.showItemInFolder(f); return { ok: true, mode: 'manual' };
   } catch (err) { return { ok: false, error: String(err.message || err) }; }
 });
-ipcMain.handle('open-external', async (e, url) => { if (/^https:\/\/github\.com\//i.test(String(url))) { await shell.openExternal(url); return true; } return false; });
+ipcMain.handle('open-external', async (e, url) => { if (/^https:\/\/(github\.com|discord\.(gg|com)|wa\.me|api\.whatsapp\.com|(www\.)?instagram\.com)\//i.test(String(url))) { await shell.openExternal(url); return true; } return false; });
 
 // Window control handlers for custom titlebar
 ipcMain.on('window-minimize', () => {

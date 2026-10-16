@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Home, Folder, Settings, RotateCw, ArrowUpCircle } from 'lucide-react';
+import { Home, Folder, Settings, RotateCw, ArrowUpCircle, Crown, Database } from 'lucide-react';
 import { UpdateChecker, APP_VERSION } from './UpdateChecker';
 
 export type ActiveNavView = 'home' | 'my_projects' | 'settings' | 'studio' | 'progress' | 'clips';
@@ -9,9 +9,14 @@ interface SidebarProps {
   onSelectView: (view: 'home' | 'my_projects' | 'settings') => void;
   projectsCount?: number;
   busy?: boolean;
+  pro?: boolean;
+  owner?: boolean;
+  onBuyPro?: () => void;
+  onVersionTap?: () => void;
+  onOpenCms?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, projectsCount = 0, busy = false }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, projectsCount = 0, busy = false, pro = false, owner = false, onBuyPro, onVersionTap, onOpenCms }) => {
   const [logoOk, setLogoOk] = useState(true);
   useEffect(() => { setLogoOk(true); }, []);
   const items: { id: 'home' | 'my_projects' | 'settings'; label: string; Icon: React.ElementType; active: boolean; count?: number }[] = [
@@ -45,6 +50,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, proj
       <div className="flex-1" />
 
       <div className="px-3 pb-4 space-y-2">
+        {pro ? (
+          <div className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-[#bef264] bg-[#12201a] border border-[#2a4a35]"><Crown className="w-4 h-4" /><span>Pro unlocked</span></div>
+        ) : (
+          <button type="button" onClick={onBuyPro}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-extrabold text-black bg-[#bef264] hover:bg-[#a3e635] transition-colors cursor-pointer">
+            <Crown className="w-4 h-4" /><span>Buy Pro</span>
+          </button>
+        )}
         <UpdateChecker>
           {(open, checking) => (
             <button type="button" onClick={open} disabled={checking}
@@ -56,7 +69,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, proj
         </UpdateChecker>
         <div className="flex items-center justify-between px-1.5 pt-1 text-[11px] text-neutral-500">
           <span className="flex items-center gap-1.5"><span className={`w-2 h-2 rounded-full ${busy ? 'bg-amber-400 animate-pulse' : 'bg-[#bef264]'}`} />{busy ? 'Working' : 'Ready'}</span>
-          <span className="font-mono">v{APP_VERSION}</span>
+          {owner && <button type="button" onClick={onOpenCms} className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#12201a] border border-[#2a4a35] text-[10px] font-bold text-[#bef264] cursor-pointer"><Database className="w-3 h-3" />CMS</button>}
+          <span className="font-mono cursor-default" onClick={onVersionTap}>v{APP_VERSION}</span>
         </div>
       </div>
     </aside>

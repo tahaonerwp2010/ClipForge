@@ -36,6 +36,9 @@ import { ClipsLibrary } from './components/ClipsLibrary';
 import { SettingsView } from './components/SettingsModal';
 import { Check } from 'lucide-react';
 import { ConfirmDialog, ModelRequiredDialog } from './components/Dialogs';
+import { BuyProModal, OwnerLogin, OwnerPanel } from './components/ProOwner';
+import { LicenseService, useLicense } from './services/licenseService';
+import { X } from 'lucide-react';
 import { SoftwareManager } from './services/softwareManager';
 import { PipelineRunner } from './services/pipelineRunner';
 
@@ -50,6 +53,19 @@ export default function App() {
   // Projects State
   const [projects, setProjects] = useState<ProjectItem[]>(INITIAL_PROJECTS);
   const projectsLoaded = useRef(false);
+  // Pro licence + owner access
+  const lic = useLicense();
+  const [buyOpen, setBuyOpen] = useState(false);
+  const [ownerLoginOpen, setOwnerLoginOpen] = useState(false);
+  const [cmsOpen, setCmsOpen] = useState(false);
+  const versionTaps = useRef<number[]>([]);
+  const onVersionTap = () => {
+    if (lic.ownerPw) return;
+    const now = Date.now();
+    versionTaps.current = [...versionTaps.current.filter(t => now - t < 2500), now];
+    if (versionTaps.current.length >= 5) { versionTaps.current = []; setOwnerLoginOpen(true); }
+  };
+  useEffect(() => { LicenseService.refresh(); const t = setInterval(() => LicenseService.refresh(), 600000); return () => clearInterval(t); }, []);
   // Projects are saved to disk and restored on the next start
   useEffect(() => {
     (async () => {
@@ -403,7 +419,18 @@ export default function App() {
           onSelectView={(view) => setActiveView(view)}
           projectsCount={projects.length}
           busy={queue.length > 0 || projects.some(p => p.status === 'Processing')}
+          pro={lic.pro}
+          owner={!!lic.ownerPw}
+          onBuyPro={() => setBuyOpen(true)}
+          onVersionTap={onVersionTap}
+          onOpenCms={() => setCmsOpen(true)}
         />
+        {lic.ownerPw && (
+          <button type="button" onClick={() => { LicenseService.setOwner(null); setCmsOpen(false); }} title="Leave owner access"
+            className="fixed top-1.5 right-5 z-[70] flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/15 hover:bg-red-500/25 border border-red-500/40 text-[10px] font-bold text-red-300 cursor-pointer">
+            <X className="w-3 h-3" />Exit owner
+          </button>
+        )}
 
         {/* VIEW 1: HOME LANDING PAGE */}
         {activeView === 'home' && (
@@ -669,6 +696,9 @@ export default function App() {
         mainDims={selectedVideo?.split?.mainDims}
       />
 
+      {buyOpen && !lic.pro && <BuyProModal onClose={() => setBuyOpen(false)} />}
+      {ownerLoginOpen && <OwnerLogin onClose={() => setOwnerLoginOpen(false)} onOk={() => { setOwnerLoginOpen(false); showToast('Owner access on'); }} />}
+      {cmsOpen && lic.ownerPw && <OwnerPanel onClose={() => setCmsOpen(false)} />}
       <ConfirmDialog
         open={!!pendingDelete}
         danger

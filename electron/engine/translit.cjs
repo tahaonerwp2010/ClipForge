@@ -21,6 +21,9 @@ function devanagari(w) {
   return out.replace(/a$/, (m) => (out.length > 2 ? '' : m));
 }
 const ARB = { 'ا': 'a', 'آ': 'aa', 'أ': 'a', 'إ': 'i', 'ب': 'b', 'پ': 'p', 'ت': 't', 'ٹ': 't', 'ث': 's', 'ج': 'j', 'چ': 'ch', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ڈ': 'd', 'ذ': 'z', 'ر': 'r', 'ڑ': 'r', 'ز': 'z', 'ژ': 'zh', 'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'z', 'ط': 't', 'ظ': 'z', 'ع': 'a', 'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ک': 'k', 'ك': 'k', 'گ': 'g', 'ل': 'l', 'م': 'm', 'ن': 'n', 'ں': 'n', 'و': 'o', 'ؤ': 'o', 'ہ': 'h', 'ھ': 'h', 'ه': 'h', 'ة': 'h', 'ء': '', 'ی': 'i', 'ي': 'i', 'ے': 'e', 'ئ': 'y', 'ى': 'a' };
+const CYR = { 'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'kh','ц':'ts','ч':'ch','ш':'sh','щ':'shch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya','і':'i','ї':'yi','є':'ye','ґ':'g' };
+const BENG = { 'অ':'o','আ':'a','ই':'i','ঈ':'i','উ':'u','ঊ':'u','এ':'e','ঐ':'oi','ও':'o','ঔ':'ou','ক':'k','খ':'kh','গ':'g','ঘ':'gh','চ':'ch','ছ':'chh','জ':'j','ঝ':'jh','ট':'t','ঠ':'th','ড':'d','ঢ':'dh','ণ':'n','ত':'t','থ':'th','দ':'d','ধ':'dh','ন':'n','প':'p','ফ':'f','ব':'b','ভ':'bh','ম':'m','য':'j','র':'r','ল':'l','শ':'sh','ষ':'sh','স':'s','হ':'h','া':'a','ি':'i','ী':'i','ু':'u','ূ':'u','ে':'e','ৈ':'oi','ো':'o','ৌ':'ou','ং':'ng' };
+const FOLD = { 'ß': 'ss', 'æ': 'ae', 'œ': 'oe', 'ø': 'o', 'đ': 'd', 'ł': 'l', 'ı': 'i', 'ð': 'd', 'þ': 'th' };
 const DIGIT = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
 function toLatin(word) {
   let w = String(word || '');
@@ -29,7 +32,9 @@ function toLatin(word) {
     if (/^\d+$/.test(part)) { out += part.split('').map(d => DIGIT[+d]).join(''); continue; }
     if (/[ऀ-ॿ]/.test(part)) { out += devanagari(part); continue; }
     if (/[؀-ۿ]/.test(part)) { out += [...part].map(c => ARB[c] ?? '').join(''); continue; }
-    out += part.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    if (/[Ѐ-ӿ]/.test(part)) { out += [...part.toLowerCase()].map(c => CYR[c] ?? '').join(''); continue; }
+    if (/[ঀ-৿]/.test(part)) { out += [...part].map(c => BENG[c] ?? '').join(''); continue; }
+    out += part.toLowerCase().replace(/[ßæœøđłıðþ]/g, c => FOLD[c]).normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
   return out.toUpperCase().replace(/[^A-Z']/g, '').replace(/^'+|'+$/g, '');
 }

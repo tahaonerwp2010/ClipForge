@@ -42,6 +42,13 @@ declare global {
       onSfxProgress?: (cb: (d: { done: number; total: number; name?: string }) => void) => () => void;
       projectsLoad?: () => Promise<any[]>;
       projectsSave?: (list: any[]) => Promise<boolean>;
+      licenseStatus?: () => Promise<{ id: string; pro: boolean; configured: boolean; online: boolean }>;
+      licenseRegister?: () => Promise<{ id: string; configured: boolean }>;
+      ownerCheck?: (pw: string) => Promise<{ ok: boolean; error?: string }>;
+      ownerLookup?: (pw: string, id: string) => Promise<{ ok: boolean; exists?: boolean; pro?: boolean; error?: string }>;
+      ownerSuggest?: (pw: string, q: string) => Promise<{ ok: boolean; list: { id: string; pro: boolean }[]; error?: string }>;
+      ownerSet?: (pw: string, id: string, pro: boolean) => Promise<{ ok: boolean; error?: string }>;
+      openExternal?: (url: string) => Promise<boolean>;
       aiTest?: (a: { provider: string; key: string; model: string }) => Promise<{ success: boolean; model?: string; message: string; kind?: string; quotaExhausted?: boolean }>;
       aiPing?: (a: { provider: string; key: string }) => Promise<{ state: string; message: string }>;
       aiListModels?: (a: { provider: string; key: string }) => Promise<{ ok: boolean; models: { id: string; label: string; vision?: boolean }[] }>;
