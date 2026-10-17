@@ -15,7 +15,8 @@ jobs:
         include:
           - { os: windows-latest, name: windows, flag: --win, plat: win32, extra: '--config.win.signAndEditExecutable=true' }
           - { os: ubuntu-22.04,   name: linux,   flag: --linux, plat: linux, extra: '' }
-          - { os: macos-latest,   name: mac-arm, flag: --mac, plat: darwin, extra: '' }
+          - { os: macos-latest,   name: mac-arm, flag: --mac --arm64, plat: darwin, extra: '', farch: arm64 }
+          - { os: macos-15-intel, name: mac-intel, flag: --mac --x64, plat: darwin, extra: '', farch: x64 }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -52,12 +53,12 @@ jobs:
           ls -la ../../binaries
 
       - name: macOS tools
-        if: matrix.name == 'mac-arm'
+        if: startsWith(matrix.name, 'mac')
         run: |
           brew install cmake
           mkdir -p binaries tmp && cd tmp
           for t in ffmpeg ffprobe; do
-            curl -fL --retry 4 -o $t.zip "https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/$t.zip" \
+            curl -fL --retry 4 -o $t.zip "https://ffmpeg.martin-riedl.de/redirect/latest/macos/${{ matrix.farch }}/release/$t.zip" \
               || curl -fL --retry 4 -o $t.zip "https://evermeet.cx/ffmpeg/getrelease/$( [ $t = ffprobe ] && echo ffprobe/ )zip"
             unzip -o $t.zip -d ../binaries
           done
