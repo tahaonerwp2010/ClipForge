@@ -16,7 +16,7 @@ jobs:
           - { os: windows-latest, name: windows, flag: --win, plat: win32, extra: '--config.win.signAndEditExecutable=true' }
           - { os: ubuntu-22.04,   name: linux,   flag: --linux, plat: linux, extra: '' }
           - { os: macos-latest,   name: mac-arm, flag: --mac --arm64, plat: darwin, extra: '', farch: arm64 }
-          - { os: macos-15-intel, name: mac-intel, flag: --mac --x64, plat: darwin, extra: '', farch: x64 }
+          - { os: macos-15-intel, name: mac-intel, flag: --mac --x64, plat: darwin, extra: '', farch: amd64 }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
