@@ -90,8 +90,8 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, onClos
   );
 
   return (
-    <div className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl h-[92vh] bg-[#060b09] border border-[#172820] rounded-2xl flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-0 md:p-4">
+      <div className="w-full max-w-5xl h-full md:h-[92vh] bg-[#060b09] border border-[#172820] md:rounded-2xl flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-[#13211a]">
           <div className="text-sm font-black text-white uppercase tracking-wider">Edit clip <span className="text-[#8fd0a4] normal-case font-semibold ml-2 truncate">{clip.title}</span></div>
           <button onClick={onClose} disabled={saving} className="text-neutral-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
@@ -99,8 +99,8 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, onClos
         {state === 'loading' && <div className="flex-1 flex items-center justify-center text-neutral-400 text-sm gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Preparing preview…</div>}
         {state === 'error' && <div className="flex-1 flex flex-col items-center justify-center gap-3 text-rose-300 text-sm p-8 text-center"><p>{err}</p><button onClick={onClose} className="px-4 py-2 rounded-lg bg-[#12201a] text-white cursor-pointer">Close</button></div>}
         {state === 'ready' && (
-          <div className="flex-1 flex overflow-hidden">
-            <div className="w-[380px] shrink-0 flex items-center justify-center p-4 border-r border-[#13211a] overflow-hidden">
+          <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
+            <div className="w-full md:w-[380px] shrink-0 flex items-center justify-center p-2 md:p-4 border-b md:border-b-0 md:border-r border-[#13211a] overflow-hidden">
               <PhonePreview
                 videoUrl={url} canvasRatio={'9:16' as any} framing={base.current.framing} captions={captions} grading={base.current.grading} branding={branding}
                 words={clip.words || []} currentTime={t} duration={dur} isPlaying={playing} onTimeUpdate={setT} onDurationChange={setDur} onTogglePlay={() => setPlaying(p => !p)}
@@ -108,7 +108,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, onClos
                 clipTitle={hookText} split={undefined as any} onSplitChange={() => {}}
               />
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 md:overflow-y-auto p-3 md:p-4 space-y-4">
               <CaptionsTab captions={captions} onCaptionsChange={setCaptions} hideLanguage />
               <section className="p-4 rounded-xl bg-[#0b1410] border border-[#172820] space-y-3 text-xs">
                 <h3 className="text-xs font-black text-white uppercase tracking-wider">Hook</h3>

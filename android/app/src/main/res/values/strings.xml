@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ClipForge</string>
+    <string name="title_activity_main">ClipForge</string>
+    <string name="package_name">com.clipforge.studio</string>
+    <string name="custom_url_scheme">com.clipforge.studio</string>
+</resources>

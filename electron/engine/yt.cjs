@@ -2,7 +2,9 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
-const { spawn } = require('child_process');
+const { spawn: realSpawn } = require('child_process');
+// Android: yt-dlp runs inside the native side (python is bundled there), so 'spawn' is routed to a bridge that looks like a normal child process.
+const spawn = (cmd, ...r) => (cmd === '__mobile_ytdlp__' && global.__cfMobileSpawn) ? global.__cfMobileSpawn(cmd, ...r) : realSpawn(cmd, ...r);
 const P = require('./paths.cjs');
 
 let cur = null;
@@ -34,6 +36,7 @@ function fetchTo(url, dest, onPct, hops = 0) {
 }
 
 async function ensureYtDlp(onStatus) {
+  if (global.__cfMobileSpawn) { onStatus && onStatus('Preparing downloader…', 0); await global.__cfMobileInitYt(); return '__mobile_ytdlp__'; }
   const have = P.resolveBin('yt-dlp');
   const fresh = have && (Date.now() - fs.statSync(have).mtimeMs < 3 * 86400e3 || have.indexOf(path.join(P.userDataDir(), 'bin')) !== 0);   // bundled copies are left alone; downloaded ones are refreshed every 3 days
   if (fresh) return have;
@@ -98,7 +101,7 @@ async function download(url, dir, onProgress) {
   cancelled = false;
   const bin = await ensureYtDlp((m, p) => { if (!cancelled) onProgress({ phase: 'prepare', percent: p, text: m }); });
   if (cancelled) throw new Error('Cancelled');
-  const ff = P.resolveBin('ffmpeg');
+  const ff = global.__cfMobileSpawn ? null : P.resolveBin('ffmpeg');
   const fmt = 'bv*[height<=1080]+ba/b[height<=1080]/b';
   let lastErr = '';
   const NET = /Unable to download|getaddrinfo|Temporary failure|timed out|Network|Connection (reset|aborted)|Read timed out|IncompleteRead|HTTP Error 5\d\d|EOF occurred/i;

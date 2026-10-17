@@ -1,4 +1,5 @@
 import { LicenseService } from '../services/licenseService';
+import { fileUrl as toFileUrl } from '../utils/fileUrl';
 import React, { useState, useRef, useEffect } from 'react';
 import { VideoSource, SplitConfig, Rect01 } from '../types/clipper';
 import { FacecamEditor } from './FacecamEditor';
@@ -137,7 +138,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       if (r.error === 'Cancelled') { setYtState('idle'); setYtProg(null); return; }
       setYtState('error'); setYtError(r.error || 'Download failed.'); return;
     }
-    const fileUrl = 'file:///' + r.path.replace(/\\/g, '/').split('/').map((seg, i) => i === 0 ? seg : encodeURIComponent(seg)).join('/');
+    const fileUrl = toFileUrl(r.path);
     let duration = 0, w = 0, h = 0;
     try { const pr = await window.electronAPI.probeVideo?.(r.path); if (pr) { duration = pr.duration; w = pr.width; h = pr.height; } } catch { /* ignore */ }
     const meta = await readVideoMeta(fileUrl);

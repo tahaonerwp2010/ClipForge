@@ -413,7 +413,7 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#07100c] text-neutral-100 font-sans overflow-hidden select-none">
+    <div className="h-[100dvh] w-screen flex flex-col pt-[env(safe-area-inset-top)] pb-[calc(52px+env(safe-area-inset-bottom))] md:pb-0 md:pt-0 bg-[#07100c] text-neutral-100 font-sans overflow-hidden select-none">
       {/* Main body: sidebar + content */}
       <div className="flex-1 relative flex overflow-hidden">
         <Sidebar
@@ -438,7 +438,7 @@ export default function App() {
         {/* VIEW 1: HOME LANDING PAGE */}
         {activeView === 'home' && (
           <main className="flex-1 overflow-y-auto">
-            <div className="flex flex-col xl:flex-row gap-5 px-6 py-6 max-w-[1280px] mx-auto">
+            <div className="flex flex-col xl:flex-row gap-5 px-3 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto">
               <div className="flex-1 min-w-0">
                 <LandingStartPage
                   selectedVideo={selectedVideo}
@@ -591,7 +591,7 @@ export default function App() {
             />
 
             {/* SINGLE UNIFIED SCROLL CONTAINER (Both settings & mobile preview scroll together!) */}
-            <div className="flex-1 overflow-y-auto px-8 py-4">
+            <div className="flex-1 overflow-y-auto px-3 md:px-8 py-4">
               <div className="flex flex-col lg:flex-row items-start justify-between gap-8 max-w-6xl mx-auto pb-16">
                 
                 {/* Left Column: Tab Settings */}

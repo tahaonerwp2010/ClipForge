@@ -18,6 +18,7 @@ const readCache = () => { try { return JSON.parse(fs.readFileSync(file(), 'utf8'
 const writeCache = (o) => { try { fs.writeFileSync(file(), JSON.stringify({ ...readCache(), ...o })); } catch {} };
 
 function machineGuid() {
+  if (process.env.CF_MACHINE_ID) return process.env.CF_MACHINE_ID;      // Android: ANDROID_ID survives reinstalling the app
   try {
     if (process.platform === 'win32') {
       const o = execFileSync('reg', ['query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid'], { windowsHide: true, timeout: 5000 }).toString();

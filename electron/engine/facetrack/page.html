@@ -15,7 +15,7 @@ window.runDetect = async function (model, urls) {
   const cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
   let prev = null, out = [];
   for (const u of urls) {
-    const img = new Image(); img.src = u;
+    const img = new Image(); if (/^http/i.test(u)) img.crossOrigin = 'anonymous'; img.src = u;
     try { await img.decode(); } catch (e) { out.push({ faces: [] }); continue; }
     const W = img.naturalWidth, H = img.naturalHeight;
     cv.width = W; cv.height = H; cx.drawImage(img, 0, 0);

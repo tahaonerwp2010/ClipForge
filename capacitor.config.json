@@ -1,0 +1,11 @@
+{
+  "appId": "com.clipforge.studio",
+  "appName": "ClipForge",
+  "webDir": "dist",
+  "server": { "androidScheme": "http", "cleartext": true },
+  "android": { "allowMixedContent": true, "backgroundColor": "#07100c" },
+  "plugins": {
+    "CapacitorNodeJS": { "nodeDir": "nodejs", "startMode": "auto" },
+    "SplashScreen": { "launchShowDuration": 0 }
+  }
+}

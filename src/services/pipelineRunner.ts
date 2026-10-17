@@ -1,3 +1,4 @@
+import { fileUrl } from '../utils/fileUrl';
 import { 
   ProjectItem, 
   PipelineStep, 
@@ -113,7 +114,7 @@ export class PipelineRunner {
         gemini: AiService.forJob()
       });
 
-      const toUrl = (p: string) => 'file:///' + p.replace(/\\/g, '/').split('/').map((seg, i) => i === 0 ? seg : encodeURIComponent(seg)).join('/');
+      const toUrl = (p: string) => fileUrl(p);
       const clips: GeneratedClip[] = result.clips.map((c: any, i: number) => ({
         id: `${project.id}-clip-${i + 1}`,
         sourceId: project.id,

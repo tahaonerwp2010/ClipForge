@@ -19,7 +19,7 @@ async function check(repoIn, current) {
     const rel = await getJson(`https://api.github.com/repos/${repo}/releases/latest`);
     if (rel && rel.tag_name) {
       const assets = rel.assets || [];
-      const plat = process.platform === 'win32' ? { os: /windows|win/i, ext: /\.exe$/i } : process.platform === 'darwin' ? { os: /mac|darwin|osx/i, ext: /\.dmg$/i } : { os: /linux/i, ext: /\.appimage$/i };
+      const plat = process.platform === 'android' ? { os: /android/i, ext: /\.apk$/i } : process.platform === 'win32' ? { os: /windows|win/i, ext: /\.exe$/i } : process.platform === 'darwin' ? { os: /mac|darwin|osx/i, ext: /\.dmg$/i } : { os: /linux/i, ext: /\.appimage$/i };
       const archRe = process.arch === 'arm64' ? /arm64/i : /x64|x86_64/i;
       const asset = (process.platform === 'win32' && assets.find(a => /setup.*\.exe$/i.test(a.name))) || (process.platform === 'darwin' && assets.find(a => plat.ext.test(a.name) && archRe.test(a.name))) || assets.find(a => plat.ext.test(a.name)) || assets.find(a => plat.os.test(a.name)) || null;
       return { ok: true, repo, current, latest: String(rel.tag_name).replace(/^v/i, ''), available: newer(rel.tag_name, current), notes: String(rel.body || '').slice(0, 800), pageUrl: rel.html_url, asset: asset ? { name: asset.name, url: asset.browser_download_url, size: asset.size } : null, source: 'release' };

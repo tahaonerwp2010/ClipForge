@@ -26,7 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, proj
     { id: 'settings', label: 'Settings', Icon: Settings, active: activeView === 'settings' },
   ];
   return (
-    <aside className="w-[220px] shrink-0 h-full flex flex-col bg-[#060d0a] border-r border-[#122219] select-none">
+    <><aside className="hidden md:flex w-[220px] shrink-0 h-full flex-col bg-[#060d0a] border-r border-[#122219] select-none">
       <div className="flex items-center gap-3 px-5 pt-6 pb-7">
         {logoOk
           ? <img src="./logo.png" alt="ClipForge" className="w-10 h-10 rounded-xl" onError={() => setLogoOk(false)} draggable={false} />
@@ -75,5 +75,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, proj
         </div>
       </div>
     </aside>
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-[60] flex bg-[#060d0a] border-t border-[#122219] pb-[env(safe-area-inset-bottom)]">
+      {items.map(({ id, label, Icon, active, count }) => (
+        <button key={id} type="button" onClick={() => onSelectView(id)} className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-semibold relative ${active ? 'text-[#bef264]' : 'text-neutral-400'}`}>
+          <Icon className="w-5 h-5" />{label}
+          {count ? <span className="absolute top-1 right-[30%] text-[9px] min-w-[14px] text-center rounded-full bg-[#1f4a31] text-[#bef264] px-1">{count}</span> : null}
+        </button>
+      ))}
+      <UpdateChecker>{(open, checking) => (
+        <button type="button" onClick={open} disabled={checking} className="flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-semibold text-neutral-400">
+          <ArrowUpCircle className="w-5 h-5" />{checking ? '…' : 'Update'}
+        </button>)}
+      </UpdateChecker>
+    </nav></>
   );
 };

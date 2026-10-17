@@ -22,7 +22,7 @@ async function session() {
   sess = await ort.InferenceSession.create(p, { executionProviders: ['cpu'], intraOpNumThreads: 2, graphOptimizationLevel: 'all' });
   sessPath = p; return sess;
 }
-function modelReady() { try { return fs.statSync(modelPath()).size >= MIN_SIZE; } catch { return false; } }
+function modelReady() { if (global.__cfMobile) return false; try { return fs.statSync(modelPath()).size >= MIN_SIZE; } catch { return false; } }
 
 function chunksOf(words, dur) {
   const out = []; let a = 0;

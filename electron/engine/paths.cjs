@@ -7,6 +7,9 @@ const ctx = { userData: path.join(os.homedir(), '.clipforge'), appPath: process.
 function configure(o) { Object.assign(ctx, o); }
 
 function resolveBin(name) {
+  if (ctx.nativeLibDir) {                       // Android: programs ship as lib<name>.so inside the app's native library folder (the only place Android lets an app run them from)
+    const p = path.join(ctx.nativeLibDir, `lib${name}.so`); return fs.existsSync(p) ? p : null;
+  }
   const exe = process.platform === 'win32' ? `${name}.exe` : name;
   const dirs = [
     path.join(ctx.userData, 'bin'),

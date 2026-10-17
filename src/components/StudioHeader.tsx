@@ -42,7 +42,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   ];
 
   return (
-    <div className="w-full bg-transparent px-8 pt-4 pb-2 select-none shrink-0 space-y-3">
+    <div className="w-full bg-transparent px-3 md:px-8 pt-4 pb-2 select-none shrink-0 space-y-3">
       {/* 1. FLOATING HEADER ROW: [Back] button + video title */}
       <div className="flex items-center gap-3">
         <button
