@@ -25,6 +25,7 @@ interface BrandingTabProps {
   branding: BrandingConfig;
   onBrandingChange: (branding: BrandingConfig) => void;
   clipTitle?: string;
+  only?: 'hook' | 'banner' | 'watermark' | 'music';   // show a single block (used by the clip editor)
 }
 
 const AVAILABLE_FONTS = [
@@ -165,8 +166,10 @@ const MusicSection: React.FC<{ branding: BrandingConfig; onBrandingChange: (b: B
 export const BrandingTab: React.FC<BrandingTabProps> = ({
   branding,
   onBrandingChange,
-  clipTitle = 'AI CODING REVOLUTION 2026'
+  clipTitle = 'AI CODING REVOLUTION 2026',
+  only
 }) => {
+  const show = (k: string) => !only || only === k;
   const isAutoTitleOn = branding.autoTitle?.enabled ?? false;
   const [open, setOpen] = useState<Record<string, boolean>>({});          // every settings block starts collapsed
   const OpenBtn = ({ id }: { id: string }) => (
@@ -225,6 +228,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
   return (
     <div className="space-y-6 text-neutral-200 text-xs">
       
+      {show('hook') && (<>
       {/* ========================================================
           1. AI AUTO TITLE (AI DECIDES TITLE FOR EACH CLIP)
       ======================================================== */}
@@ -255,6 +259,11 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
             <p className="text-[11px] text-neutral-400 leading-relaxed max-w-xl">
               AI writes a short two-line hook for each clip and sizes it to fit. Customize font, colour and position, or drag it directly in the phone preview.
             </p>
+            {!only && (
+              <div className="mt-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/40 text-[11px] font-bold text-amber-200 leading-relaxed">
+                ⚠ An AI key is required for Auto Hook. Add it in Settings → AI Boost, otherwise Auto Hook will not work.
+              </div>
+            )}
           </div>
 
           {/* Master ON / OFF Switch */}
@@ -434,7 +443,9 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
           </div>
         )}
       </section>
+      </>)}
 
+      {show('banner') && (<>
       {/* ========================================================
           2. TOP HOOK TITLE BANNER
       ======================================================== */}
@@ -620,7 +631,9 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
           </div>
         )}
       </section>
+      </>)}
 
+      {show('watermark') && (<>
       {/* ========================================================
           3. CREATOR WATERMARK / HANDLE
       ======================================================== */}
@@ -812,8 +825,9 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
           </div>
         )}
       </section>
+      </>)}
 
-      <MusicSection branding={branding} onBrandingChange={onBrandingChange} />
+      {show('music') && <MusicSection branding={branding} onBrandingChange={onBrandingChange} />}
     </div>
   );
 };

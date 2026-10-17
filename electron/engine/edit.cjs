@@ -26,7 +26,8 @@ async function ctxFor(st, i, ov = {}, work) {
   const shorts = st.kind === 'shorts';
   const captions = { ...(st.captions || {}), ...(ov.captions || {}) };
   const hookText0 = ov.hookText != null ? ov.hookText : (st.clips[i].hookText || st.clips[i].title);
-  const branding = { ...(st.branding || {}), autoTitle: { ...((st.branding || {}).autoTitle || {}), ...(ov.autoTitle || {}), title: hookText0 } };
+  const ovb = ov.branding || {};
+  const branding = { ...(st.branding || {}), ...ovb, autoTitle: { ...((st.branding || {}).autoTitle || {}), ...(ovb.autoTitle || {}), ...(ov.autoTitle || {}), title: hookText0 } };
   const quality = +st.quality || 1080;
   const [Wd, Ht] = R.dimsFor(st.ratio || '9:16', quality);
   const c = st.clips[i];

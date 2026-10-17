@@ -373,8 +373,8 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
                       </div>
 
                       <div className="flex items-center justify-between pt-1 border-t border-[#13211a] text-[11px] text-neutral-400">
-                        <button onClick={() => onSelectClipToEdit(clip)} className="hover:text-[#bef264] flex items-center gap-1 cursor-pointer transition-colors" title="Edit captions and hook">
-                          <span>✎ Edit</span>
+                        <button onClick={() => onSelectClipToEdit(clip)} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#bef264] hover:bg-[#a3e635] text-black text-xs font-extrabold shadow-md shadow-[#bef264]/20 cursor-pointer transition-colors" title="Edit captions, hook, banner, watermark and music">
+                          <span>✎ Edit clip</span>
                         </button>
 
                         <button

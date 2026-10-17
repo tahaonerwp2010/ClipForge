@@ -1,5 +1,6 @@
 // whisper.cpp CLI wrapper -> word-level timestamps
 const fs = require('fs');
+const PUNCT_ONLY = (() => { try { return new RegExp('^[\\p{P}\\p{S}]+$', 'u'); } catch { return /^[!-\/:-@\[-`{-~\u00A1-\u00BF\u2000-\u206F\u20A0-\u20CF\u2190-\u2BFF\u3000-\u303F\uFF00-\uFF0F]+$/; } })();   // Android's Node has no Unicode property tables
 const os = require('os');
 const path = require('path');
 const P = require('./paths.cjs');
@@ -60,7 +61,7 @@ function parseWhisperJson(json) {
     if (!text) continue;
     const start = seg.offsets.from / 1000, end = seg.offsets.to / 1000;
     const startsNewWord = /^\s/.test(raw) || words.length === 0;
-    const onlyPunct = /^[\p{P}\p{S}]+$/u.test(text);
+    const onlyPunct = PUNCT_ONLY.test(text);
     if ((onlyPunct || !startsNewWord) && words.length) {
       const last = words[words.length - 1];
       last.word += text; last.end = Math.max(last.end, +end.toFixed(2));

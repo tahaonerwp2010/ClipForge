@@ -16,7 +16,10 @@ function pngForChar(ch) {
   const noVs = cps.filter(c => c !== 'fe0f');
   return fileFor(noVs.join('-')) || fileFor(cps.join('-')) || (noVs.length > 1 ? fileFor(noVs[0]) : null);
 }
-const EMOJI_RE = /\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*/gu;
+const EMOJI_RE = (() => {                         // built at run time: Android's Node has no Unicode property tables, and a literal \p{..} would stop the whole file from loading
+  try { return new RegExp('\\p{Extended_Pictographic}(?:\\uFE0F|\\u200D\\p{Extended_Pictographic}|[\\u{1F3FB}-\\u{1F3FF}])*', 'gu'); }
+  catch { return new RegExp('[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{2B50}\\u{2B55}\\u{1F1E6}-\\u{1F1FF}](?:\\uFE0F|\\u200D[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]|[\\u{1F3FB}-\\u{1F3FF}])*', 'gu'); }
+})();
 function splitTitle(text) {                       // -> { text without emoji, emojis:[char] }
   const emojis = String(text).match(EMOJI_RE) || [];
   return { text: String(text).replace(EMOJI_RE, '').replace(/️/g, '').replace(/\s+/g, ' ').trim(), emojis };

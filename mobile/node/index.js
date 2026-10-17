@@ -11,10 +11,11 @@ const { PassThrough } = require('stream');
 const { channel, getDataPath } = require('bridge');
 
 global.__cfMobile = true;
+try { 'é'.normalize('NFD'); } catch { String.prototype.normalize = function () { return String(this); }; }   // this Node build has no ICU
 const PROJECT = __dirname;
 const handlers = new Map(), onHandlers = new Map();
 const pending = new Map();
-let rid = 0, PORT = 0, CTX = null;
+let rid = 0, PORT = 0, CTX = null, STARTUP_ERROR = '';
 const logf = (...a) => { try { channel.send('log', a.map(String).join(' ')); } catch {} };
 process.on('uncaughtException', e => logf('uncaught', e && e.stack || e));
 process.on('unhandledRejection', e => logf('unhandled', e && e.stack || e));
@@ -157,7 +158,7 @@ global.__cfMobileSpawn = (cmd, args) => {
 channel.addListener('ipc', async (m) => {
   const { id, ch, args = [] } = m;
   const h = handlers.get(ch);
-  if (!h) return channel.send('ipc-result', { id, ok: false, error: 'No handler for ' + ch });
+  if (!h) return channel.send('ipc-result', { id, ok: false, error: STARTUP_ERROR ? 'The engine could not start: ' + STARTUP_ERROR : 'No handler for ' + ch });
   const long = LONG.has(ch); if (long) setBusy(1);
   try { const v = await h({ sender: mainWin && mainWin.webContents }, ...args); channel.send('ipc-result', { id, ok: true, value: deep(v === undefined ? null : v) }); }
   catch (e) { channel.send('ipc-result', { id, ok: false, error: String(e && e.message || e) }); }
@@ -177,7 +178,8 @@ channel.addListener('init', async (c) => {
   // clips go to the app's public folder (visible in the file manager); the gallery copy is made with "Open folder"
   try { fs.mkdirSync(path.join(c.extDir, 'ClipForge'), { recursive: true }); } catch {}
   await startServer();
-  try { require(path.join(PROJECT, 'electron', 'main.cjs')); } catch (e) { logf('main failed', e && e.stack || e); }
+  try { require(path.join(PROJECT, 'electron', 'main.cjs')); }
+  catch (e) { logf('main failed', e && e.stack || e); STARTUP_ERROR = String(e && e.message || e).slice(0, 300); }
   channel.send('ready', { port: PORT, handlers: [...handlers.keys()].length });
 });
 channel.send('boot');

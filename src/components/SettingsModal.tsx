@@ -275,7 +275,7 @@ const ModelsTab: React.FC = () => {
     <div className="space-y-3">
       <p className="text-xs text-neutral-400">Pick the speech model used to transcribe your videos. Small is the best balance for most computers. Stars show how well each model understands each language (approximate). For the most exact caption timing, also download Caption sync.</p>
       {error && <div className="text-xs rounded-lg px-3 py-2 border bg-red-500/10 border-red-500/30 text-red-200">{error}</div>}
-      {[...models.filter(m => m.kind !== 'aligner'), ...models.filter(m => m.kind === 'aligner')].map(m => {
+      {[...models.filter(m => m.kind !== 'aligner'), ...(IS_MOBILE ? [] : models.filter(m => m.kind === 'aligner'))].map(m => {
         const isAl = m.kind === 'aligner';
         const have = m.status === 'downloaded' || m.status === 'active';
         const downloading = m.status === 'downloading';
@@ -395,14 +395,15 @@ const SystemTab: React.FC = () => {
   );
 };
 
+const IS_MOBILE = !!(window as any).electronAPI?.isMobile;
 export const SettingsView: React.FC = () => {
   const [tab, setTab] = useState<Tab>('ai');
   return (
     <div className="flex-1 flex flex-col h-full bg-[#0a130f] text-neutral-200 overflow-y-auto">
-      <div className="px-8 pt-6 border-b border-[#182a22] bg-[#0c1611] shrink-0">
+      <div className="px-4 md:px-8 pt-6 border-b border-[#182a22] bg-[#0c1611] shrink-0">
         <h1 className="text-xl font-display font-bold text-white tracking-tight">Settings</h1>
-        <div className="flex gap-1 mt-4">
-          {TABS.map(t => (
+        <div className="flex gap-1 mt-4 overflow-x-auto">
+          {TABS.filter(t => !IS_MOBILE || (t.id !== 'folders' && t.id !== 'system')).map(t => (
             <button key={t.id} type="button" onClick={() => setTab(t.id)}
               className={`px-4 py-2.5 text-xs font-bold flex items-center gap-2 border-b-2 cursor-pointer transition-colors ${tab === t.id ? 'border-[#3f9a5a] text-[#8fd0a4]' : 'border-transparent text-neutral-400 hover:text-white'}`}>
               {t.icon}{t.label}
@@ -410,7 +411,7 @@ export const SettingsView: React.FC = () => {
           ))}
         </div>
       </div>
-      <div className="p-8 max-w-3xl">
+      <div className="p-4 md:p-8 max-w-3xl">
         {tab === 'ai' && <AiTab />}
         {tab === 'models' && <ModelsTab />}
         {tab === 'folders' && <FoldersTab />}
