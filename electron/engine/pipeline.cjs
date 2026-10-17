@@ -18,9 +18,10 @@ const FX = require('./fx.cjs');
 const SFX = require('./sfxlib.cjs');
 
 // The UI sends labels ('Hinglish', 'English', 'As spoken') or a language code; whisper only understands codes.
+const HINGLISH_PROMPT = 'Haan toh dosto, aaj hum baat karenge ek bohot important cheez ke baare mein. Matlab, ye kaafi interesting hai, you know, bilkul simple hai.';
 function normalizeJob(job) {
   const raw = String(job.language || 'auto').trim(), k = raw.toLowerCase();
-  if (k === 'hinglish') { job.language = 'hi'; if (job.captions && job.captions.enabled) job.captions = { ...job.captions, romanScript: true }; }
+  if (k === 'hinglish') { job.language = 'hi'; job.hinglish = true; if (job.captions && job.captions.enabled) job.captions = { ...job.captions, romanScript: true }; }
   else if (k === 'english') job.language = 'en';
   else if (/^[a-z]{2,3}$/.test(k)) job.language = k;
   else job.language = 'auto';
@@ -31,7 +32,6 @@ async function planFx(job, words, s, e, seed, log) {
   const o = job.grading && job.grading.fx;
   if (!o || !o.enabled) return undefined;
   try {
-    if (o.sfx !== false) await SFX.ensureBuiltin();
     const f = FX.plan(words, s, e, o, seed);
     if (f && f.events) log('FFmpeg', `Auto effects: ${f.events} moment${f.events === 1 ? '' : 's'}`);
     return f;
@@ -160,7 +160,7 @@ async function runInner(job, emit, deps = {}) {
   else {
     startWork(); begin(2);
     log('Whisper', `Transcribing with model "${job.modelId}" on CPU. This is the slowest step.`);
-    words = await W.transcribe(wav, { modelId: job.modelId, language: job.language || 'auto', workDir: work,
+    words = await W.transcribe(wav, { prompt: job.hinglish ? HINGLISH_PROMPT : '', modelId: job.modelId, language: job.language || 'auto', workDir: work,
       duration: info.duration, chunkSec: +process.env.CF_CHUNK_SEC || 300, slice: R.sliceAudio, onProgress: p => setPct(2, p) });
     if (!words.length) throw new Error('No speech detected in this video.');
     try { words = SYNC.refineWords(words, wav); log('Whisper', 'Word timings aligned to the audio', 'success'); } catch {}
@@ -297,6 +297,8 @@ async function runInner(job, emit, deps = {}) {
   end(8, `${result.length} clips → ${outDir}`);
   pushProgress(true);
   log('System', `Done in ${((Date.now() - t0) / 1000 / 60).toFixed(1)} min. Saved to ${outDir}`, 'success');
+  try { require('./edit.cjs').saveState(outDir, { kind: 'long', input: job.filePath, ratio, quality, info: { width: info.width, height: info.height, fps: info.fps, hasAudio: info.hasAudio !== false },
+    clips: clips.map(c => ({ start: c.start, end: c.end, title: c.title, hookText: c.hookText })), capWords, words, tracks, framing: job.framing, grading: job.grading, branding: job.branding, captions: job.captions, split }); } catch {}
   try { fs.rmSync(work, { recursive: true, force: true }); } catch {}
   return { clips: result, outDir, durationSec: info.duration };
 }
@@ -395,7 +397,7 @@ async function runShortsInner(job, emit, deps = {}) {
       let w = [];
       try {
         const wd = f(`wk${i}`); fs.mkdirSync(wd, { recursive: true });
-        w = await W.transcribe(wavs[i], { modelId: job.modelId, language: job.language || 'auto', workDir: wd, duration: infos[i].duration, chunkSec: 300, slice: R.sliceAudio, onProgress: p => setPct(2, (i + p) / N) });
+        w = await W.transcribe(wavs[i], { prompt: job.hinglish ? HINGLISH_PROMPT : '', modelId: job.modelId, language: job.language || 'auto', workDir: wd, duration: infos[i].duration, chunkSec: 300, slice: R.sliceAudio, onProgress: p => setPct(2, (i + p) / N) });
         try { w = SYNC.refineWords(w, wavs[i]); } catch {}
         w = await syncWords(w, wavs[i], log, checkCancel);
       } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('Whisper', `Clip ${i + 1}: ${String(e.message).slice(0, 120)}`, 'warn'); w = []; }
@@ -530,6 +532,8 @@ async function runShortsInner(job, emit, deps = {}) {
   end(8, `${result.length} clips → ${outDir}`);
   pushProgress(true);
   log('System', `Done in ${((Date.now() - t0) / 1000 / 60).toFixed(1)} min. Saved to ${outDir}`, 'success');
+  try { require('./edit.cjs').saveState(outDir, { kind: 'shorts', files: files.map(x => x.path), ratio, quality, infos: infos.map(x => ({ width: x.width, height: x.height, fps: x.fps, hasAudio: x.hasAudio, duration: x.duration })),
+    clips: clips.map(c => ({ start: 0, end: c.end, title: c.title, hookText: c.hookText })), capWords, words, tracks, framing: job.framing, grading: job.grading, branding: job.branding, captions: job.captions }); } catch {}
   try { fs.rmSync(work, { recursive: true, force: true }); } catch {}
   return { clips: result, outDir, durationSec: infos.reduce((a, b) => a + b.duration, 0) };
 }

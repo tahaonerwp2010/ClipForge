@@ -52,7 +52,8 @@ function localRoman(words) {
 
 // 1:1 transliteration of every word (Urdu / Hindi / Arabic script -> Roman letters). Timings stay untouched.
 async function toRoman(words, g, onProgress) {
-  if (!G.ready(g)) return localRoman(words);
+  if (!words.some(w => /[\u0600-\u06FF\u0900-\u097F]/.test(String(w.word)))) return words.map(w => ({ ...w }));   // already Roman letters: nothing to convert
+  if (!G.ready(g)) return localRoman(words).map((w, i) => (String(w.word || '').trim() ? w : { ...words[i] }));
   const out = words.map(w => ({ ...w })), B = 80;
   for (let i = 0; i < words.length; i += B) {
     const part = words.slice(i, i + B).map(w => w.word);
@@ -65,7 +66,7 @@ ${JSON.stringify(part)}`;
     else localRoman(words.slice(i, i + B)).forEach((x, j) => { out[i + j].word = x.word; });
     onProgress && onProgress(Math.min(1, (i + B) / words.length));
   }
-  return out;
+  return out.map((w, i) => (String(w.word || '').trim() ? w : { ...words[i] }));   // never leave a caption word empty
 }
 
 // Sentence-level translation; the translated words are spread over the same time span, weighted by word length.

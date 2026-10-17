@@ -33,4 +33,8 @@ const emojiDir = () => {
   const c = [path.join(ctx.appPath, 'assets', 'emoji'), ctx.resourcesPath && path.join(ctx.resourcesPath, 'emoji'), path.join(__dirname, '..', '..', 'assets', 'emoji')].filter(Boolean);
   return c.find(fs.existsSync) || null;
 };
-module.exports = { setModelsDir, defaultModelsDir, userDataDir, emojiDir, configure, resolveBin, binOrPath, modelsDir, modelFile, workRoot, fontsDir };
+const sfxDir = () => {
+  const c = [path.join(ctx.appPath, 'assets', 'sfx'), ctx.resourcesPath && path.join(ctx.resourcesPath, 'sfx'), path.join(__dirname, '..', '..', 'assets', 'sfx')].filter(Boolean);
+  return c.find(d => fs.existsSync(path.join(d, 'manifest.json'))) || null;
+};
+module.exports = { sfxDir, setModelsDir, defaultModelsDir, userDataDir, emojiDir, configure, resolveBin, binOrPath, modelsDir, modelFile, workRoot, fontsDir };

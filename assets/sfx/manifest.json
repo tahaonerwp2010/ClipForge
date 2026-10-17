@@ -1,0 +1,780 @@
+[
+ {
+  "file": "vine_boom.mp3",
+  "name": "vine_boom",
+  "roles": [
+   "hit",
+   "funny"
+  ],
+  "dur": 0.87,
+  "gainDb": -9,
+  "natural": 0.79
+ },
+ {
+  "file": "impact.mp3",
+  "name": "impact",
+  "roles": [
+   "hit"
+  ],
+  "dur": 1.36,
+  "gainDb": 4,
+  "natural": 1.28
+ },
+ {
+  "file": "rock_meme_impact.mp3",
+  "name": "rock_meme_impact",
+  "roles": [
+   "hit",
+   "funny"
+  ],
+  "dur": 1.2,
+  "gainDb": -10,
+  "natural": 1.12
+ },
+ {
+  "file": "core_meme.mp3",
+  "name": "core_meme",
+  "roles": [
+   "hit",
+   "funny"
+  ],
+  "dur": 0.4,
+  "gainDb": -10,
+  "natural": 0.32
+ },
+ {
+  "file": "whoosh_impact.mp3",
+  "name": "whoosh_impact",
+  "roles": [
+   "hit",
+   "whoosh"
+  ],
+  "dur": 1.19,
+  "gainDb": -8.2,
+  "natural": 1.11
+ },
+ {
+  "file": "fast_whoosh.mp3",
+  "name": "fast_whoosh",
+  "roles": [
+   "whoosh"
+  ],
+  "dur": 0.99,
+  "gainDb": -2.9,
+  "natural": 0.91
+ },
+ {
+  "file": "fast_whossh.mp3",
+  "name": "fast_whossh",
+  "roles": [
+   "whoosh"
+  ],
+  "dur": 0.27,
+  "gainDb": 4.1,
+  "natural": 0.19
+ },
+ {
+  "file": "whosh_2.mp3",
+  "name": "whosh_2",
+  "roles": [
+   "whoosh"
+  ],
+  "dur": 0.55,
+  "gainDb": -1.1,
+  "natural": 0.47
+ },
+ {
+  "file": "deep_whoosh.mp3",
+  "name": "deep_whoosh",
+  "roles": [
+   "whoosh"
+  ],
+  "dur": 0.76,
+  "gainDb": -0.7,
+  "natural": 0.68
+ },
+ {
+  "file": "slide_whoosh.mp3",
+  "name": "slide_whoosh",
+  "roles": [
+   "whoosh"
+  ],
+  "dur": 0.67,
+  "gainDb": -7.3,
+  "natural": 0.59
+ },
+ {
+  "file": "slide_whoosh_2.mp3",
+  "name": "slide_whoosh_2",
+  "roles": [
+   "whoosh"
+  ],
+  "dur": 0.61,
+  "gainDb": -5.7,
+  "natural": 0.53
+ },
+ {
+  "file": "riser.mp3",
+  "name": "riser",
+  "roles": [
+   "riser"
+  ],
+  "dur": 2.07,
+  "gainDb": -10,
+  "natural": 1.99
+ },
+ {
+  "file": "riser_hook.mp3",
+  "name": "riser_hook",
+  "roles": [
+   "riser"
+  ],
+  "dur": 2.4,
+  "gainDb": -1.2,
+  "natural": 2.42
+ },
+ {
+  "file": "digital_zoom.mp3",
+  "name": "digital_zoom",
+  "roles": [
+   "riser"
+  ],
+  "dur": 2.32,
+  "gainDb": -4.1,
+  "natural": 2.24
+ },
+ {
+  "file": "camera_charge.mp3",
+  "name": "camera_charge",
+  "roles": [
+   "riser",
+   "camera"
+  ],
+  "dur": 1.76,
+  "gainDb": 12,
+  "natural": 1.68
+ },
+ {
+  "file": "remembering_whoosh.mp3",
+  "name": "remembering_whoosh",
+  "roles": [
+   "riser",
+   "whoosh"
+  ],
+  "dur": 1.83,
+  "gainDb": -8.3,
+  "natural": 1.75
+ },
+ {
+  "file": "reverse_playack.mp3",
+  "name": "reverse_playack",
+  "roles": [
+   "riser",
+   "glitch"
+  ],
+  "dur": 1.11,
+  "gainDb": 1.5,
+  "natural": 1.03
+ },
+ {
+  "file": "ui_btutton.mp3",
+  "name": "ui_btutton",
+  "roles": [
+   "pop"
+  ],
+  "dur": 0.57,
+  "gainDb": 5.2,
+  "natural": 0.49
+ },
+ {
+  "file": "ui_menu.mp3",
+  "name": "ui_menu",
+  "roles": [
+   "pop"
+  ],
+  "dur": 0.38,
+  "gainDb": 8.1,
+  "natural": 0.3
+ },
+ {
+  "file": "soft_ui_pop.mp3",
+  "name": "soft_ui_pop",
+  "roles": [
+   "pop"
+  ],
+  "dur": 1.8,
+  "gainDb": 1.7,
+  "natural": 1.94
+ },
+ {
+  "file": "toggle.mp3",
+  "name": "toggle",
+  "roles": [
+   "pop"
+  ],
+  "dur": 0.59,
+  "gainDb": -2.4,
+  "natural": 0.51
+ },
+ {
+  "file": "finger_snap.mp3",
+  "name": "finger_snap",
+  "roles": [
+   "pop"
+  ],
+  "dur": 0.23,
+  "gainDb": 5.5,
+  "natural": 0.15
+ },
+ {
+  "file": "radio_beep.mp3",
+  "name": "radio_beep",
+  "roles": [
+   "pop"
+  ],
+  "dur": 0.27,
+  "gainDb": -8.8,
+  "natural": 0.19
+ },
+ {
+  "file": "key_crank.mp3",
+  "name": "key_crank",
+  "roles": [
+   "pop",
+   "tech"
+  ],
+  "dur": 0.5,
+  "gainDb": 5.7,
+  "natural": 0.42
+ },
+ {
+  "file": "notification.mp3",
+  "name": "notification",
+  "roles": [
+   "pop",
+   "reward"
+  ],
+  "dur": 1.13,
+  "gainDb": -5.3,
+  "natural": 1.05
+ },
+ {
+  "file": "notification_2.mp3",
+  "name": "notification_2",
+  "roles": [
+   "pop",
+   "reward"
+  ],
+  "dur": 0.64,
+  "gainDb": 8.4,
+  "natural": 0.56
+ },
+ {
+  "file": "coin_collect.mp3",
+  "name": "coin_collect",
+  "roles": [
+   "reward"
+  ],
+  "dur": 0.87,
+  "gainDb": 9.2,
+  "natural": 0.79
+ },
+ {
+  "file": "level_up.mp3",
+  "name": "level_up",
+  "roles": [
+   "reward"
+  ],
+  "dur": 0.83,
+  "gainDb": -6.2,
+  "natural": 0.75
+ },
+ {
+  "file": "level_complete.mp3",
+  "name": "level_complete",
+  "roles": [
+   "reward"
+  ],
+  "dur": 1.7,
+  "gainDb": -3.5,
+  "natural": 1.62
+ },
+ {
+  "file": "power_up.mp3",
+  "name": "power_up",
+  "roles": [
+   "reward"
+  ],
+  "dur": 0.73,
+  "gainDb": -4.3,
+  "natural": 0.65
+ },
+ {
+  "file": "right.mp3",
+  "name": "right",
+  "roles": [
+   "reward"
+  ],
+  "dur": 0.64,
+  "gainDb": -5.5,
+  "natural": 0.56
+ },
+ {
+  "file": "mario_mem_right.mp3",
+  "name": "mario_mem_right",
+  "roles": [
+   "funny"
+  ],
+  "dur": 0.97,
+  "gainDb": -5.5,
+  "natural": 0.89
+ },
+ {
+  "file": "bell_meme.mp3",
+  "name": "bell_meme",
+  "roles": [
+   "funny"
+  ],
+  "dur": 1.35,
+  "gainDb": -10,
+  "natural": 1.27
+ },
+ {
+  "file": "glitch.mp3",
+  "name": "glitch",
+  "roles": [
+   "glitch"
+  ],
+  "dur": 1.28,
+  "gainDb": 7.9,
+  "natural": 1.2
+ },
+ {
+  "file": "pixelation_explosion.mp3",
+  "name": "pixelation_explosion",
+  "roles": [
+   "glitch",
+   "hit"
+  ],
+  "dur": 1.43,
+  "gainDb": -1.6,
+  "natural": 1.35
+ },
+ {
+  "file": "digital_bust.mp3",
+  "name": "digital_bust",
+  "roles": [
+   "glitch"
+  ],
+  "dur": 0.78,
+  "gainDb": -0.1,
+  "natural": 0.7
+ },
+ {
+  "file": "beep_scratc.mp3",
+  "name": "beep_scratc",
+  "roles": [
+   "glitch"
+  ],
+  "dur": 0.91,
+  "gainDb": -0.1,
+  "natural": 0.83
+ },
+ {
+  "file": "ui_dissolve.mp3",
+  "name": "ui_dissolve",
+  "roles": [
+   "glitch"
+  ],
+  "dur": 0.55,
+  "gainDb": 6.8,
+  "natural": 0.47
+ },
+ {
+  "file": "data_load.mp3",
+  "name": "data_load",
+  "roles": [
+   "glitch",
+   "tech"
+  ],
+  "dur": 0.86,
+  "gainDb": 5.9,
+  "natural": 0.78
+ },
+ {
+  "file": "digita_loadin.mp3",
+  "name": "digita_loadin",
+  "roles": [
+   "glitch",
+   "tech"
+  ],
+  "dur": 1.21,
+  "gainDb": 9.9,
+  "natural": 1.13
+ },
+ {
+  "file": "film_burn.mp3",
+  "name": "film_burn",
+  "roles": [
+   "glitch",
+   "camera"
+  ],
+  "dur": 0.87,
+  "gainDb": 7.2,
+  "natural": 0.79
+ },
+ {
+  "file": "camera_flash.mp3",
+  "name": "camera_flash",
+  "roles": [
+   "camera"
+  ],
+  "dur": 0.47,
+  "gainDb": -5.6,
+  "natural": 0.39
+ },
+ {
+  "file": "camera_pic_clcik.mp3",
+  "name": "camera_pic_clcik",
+  "roles": [
+   "camera"
+  ],
+  "dur": 0.45,
+  "gainDb": -2.1,
+  "natural": 0.37
+ },
+ {
+  "file": "shot_flash.mp3",
+  "name": "shot_flash",
+  "roles": [
+   "camera"
+  ],
+  "dur": 0.91,
+  "gainDb": -0.3,
+  "natural": 0.83
+ },
+ {
+  "file": "failure.mp3",
+  "name": "failure",
+  "roles": [
+   "fail"
+  ],
+  "dur": 0.77,
+  "gainDb": -7.3,
+  "natural": 0.69
+ },
+ {
+  "file": "ailure_meme.mp3",
+  "name": "ailure_meme",
+  "roles": [
+   "fail"
+  ],
+  "dur": 1.65,
+  "gainDb": -6.2,
+  "natural": 1.57
+ },
+ {
+  "file": "ugh.mp3",
+  "name": "ugh",
+  "roles": [
+   "fail"
+  ],
+  "dur": 1.46,
+  "gainDb": -7.7,
+  "natural": 1.38
+ },
+ {
+  "file": "ugh_meme.mp3",
+  "name": "ugh_meme",
+  "roles": [
+   "fail"
+  ],
+  "dur": 0.37,
+  "gainDb": -9,
+  "natural": 0.29
+ },
+ {
+  "file": "roblox_ugh.mp3",
+  "name": "roblox_ugh",
+  "roles": [
+   "fail"
+  ],
+  "dur": 0.43,
+  "gainDb": -10,
+  "natural": 0.35
+ },
+ {
+  "file": "sad_violin_meme.mp3",
+  "name": "sad_violin_meme",
+  "roles": [
+   "fail"
+  ],
+  "dur": 2.2,
+  "gainDb": -2.8,
+  "natural": 3.99
+ },
+ {
+  "file": "sad_oku_meme.mp3",
+  "name": "sad_oku_meme",
+  "roles": [
+   "fail"
+  ],
+  "dur": 2.2,
+  "gainDb": -6.7,
+  "natural": 3.99
+ },
+ {
+  "file": "good_man_with_heart_broken.mp3",
+  "name": "good_man_with_heart_broken",
+  "roles": [
+   "fail"
+  ],
+  "dur": 2.2,
+  "gainDb": -9.2,
+  "natural": 5.15
+ },
+ {
+  "file": "meme_nope.mp3",
+  "name": "meme_nope",
+  "roles": [
+   "fail"
+  ],
+  "dur": 0.48,
+  "gainDb": -6.6,
+  "natural": 0.4
+ },
+ {
+  "file": "bru_meme.mp3",
+  "name": "bru_meme",
+  "roles": [
+   "fail",
+   "funny"
+  ],
+  "dur": 0.61,
+  "gainDb": -3,
+  "natural": 0.53
+ },
+ {
+  "file": "health_low_beat.mp3",
+  "name": "health_low_beat",
+  "roles": [
+   "fail",
+   "tech"
+  ],
+  "dur": 0.58,
+  "gainDb": -5.4,
+  "natural": 0.5
+ },
+ {
+  "file": "heartbeat.mp3",
+  "name": "heartbeat",
+  "roles": [
+   "fail",
+   "tech"
+  ],
+  "dur": 1.19,
+  "gainDb": -10,
+  "natural": 1.11
+ },
+ {
+  "file": "systaem_alert.mp3",
+  "name": "systaem_alert",
+  "roles": [
+   "fail",
+   "tech"
+  ],
+  "dur": 0.79,
+  "gainDb": -9.1,
+  "natural": 0.71
+ },
+ {
+  "file": "spiderman_meme.mp3",
+  "name": "spiderman_meme",
+  "roles": [
+   "funny"
+  ],
+  "dur": 2.2,
+  "gainDb": -6.2,
+  "natural": 3.45
+ },
+ {
+  "file": "angel_meme.mp3",
+  "name": "angel_meme",
+  "roles": [
+   "funny"
+  ],
+  "dur": 1.98,
+  "gainDb": -3.7,
+  "natural": 1.9
+ },
+ {
+  "file": "huh_cat_meme.mp3",
+  "name": "huh_cat_meme",
+  "roles": [
+   "funny"
+  ],
+  "dur": 0.41,
+  "gainDb": -7.8,
+  "natural": 0.33
+ },
+ {
+  "file": "wat_meme_music.mp3",
+  "name": "wat_meme_music",
+  "roles": [
+   "funny"
+  ],
+  "dur": 1.5,
+  "gainDb": -8.2,
+  "natural": 1.42
+ },
+ {
+  "file": "sus_meme_sound.mp3",
+  "name": "sus_meme_sound",
+  "roles": [
+   "funny"
+  ],
+  "dur": 2.2,
+  "gainDb": -2.2,
+  "natural": 6.13
+ },
+ {
+  "file": "amon_us.mp3",
+  "name": "amon_us",
+  "roles": [
+   "funny"
+  ],
+  "dur": 2.2,
+  "gainDb": -0.9,
+  "natural": 3
+ },
+ {
+  "file": "spone_bob_meme.mp3",
+  "name": "spone_bob_meme",
+  "roles": [
+   "funny"
+  ],
+  "dur": 2.2,
+  "gainDb": -7.7,
+  "natural": 3.33
+ },
+ {
+  "file": "meme_song_guitar.mp3",
+  "name": "meme_song_guitar",
+  "roles": [
+   "funny"
+  ],
+  "dur": 1.7,
+  "gainDb": -4.4,
+  "natural": 1.62
+ },
+ {
+  "file": "hell_n_back.mp3",
+  "name": "hell_n_back",
+  "roles": [
+   "funny"
+  ],
+  "dur": 2.2,
+  "gainDb": -7.3,
+  "natural": 5.08
+ },
+ {
+  "file": "thanlk_you_instrument.mp3",
+  "name": "thanlk_you_instrument",
+  "roles": [
+   "funny"
+  ],
+  "dur": 2.2,
+  "gainDb": 2.3,
+  "natural": 5.22
+ },
+ {
+  "file": "ub_intro_music.mp3",
+  "name": "ub_intro_music",
+  "roles": [
+   "funny"
+  ],
+  "dur": 2.2,
+  "gainDb": -1.2,
+  "natural": 2.86
+ },
+ {
+  "file": "typewriter.mp3",
+  "name": "typewriter",
+  "roles": [
+   "tech"
+  ],
+  "dur": 1.36,
+  "gainDb": 4,
+  "natural": 1.28
+ },
+ {
+  "file": "typin.mp3",
+  "name": "typin",
+  "roles": [
+   "tech"
+  ],
+  "dur": 1.8,
+  "gainDb": 12,
+  "natural": 1.78
+ },
+ {
+  "file": "counter.mp3",
+  "name": "counter",
+  "roles": [
+   "tech"
+  ],
+  "dur": 1.41,
+  "gainDb": 2.6,
+  "natural": 1.33
+ },
+ {
+  "file": "countin.mp3",
+  "name": "countin",
+  "roles": [
+   "tech"
+  ],
+  "dur": 0.7,
+  "gainDb": 12,
+  "natural": 0.62
+ },
+ {
+  "file": "reload.mp3",
+  "name": "reload",
+  "roles": [
+   "tech"
+  ],
+  "dur": 1.34,
+  "gainDb": -0.7,
+  "natural": 1.26
+ },
+ {
+  "file": "un_reload.mp3",
+  "name": "un_reload",
+  "roles": [
+   "tech"
+  ],
+  "dur": 0.7,
+  "gainDb": -0.6,
+  "natural": 0.62
+ },
+ {
+  "file": "gear_cycle.mp3",
+  "name": "gear_cycle",
+  "roles": [
+   "tech"
+  ],
+  "dur": 1.08,
+  "gainDb": -3.3,
+  "natural": 1
+ },
+ {
+  "file": "brushing.mp3",
+  "name": "brushing",
+  "roles": [
+   "tech"
+  ],
+  "dur": 0.87,
+  "gainDb": 7.1,
+  "natural": 0.79
+ }
+]

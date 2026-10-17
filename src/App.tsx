@@ -33,6 +33,7 @@ import { GenerateModal } from './components/GenerateModal';
 import { MyProjectsView } from './components/MyProjectsView';
 import { GenerationProgressView } from './components/GenerationProgressView';
 import { ClipsLibrary } from './components/ClipsLibrary';
+import { ClipEditor } from './components/ClipEditor';
 import { SettingsView } from './components/SettingsModal';
 import { Check } from 'lucide-react';
 import { ConfirmDialog, ModelRequiredDialog } from './components/Dialogs';
@@ -175,6 +176,7 @@ export default function App() {
   const [split, setSplit] = useState<SplitConfig | null>(null);
   const [safeZone, setSafeZone] = useState<SafeZoneGuide>('none');
 
+  const [editClipId, setEditClipId] = useState<string | null>(null);
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
@@ -539,8 +541,8 @@ export default function App() {
               sourceVideoUrl={activeProject.sourceVideoUrl || selectedVideo?.url}
               onBack={() => setActiveView('my_projects')}
               onSelectClipToEdit={(clip) => {
-                showToast(`Loaded clip for fine-tuning: ${clip.title}`);
-                setActiveView('studio');
+                if (!activeProject.outputDir || !clip.outputPath) { showToast('This clip cannot be edited (no rendered file).'); return; }
+                setEditClipId(clip.id);
               }}
               onDeleteClip={(clipId) => {
                 setProjects(prev => prev.map(p => {
@@ -559,6 +561,13 @@ export default function App() {
               grading={grading}
               branding={branding}
             />
+          
+            {editClipId && activeProject && (() => {
+              const cl = getProjectClips(activeProject); const k = cl.findIndex(c => c.id === editClipId); if (k < 0) return null;
+              return <ClipEditor clip={cl[k]} index={k} outDir={activeProject.outputDir || ''} total={cl.length} fallback={{ captions, branding, grading, framing }}
+                onClose={() => setEditClipId(null)}
+                onSaved={(i, r) => { const v = '?v=' + Date.now(); const tid = cl[i]?.id; setProjects(prev => prev.map(p => p.id !== activeProject.id ? p : { ...p, clips: getProjectClips(p).map(c => c.id !== tid ? c : { ...c, outputPath: r.outputPath, thumbnailUrl: r.thumbnailUrl || c.thumbnailUrl, videoUrl: (c.videoUrl || '').split('?')[0] + v }) })); }} />;
+            })()}
           </main>
         )}
 

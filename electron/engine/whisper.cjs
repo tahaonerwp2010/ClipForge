@@ -8,7 +8,7 @@ const { run, checkCancel } = require('./proc.cjs');
 const DTW = { small: 'small', medium: 'medium', 'large-v3-turbo': 'large.v3.turbo' };
 let dtwOk;
 // Chunked + checkpointed: every finished chunk is saved (chunk_N.json) so a paused/cancelled run resumes at the same chunk.
-async function transcribe(wavPath, { modelId = 'small', language = 'auto', workDir, duration = 0, chunkSec = 300, onProgress, slice }) {
+async function transcribe(wavPath, { prompt = '', modelId = 'small', language = 'auto', workDir, duration = 0, chunkSec = 300, onProgress, slice }) {
   const model = P.modelFile(modelId);
   if (!fs.existsSync(model)) throw new Error(`Whisper model "${modelId}" is not downloaded. Settings → Models → Download.`);
   const bin = P.resolveBin('whisper-cli') || P.resolveBin('main');
@@ -27,7 +27,9 @@ async function transcribe(wavPath, { modelId = 'small', language = 'auto', workD
         '-l', language || 'auto', '-pp', '-t', String(Math.max(1, os.cpus().length))];
       // DTW token timestamps = much tighter word timing. Not every whisper-cli build supports it, so fall back step by step.
       const dtw = DTW[modelId];
-      const attempts = dtw && dtwOk !== false ? [[...baseArgs, '-dtw', dtw, '-nfa'], [...baseArgs, '-dtw', dtw], baseArgs] : [baseArgs];
+      let attempts = dtw && dtwOk !== false ? [[...baseArgs, '-dtw', dtw, '-nfa'], [...baseArgs, '-dtw', dtw], baseArgs] : [baseArgs];
+      // A Roman-letter initial prompt makes the model write Hindi/Urdu speech in English letters (Hinglish). If this build rejects the flag, the plain attempts below still run.
+      if (prompt) attempts = [...attempts.map(a => [...a, '--prompt', prompt]), ...attempts];
       let lastErr;
       for (let a = 0; a < attempts.length; a++) {
         try {

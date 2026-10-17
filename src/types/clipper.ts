@@ -52,6 +52,8 @@ export interface AutoFxConfig {
   intensity: 'subtle' | 'balanced' | 'wild';
   zoom: boolean;
   flash: boolean;
+  shake?: boolean;
+  glitch?: boolean;
   sfx: boolean;
   sfxDb: number;
 }

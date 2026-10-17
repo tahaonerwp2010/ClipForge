@@ -1,4 +1,5 @@
 import { LicenseService } from '../../services/licenseService';
+import { hookLines } from '../../utils/captionHelpers';
 import React, { useEffect, useRef, useState } from 'react';
 import { BrandingConfig } from '../../types/clipper';
 import { 
@@ -359,10 +360,17 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                   <span className="w-24 text-[11px] text-neutral-400">Size</span>
                   <button type="button" onClick={() => onBrandingChange({ ...branding, autoTitle: { ...branding.autoTitle, size: branding.autoTitle?.size ? undefined : 90 } })}
                     className={`px-3 py-1 rounded-full text-[11px] cursor-pointer transition-colors ${!branding.autoTitle?.size ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] font-bold' : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white'}`}>Auto</button>
-                  {branding.autoTitle?.size ? (<>
-                    <input type="range" min={40} max={140} value={branding.autoTitle.size} onChange={(e) => onBrandingChange({ ...branding, autoTitle: { ...branding.autoTitle, size: parseInt(e.target.value) } })} className="w-40 h-1.5 bg-[#1d3228] rounded-lg appearance-none accent-[#bef264] cursor-pointer" />
-                    <span className="font-mono text-[11px] text-[#8fd0a4]">{branding.autoTitle.size}</span>
-                  </>) : null}
+                  {branding.autoTitle?.size ? (() => {
+                    const ls = hookLines(branding.autoTitle?.title || clipTitle || 'THE VIRAL TRUTH', branding.autoTitle?.lines || 2);
+                    const maxLen = Math.max(4, ...ls.map(l => l.length));
+                    const fitMax = Math.max(40, Math.min(140, Math.floor((1080 * 0.92) / (maxLen * 0.64))));
+                    const val = Math.min(branding.autoTitle.size as number, fitMax);
+                    return (<>
+                      <input type="range" min={30} max={fitMax} value={val} onChange={(e) => onBrandingChange({ ...branding, autoTitle: { ...branding.autoTitle, size: parseInt(e.target.value) } })} className="w-40 h-1.5 bg-[#1d3228] rounded-lg appearance-none accent-[#bef264] cursor-pointer" />
+                      <span className="font-mono text-[11px] text-[#8fd0a4]">{val}</span>
+                      <span className="text-[10px] text-neutral-500">max {fitMax} for this text · use more lines for a bigger size</span>
+                    </>);
+                  })() : null}
                 </div>
                 <p className="text-[10px] text-neutral-500 leading-relaxed">The AI writes every hook for the number of lines you choose, in the size you choose. It only makes the text smaller when it would not fit on the screen at all.</p>
               </div>

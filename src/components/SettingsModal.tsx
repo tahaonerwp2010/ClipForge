@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Sparkles, Mic, FolderOpen, Cpu, Eye, EyeOff, Download, ShieldCheck, Trash2, Check, Loader2, CheckCircle2, AlertTriangle, RotateCw, Plus, Lock, Music, Play, Square } from 'lucide-react';
+import { Sparkles, Mic, FolderOpen, Cpu, Eye, EyeOff, Download, ShieldCheck, Trash2, Check, Loader2, CheckCircle2, AlertTriangle, RotateCw, Plus, Lock } from 'lucide-react';
 import { SpeechModelItem } from '../types/clipper';
 import { SoftwareManager } from '../services/softwareManager';
 import { AiService, AiConfig, AiProviderCfg, KeyStatus, PROVIDERS, PROVIDER_ORDER } from '../services/aiService';
 
-type Tab = 'ai' | 'models' | 'sounds' | 'folders' | 'system';
+type Tab = 'ai' | 'models' | 'folders' | 'system';
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'ai', label: 'AI Boost', icon: <Sparkles className="w-4 h-4" /> },
   { id: 'models', label: 'Speech Models', icon: <Mic className="w-4 h-4" /> },
-  { id: 'sounds', label: 'Sounds', icon: <Music className="w-4 h-4" /> },
   { id: 'folders', label: 'Folders', icon: <FolderOpen className="w-4 h-4" /> },
   { id: 'system', label: 'System', icon: <Cpu className="w-4 h-4" /> },
 ];
@@ -326,68 +325,6 @@ const ModelsTab: React.FC = () => {
   );
 };
 
-// ---------------- Sounds ----------------
-type SfxItem = { id: string; name: string; cat: string; auto: boolean; dur: number; builtin: boolean; url: string };
-const SFX_CATS = ['whoosh', 'pop', 'impact', 'ding', 'riser', 'glitch', 'meme', 'other'];
-const SoundsTab: React.FC = () => {
-  const api = window.electronAPI;
-  const [items, setItems] = useState<SfxItem[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [prog, setProg] = useState<{ done: number; total: number } | null>(null);
-  const [msg, setMsg] = useState('');
-  const [playing, setPlaying] = useState('');
-  const audioRef = React.useRef<HTMLAudioElement | null>(null);
-  const [confirmClear, setConfirmClear] = useState(false);
-  const load = useCallback(async () => { try { setItems((await api?.sfxList?.()) || []); } catch {} }, [api]);
-  useEffect(() => { load(); const off = api?.onSfxProgress?.(d => setProg(d)); return () => { off?.(); audioRef.current?.pause(); }; }, [load, api]);
-  if (!api?.sfxList) return <p className="text-xs text-neutral-400">The sound library is available in the desktop app.</p>;
-  const doImport = async () => {
-    const folder = await api.pickFolder?.(); if (!folder) return;
-    setBusy(true); setMsg(''); setProg({ done: 0, total: 0 });
-    const r = await api.sfxImport!(folder);
-    setBusy(false); setProg(null);
-    setMsg(r.ok ? `Imported ${r.added} of ${r.total} files${r.failed ? ` (${r.failed} could not be read)` : ''}. Sounds were sorted by listening to them. Fix any wrong category below.` : `Import failed: ${r.error}`);
-    load();
-  };
-  const play = (it: SfxItem) => {
-    audioRef.current?.pause();
-    if (playing === it.id) { setPlaying(''); return; }
-    const a = new Audio(it.url); audioRef.current = a; setPlaying(it.id);
-    a.onended = () => setPlaying(''); a.onerror = () => setPlaying(''); a.play().catch(() => setPlaying(''));
-  };
-  const counts = SFX_CATS.map(c => [c, items.filter(i => i.cat === c).length] as const).filter(x => x[1] > 0);
-  return (
-    <div className="space-y-4">
-      <Card title="Sound effects library" hint="Pick a folder with your sound effects (audio or video files). ClipForge extracts the sound and sorts it by listening, not by file name.">
-        <div className="flex gap-2 items-center flex-wrap">
-          <Btn tone="primary" onClick={doImport}>{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderOpen className="w-3.5 h-3.5" />} Import sound folder</Btn>
-          {items.some(i => !i.builtin) && (confirmClear
-            ? <><span className="text-xs text-neutral-300">Delete all imported sounds?</span><Btn onClick={async () => { await api.sfxClear!(); setConfirmClear(false); load(); }}>Yes, delete</Btn><Btn onClick={() => setConfirmClear(false)}>Cancel</Btn></>
-            : <Btn onClick={() => setConfirmClear(true)}><Trash2 className="w-3.5 h-3.5" /> Clear library</Btn>)}
-        </div>
-        {busy && <p className="text-xs text-neutral-300">Analyzing sounds… {prog && prog.total ? `${prog.done} / ${prog.total}` : ''}</p>}
-        {msg && <p className="text-xs text-[#8fd0a4]">{msg}</p>}
-        {counts.length > 0 && <div className="flex flex-wrap gap-1.5">{counts.map(([c, n]) => <span key={c} className="px-2 py-0.5 rounded-full bg-[#111e18] border border-[#20322a] text-[11px] text-neutral-300">{c} · {n}</span>)}</div>}
-      </Card>
-      <Card title={`Sounds (${items.length})`} hint="Press play to listen. If a sound is in the wrong category, change it here: Auto Effects picks sounds by category.">
-        <div className="space-y-1 max-h-[420px] overflow-y-auto pr-1">
-          {items.map(it => (
-            <div key={it.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-[#09100d] border border-[#182a22]">
-              <button type="button" onClick={() => play(it)} className="w-7 h-7 rounded-md bg-[#111e18] border border-[#20322a] flex items-center justify-center cursor-pointer text-[#8fd0a4]">{playing === it.id ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}</button>
-              <div className="flex-1 min-w-0"><div className="text-xs text-neutral-200 truncate">{it.name}</div><div className="text-[10px] text-neutral-500">{it.dur.toFixed(1)}s{it.builtin ? ' · built-in' : ''}</div></div>
-              <select value={it.cat} onChange={async e => { await api.sfxSetCat!(it.id, e.target.value); load(); }} className="bg-black border border-[#23372e] rounded px-1.5 py-1 text-[11px] text-neutral-200">
-                {SFX_CATS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              {!it.builtin && <button type="button" onClick={async () => { await api.sfxDelete!(it.id); load(); }} className="text-neutral-500 hover:text-red-400 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>}
-            </div>
-          ))}
-          {!items.length && <p className="text-xs text-neutral-500">No sounds yet.</p>}
-        </div>
-      </Card>
-    </div>
-  );
-};
-
 // ---------------- Folders ----------------
 type Folders = { modelsDir: string; clipsDir: string; defaultModelsDir: string; defaultClipsDir: string; ytDir: string; defaultYtDir: string };
 const FoldersTab: React.FC = () => {
@@ -476,7 +413,6 @@ export const SettingsView: React.FC = () => {
       <div className="p-8 max-w-3xl">
         {tab === 'ai' && <AiTab />}
         {tab === 'models' && <ModelsTab />}
-        {tab === 'sounds' && <SoundsTab />}
         {tab === 'folders' && <FoldersTab />}
         {tab === 'system' && <SystemTab />}
       </div>

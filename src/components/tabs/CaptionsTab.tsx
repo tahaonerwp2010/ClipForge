@@ -16,11 +16,13 @@ import { POPULAR_CAPTION_PRESETS } from '../../utils/captionHelpers';
 interface CaptionsTabProps {
   captions: CaptionConfig;
   onCaptionsChange: (captions: CaptionConfig) => void;
+  hideLanguage?: boolean;
 }
 
 export const CaptionsTab: React.FC<CaptionsTabProps> = ({
   captions,
-  onCaptionsChange
+  onCaptionsChange,
+  hideLanguage
 }) => {
   // Independent collapsible category states
   const [openTemplates, setOpenTemplates] = useState(false);
@@ -310,7 +312,7 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
             <p className="text-[10px] text-neutral-500 mt-2">Pick any font for your captions. "Style default" keeps the font that comes with the caption style.</p>
           </section>
 
-<section className="rounded-xl bg-[#0b1410] border border-[#172820] overflow-hidden shadow-md">
+{!hideLanguage && <section className="rounded-xl bg-[#0b1410] border border-[#172820] overflow-hidden shadow-md">
             <button type="button" onClick={() => setOpenLang(!openLang)} className="w-full p-4 flex items-center justify-between cursor-pointer">
               <span className="text-xs font-black uppercase tracking-wider text-white">Language {(captions.translateTo || captions.romanScript) && <span className="ml-2 text-[10px] text-[#8fd0a4]">ON</span>}</span>
               {openLang ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -332,7 +334,7 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
                 <p className="text-[10px] text-neutral-500">Uses AI Boost (Gemini). Without a working API key these are skipped and captions stay as spoken.</p>
               </div>
             )}
-          </section>
+          </section>}
 
 {/* ========================================================
               CATEGORY 2: POSITION & SCALE (Closeable / Collapsible)

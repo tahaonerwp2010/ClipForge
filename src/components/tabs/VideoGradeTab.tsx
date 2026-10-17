@@ -38,7 +38,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
     });
   };
 
-  const fx = { enabled: false, intensity: 'subtle' as const, zoom: true, flash: true, sfx: true, sfxDb: -6, ...(grading.fx || {}) };
+  const fx = { enabled: false, intensity: 'subtle' as const, zoom: true, flash: true, shake: true, glitch: true, sfx: true, sfxDb: -6, ...(grading.fx || {}) };
   const setFx = (patch: Partial<typeof fx>) => onGradingChange({ ...grading, fx: { ...fx, ...patch } });
   const handleSwitchToFillCrop = () => {
     if (!framing || !onFramingChange) return;
@@ -307,6 +307,8 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
           <div className="flex flex-wrap gap-4 text-[11px] text-neutral-300">
             <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.zoom} onChange={e => setFx({ zoom: e.target.checked })} /> Punch-in zoom</label>
             <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.flash} onChange={e => setFx({ flash: e.target.checked })} /> Flash (Balanced / Wild)</label>
+            <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.shake} onChange={e => setFx({ shake: e.target.checked })} /> Camera shake (Balanced / Wild)</label>
+            <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.glitch} onChange={e => setFx({ glitch: e.target.checked })} /> Glitch (Wild)</label>
             <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.sfx} onChange={e => setFx({ sfx: e.target.checked })} /> Sound effects</label>
           </div>
           {fx.sfx && (
@@ -315,7 +317,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
               <input type="range" min={-18} max={0} value={fx.sfxDb} onChange={e => setFx({ sfxDb: parseInt(e.target.value) })} className="w-full h-1.5 bg-[#1d3228] rounded-lg appearance-none accent-[#bef264] cursor-pointer" />
             </div>
           )}
-          <p className="text-[10px] text-neutral-500">Your own sounds live in Settings → Sounds. Effects are applied while rendering (a little extra time) and show up in the finished clip, not in the preview.</p>
+          <p className="text-[10px] text-neutral-500">ClipForge picks from 76 built-in sound effects (whooshes, hits, risers, reward sounds, camera clicks, glitches, memes). Effects are applied while rendering (a little extra time) and show up in the finished clip, not in the preview.</p>
         </>)}
       </section>
     </div>
