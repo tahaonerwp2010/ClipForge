@@ -103,7 +103,7 @@ export const UpdateChecker: React.FC<{ children: (open: () => void, checking: bo
                   </div>
                 )}
                 {installing && <p className="text-[11px] text-[#8fd0a4] flex items-center gap-1.5"><RotateCw className="w-3 h-3 animate-spin" /> Installing the update. ClipForge will close and open again by itself…</p>}
-                {dlPath && !installing && !dlError && <p className="text-[11px] text-[#8fd0a4]">Update downloaded. Open the file to finish updating.</p>}
+                {dlPath && !installing && !dlError && <p className="text-[11px] text-[#8fd0a4]">{(window as any).electronAPI?.isMobile ? 'Update downloaded. The installer opened: tap Install to finish. (If nothing opened, allow ClipForge to install apps and tap Update again.)' : 'Update downloaded. Open the file to finish updating.'}</p>}
                 {dlError && <p className="text-[11px] text-red-300">{dlError}</p>}
               </div>
             )}

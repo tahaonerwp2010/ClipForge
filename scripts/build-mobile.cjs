@@ -15,6 +15,7 @@ fs.writeFileSync(path.join(dist, 'index.html'), html);
 // 2) face detector page (runs in the WebView itself)
 fs.mkdirSync(path.join(dist, 'facetrack'), { recursive: true });
 for (const f of ['page.html', 'face-api.js']) fs.copyFileSync(path.join(root, 'electron/engine/facetrack', f), path.join(dist, 'facetrack', f));
+fs.cpSync(path.join(root, 'electron/engine/facetrack/selfie'), path.join(dist, 'facetrack/selfie'), { recursive: true });   // person cut-out (MediaPipe, Apache-2.0)
 
 // 3) the engine: same files as the desktop app
 const nd = path.join(dist, 'nodejs');

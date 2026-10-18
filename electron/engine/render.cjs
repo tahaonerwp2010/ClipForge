@@ -121,7 +121,7 @@ function layoutInfo(f, W, H, srcAspect) {
   return { fgW, fgH, radius };
 }
 
-function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], emojiBox, srcAspect, maskIdx, watermark, splitArgs, fxZoom = [], fxFlash = [], fxShake = [], fxGlitch = [] }) {
+function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], emojiBox, srcAspect, maskIdx, watermark, splitArgs, fxZoom = [], fxFlash = [], fxShake = [], fxGlitch = [], fxMore = {}, behind = null, hasAssBehind = false }) {
   const f = framing || {}, g = grading || {};
   const mode = f.mode || 'fit-blur';
   let base, note = null;
@@ -153,16 +153,43 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
   if (w) post.push(`colorbalance=rs=${w.toFixed(3)}:bs=${(-w).toFixed(3)}`);
   if (g.vignette) post.push('vignette=PI/5');
   if (g.grain) post.push('noise=alls=8:allf=t');
-  if (hasAss) post.push('ass=captions.ass:fontsdir=fonts');
+  const win = (list, d) => (list || []).map(t => `between(t,${t},${(t + d).toFixed(2)})`).join('+');
+  const mo = fxMore || {};
+  { const m = win(mo.mono, 0.8), c = win(mo.colorpop, 0.9), gl = win(mo.glow, 0.6), ch = win(mo.chroma, 0.2);   // colour looks go under the captions so the text stays clean
+    if (m) post.push(`hue=s=0:enable='${m}'`, `eq=contrast=1.18:enable='${m}'`);
+    if (c) post.push(`eq=saturation=1.75:contrast=1.08:enable='${c}'`);
+    if (gl) post.push(`eq=brightness=0.07:saturation=1.25:gamma=1.08:enable='${gl}'`);
+    if (ch) post.push(`rgbashift=rh=-9:bh=9:rv=2:bv=-2:enable='${ch}'`); }
+  if (hasAss && !(behind && !splitArgs)) post.push('ass=captions.ass:fontsdir=fonts');
   let graph;
-  if ((fxZoom.length || fxShake.length) && !splitArgs) {   // punch-in zoom + camera shake (video only, captions are added after so they stay still)
-    const Z = fxZoom.length ? fxZoom.map(e => `${e.amp}*if(lt(t,${e.t}),0,if(lt(t,${e.t + 0.09}),(t-${e.t})/0.09,exp(-(t-${e.t + 0.09})*6)))`).join('+') : '0';
-    const sh = (f) => fxShake.map(e => `${(e.amp * W * 0.011).toFixed(1)}*${f}*if(lt(t,${e.t}),0,exp(-(t-${e.t})*9))`).join('+') || '0';
-    const room = fxShake.length ? 1.0 : 0;
-    const zz = fxShake.length ? `(${Z})+0.0` : Z;
-    const cx = fxShake.length ? `x='max(0,min(iw-${W},(iw-${W})/2+${sh('sin(t*83)')}))':y='max(0,min(ih-${H},(ih-${H})/2+${sh('cos(t*97)')}))'` : `x='(iw-${W})/2':y='(ih-${H})/2'`;
-    graph = `${base};[v0]scale=w='trunc(${W}*(1+${zz})/2)*2':h='trunc(${H}*(1+${zz})/2)*2':eval=frame:flags=bilinear,crop=${W}:${H}:${cx},setsar=1[vz];[vz]${post.join(',')}[vc]`;
-  } else graph = `${base};[v0]${post.join(',')}[vc]`;
+  const pushL = mo.push || [], pullL = mo.pull || [], pulseL = mo.pulse || [], panL = mo.pan || [], tiltL = mo.tilt || [];
+  let geo = null;   // zoom / push / pull / pulse / shake / whip-pan / tilt as one chain: (in, out) => filter text
+  if ((fxZoom.length || fxShake.length || pushL.length || pullL.length || pulseL.length || panL.length || tiltL.length) && !splitArgs) {
+    const env = (t0, k) => `if(lt(t,${t0}),0,exp(-(t-${t0})*${k}))`;
+    const zt = [];
+    fxZoom.forEach(e => zt.push(`${e.amp}*if(lt(t,${e.t}),0,if(lt(t,${e.t + 0.09}),(t-${e.t})/0.09,exp(-(t-${e.t + 0.09})*6)))`));
+    pushL.forEach(e => zt.push(`if(lt(t,${e.t}),0,if(lt(t,${e.t2}),${e.amp}*(t-${e.t})/${(e.t2 - e.t).toFixed(2)},${e.amp}*exp(-(t-${e.t2})*8)))`));
+    pullL.forEach(e => zt.push(`${e.amp}*${env(e.t, 3.2)}`));
+    pulseL.forEach(e => zt.push(`if(lt(t,${e.t}),0,${e.amp}*0.5*(1-cos((t-${e.t})*20))*exp(-(t-${e.t})*4))`));
+    panL.forEach(e => zt.push(`0.07*${env(e.t, 7)}`));
+    tiltL.forEach(e => zt.push(`0.14*${env(e.t, 5)}`));
+    const Z = zt.join('+') || '0';
+    const sh = (f) => fxShake.map(e => `${(e.amp * W * 0.011).toFixed(1)}*${f}*if(lt(t,${e.t}),0,exp(-(t-${e.t})*9))`);
+    const panX = panL.map(e => `${e.dir}*${(W * 0.03).toFixed(1)}*${env(e.t, 7)}`);
+    const xo = sh('sin(t*83)').concat(panX).join('+') || '0', yo = sh('cos(t*97)').join('+') || '0';
+    const cx = `x='max(0,min(iw-${W},(iw-${W})/2+${xo}))':y='max(0,min(ih-${H},(ih-${H})/2+${yo}))'`;
+    const rot = tiltL.length ? `rotate=a='${tiltL.map(e => `${e.dir}*0.05*${env(e.t, 5)}`).join('+')}':ow=iw:oh=ih:c=black@0,` : '';
+    geo = (i, o) => `[${i}]${rot}scale=w='trunc(${W}*(1+${Z})/2)*2':h='trunc(${H}*(1+${Z})/2)*2':eval=frame:flags=bilinear,crop=${W}:${H}:${cx},setsar=1[${o}]`;
+  }
+  if (behind && !splitArgs) {
+    // background -> big word (captions_behind.ass) -> person cut-out -> the rest of the captions
+    const g = geo || ((i, o) => `[${i}]null[${o}]`);
+    const pj = post.join(',');
+    graph = `${base};[v0]split[v0a][v0b];[${behind.idx}:v]scale=${W}:${H}:flags=bicubic,gblur=sigma=2.5,format=gray,framerate=fps=${behind.outFps}[mk];[v0b]format=yuv420p[v0c];[v0c][mk]alphamerge[v0p];` +
+      `${g('v0a', 'vz')};${g('v0p', 'vpz')};[vz]${pj}[vcb];[vpz]${pj}[vpc];` +
+      `[vcb]${hasAssBehind ? 'ass=captions_behind.ass:fontsdir=fonts' : 'null'}[vt];[vt][vpc]overlay=format=auto[vp];[vp]${hasAss ? 'ass=captions.ass:fontsdir=fonts' : 'null'}[vc]`;
+  } else if (geo) graph = `${base};${geo('v0', 'vz')};[vz]${post.join(',')}[vc]`;
+  else graph = `${base};[v0]${post.join(',')}[vc]`;
   let last = 'vc';
   emojiGroups.forEach((g, i) => {
     const en = g.windows.map(([a, b]) => `between(t,${a},${b})`).join('+');
@@ -181,15 +208,24 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
   const glEn = fxGlitch.map(t => `between(t,${t},${(t + 0.22).toFixed(2)})`).join('+');
   const chain = [];
   if (glEn) chain.push(`rgbashift=rh=-14:bh=14:gv=6:enable='${glEn}'`, `noise=alls=38:allf=t:enable='${glEn}'`);
+  const vh = win(mo.vhs, 0.5), bl = win(mo.blur, 0.28), ng = win(mo.negate, 0.1), dp = win(mo.dip, 0.14);
+  const st = (mo.strobe || []).map(t => `between(t,${t},${(t + 0.56).toFixed(2)})*lt(mod(t-${t},0.14),0.06)`).join('+');
+  if (vh) chain.push(`noise=alls=22:allf=t:enable='${vh}'`, `rgbashift=rh=-6:bh=6:enable='${vh}'`, `eq=contrast=1.15:saturation=0.8:enable='${vh}'`);
+  if (bl) chain.push(`boxblur=9:1:enable='${bl}'`);
+  if (ng) chain.push(`negate=enable='${ng}'`);
+  if (dp) chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=black@0.8:t=fill:enable='${dp}'`);
+  if (st) chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=white@0.55:t=fill:enable='${st}'`);
   if (flashEn) chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=white@0.5:t=fill:enable='${flashEn}'`);
   graph += `;[${last}]${chain.length ? chain.join(',') : 'null'}[v]`;
   return { graph, note };
 }
 
-async function renderClip({ quality = 1080, input, start, end, out, assText, ratio, framing, grading, workDir, hasAudio = true, track, emojis = [], emojiBox, onProgress, srcAspect, fontFamilies = [], watermark, music, split, fx, fps = 30 }) {
+async function renderClip({ quality = 1080, input, start, end, out, assText, ratio, framing, grading, workDir, hasAudio = true, track, emojis = [], emojiBox, onProgress, srcAspect, fontFamilies = [], watermark, music, split, fx, fps = 30, behind = null, assBehind = '' }) {
   const [W, H] = dimsFor(ratio, quality);
   fs.mkdirSync(workDir, { recursive: true });
   if (assText) fs.writeFileSync(path.join(workDir, 'captions.ass'), assText, 'utf8');
+  if (assBehind) fs.writeFileSync(path.join(workDir, 'captions_behind.ass'), assBehind, 'utf8');
+  if (split) behind = null;
   FONTS.stageFonts(path.join(workDir, 'fonts'), fontFamilies);
   const byPng = new Map();
   for (const e of emojis) {
@@ -249,7 +285,9 @@ async function renderClip({ quality = 1080, input, start, end, out, assText, rat
   const sfxList = (fx && hasAudio && Array.isArray(fx.sfx) ? fx.sfx : []).filter(e => e.file && fs.existsSync(e.file)).slice(0, 24);
   const sfxInputs = [];
   sfxList.forEach(e => { e.idx = nextIdx++; sfxInputs.push('-i', e.file); });          // one input per event (an ffmpeg input can feed only one filter)
-  const { graph: vGraph, note } = filterGraph({ W, H, framing, grading, hasAss: !!assText, track, emojiGroups, emojiBox, srcAspect, maskIdx, watermark: wmIdx != null ? { ...watermark, idx: wmIdx } : null, splitArgs, fxZoom: (fx && fx.zoom) || [], fxFlash: (fx && fx.flashes) || [], fxShake: (fx && fx.shake) || [], fxGlitch: (fx && fx.glitch) || [] });
+  let behindIdx = null, behindInputs = [];
+  if (behind && behind.dir && fs.existsSync(path.join(behind.dir, 'm_0001.png'))) { behindIdx = nextIdx++; behindInputs = ['-framerate', String(behind.fps), '-i', path.join(behind.dir, 'm_%04d.png')]; }
+  const { graph: vGraph, note } = filterGraph({ behind: behindIdx != null ? { idx: behindIdx, outFps: fps } : null, hasAssBehind: !!assBehind, W, H, framing, grading, hasAss: !!assText, track, emojiGroups, emojiBox, srcAspect, maskIdx, watermark: wmIdx != null ? { ...watermark, idx: wmIdx } : null, splitArgs, fxZoom: (fx && fx.zoom) || [], fxFlash: (fx && fx.flashes) || [], fxShake: (fx && fx.shake) || [], fxGlitch: (fx && fx.glitch) || [], fxMore: fx || {} });
   let graph = vGraph;
   // audio source for split screen: facecam audio (default), game audio, or both
   let aSrc = '0:a', aMap = '0:a:0';
@@ -269,7 +307,7 @@ async function renderClip({ quality = 1080, input, start, end, out, assText, rat
   }
   if (musicIdx != null) graph += ';' + musicChain(musicIdx, music, end - start, aSrc);
   const args = ['-y', '-ss', String(start), '-t', String(end - start), '-i', path.resolve(input),
-    ...emojiGroups.flatMap(g => ['-i', g.png]), ...maskArgs, ...splitInputs, ...sfxInputs,
+    ...emojiGroups.flatMap(g => ['-i', g.png]), ...maskArgs, ...splitInputs, ...sfxInputs, ...behindInputs,
     '-filter_complex', graph, '-map', '[v]', ...(hasAudio ? ['-map', musicIdx != null ? '[aout]' : aMap, '-c:a', 'aac', '-b:a', '160k'] : []),
     ...(await encoderArgs()), '-movflags', '+faststart', path.resolve(out)];
   const total = end - start;

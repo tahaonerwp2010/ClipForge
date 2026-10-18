@@ -235,19 +235,30 @@ async function writeTitles(clips, words, g, log, hookLines = 2) {
   const HN = hookLines === 1 || hookLines === 3 ? hookLines : 2;
   let engine = 'local';
   if (G.ready(g)) {
-    try {
-      const arr = await geminiTitles(clips, words, g, log, HN);
-      clips.forEach((c, i) => {
-        const t = arr[i] || {};
+    // Titles are asked in small batches (a single request for 30 clips was too big and failed, which sent everything to the local writer).
+    // A failed batch is retried once, and only the clips of a batch that still fails use the local writer.
+    const CH = 5; let okN = 0, lastErr = '';
+    for (let o = 0; o < clips.length; o += CH) {
+      const part = clips.slice(o, o + CH);
+      let arr = null;
+      for (let attempt = 0; attempt < 2 && !arr; attempt++) {
+        try { arr = await geminiTitles(part, words, g, log, HN); }
+        catch (e) { lastErr = String(e.message).slice(0, 100); if (attempt === 0) await new Promise(r => setTimeout(r, 1500)); }
+      }
+      part.forEach((c, i) => {
+        const t = (arr && arr[i]) || {};
         if (t.title && String(t.title).trim().length > 3) {
           c.title = String(t.title).trim().slice(0, 90); if (t.hookText) c.hookText = String(t.hookText).trim();
           if (Array.isArray(t.keywords)) c.keywords = t.keywords.map(k => String(k).trim()).filter(Boolean).slice(0, 12);
           if (t.description) c.description = String(t.description).trim().slice(0, 400);
           if (Array.isArray(t.hashtags)) c.hashtags = t.hashtags;
+          okN++;
         } else c.__weak = true;
       });
-      engine = 'gemini'; log('Titles written by AI', 'success');
-    } catch (e) { log(`AI title writing failed (${String(e.message).slice(0, 100)}) → local fallback`, 'warn'); clips.forEach(c => { c.__weak = true; }); }
+      log(`Titles ${Math.min(o + CH, clips.length)}/${clips.length}${arr ? '' : ' (AI did not answer this batch)'}`, arr ? 'info' : 'warn');
+    }
+    if (okN) { engine = 'gemini'; log(`Titles written by AI (${okN}/${clips.length})`, 'success'); }
+    else log(`AI title writing failed (${lastErr}) → local fallback`, 'warn');
   } else clips.forEach(c => { c.__weak = true; });
   const weak = clips.filter(c => c.__weak);
   if (weak.length) { await localTitles(weak, words, log, HN); if (weak.length < clips.length) engine = 'gemini+local'; }

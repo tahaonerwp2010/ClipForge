@@ -54,6 +54,7 @@ declare global {
       engineCheck?: () => Promise<{ items: { id: string; name: string; ok: boolean; required: boolean; detail: string }[]; allReady: boolean; missing: string[]; optionalMissing: string[] }>;
       engineStatus?: () => Promise<{ ffmpeg: boolean; whisper: boolean }>;
       startPipeline?: (job: any) => Promise<{ clips: any[]; outDir: string; durationSec: number }>;
+      deleteClipFile?: (args: { outputPath: string; outputDir?: string }) => Promise<{ ok: boolean; removed?: number; error?: string }>;
       deleteProjectFiles?: (args: { name?: string; outputDir?: string; files?: string[] }) => Promise<{ removed: number }>;
       cancelPipeline?: () => Promise<boolean>;
       listUserFonts?: () => Promise<{ family: string; file: string; url: string }[]>;

@@ -260,8 +260,8 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
               AI writes a short two-line hook for each clip and sizes it to fit. Customize font, colour and position, or drag it directly in the phone preview.
             </p>
             {!only && (
-              <div className="mt-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/40 text-[11px] font-bold text-amber-200 leading-relaxed">
-                ⚠ An AI key is required for Auto Hook. Add it in Settings → AI Boost, otherwise Auto Hook will not work.
+              <div className="mt-2 px-3 py-2 rounded-lg bg-sky-500/10 border border-sky-500/30 text-[11px] font-semibold text-sky-100 leading-relaxed">
+                ℹ Auto Hook uses AI, so it needs an AI key (Settings → AI Boost). You can add several keys: the more you add, the better it works, because ClipForge switches to the next key automatically if one runs out.
               </div>
             )}
           </div>

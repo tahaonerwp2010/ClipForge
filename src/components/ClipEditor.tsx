@@ -14,6 +14,7 @@ interface Props {
   index: number;
   outDir: string;
   total: number;
+  allIdx: number[];          // engine indexes of every clip still in the project (a clip keeps its number after others are deleted)
   onClose: () => void;
   onSaved: (index: number, r: { outputPath: string; thumbnailUrl?: string }) => void;
   fallback: { captions: CaptionConfig; branding: BrandingConfig; grading: VideoGradingConfig; framing: InnerFramingConfig };
@@ -30,7 +31,7 @@ const CATS: { id: Cat; label: string; Icon: React.ElementType }[] = [
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, onClose, onSaved, fallback }) => {
+export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx, onClose, onSaved, fallback }) => {
   const api: any = (window as any).electronAPI;
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [err, setErr] = useState('');
@@ -84,7 +85,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, onClos
   };
   const save = async (all: boolean) => {
     setSaving(true); setPct(0); setErr('');
-    const idx = all ? Array.from({ length: total }, (_, i) => i) : [index];
+    const idx = all ? allIdx : [index];
     span.current = idx.length;
     const at = { ...branding.autoTitle, enabled: true };
     const bo = brandingOut();

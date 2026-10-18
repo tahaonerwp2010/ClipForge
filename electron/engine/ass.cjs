@@ -27,6 +27,7 @@ function wrap(text, size, W) {
 }
 
 const FONTS = require('./fonts.cjs');
+const DYN = require('./dyn.cjs');
 const EM = require('./emoji.cjs');
 const HK = require('./hook.cjs');
 const plain = t => EM.splitTitle(t).text;
@@ -35,16 +36,19 @@ const fam = f => LEGACY[f] || f;
 function fontsUsed({ captions = {}, branding = {} }) {
   const preset = PRESETS[captions.style] || PRESETS['capcut-emoji'];
   const at = branding.autoTitle || {};
+  const dyn = DYN.get(captions.style);
+  if (dyn) return [...DYN.fontsOf(dyn), at.fontFamily || 'Montserrat Black', branding.hookFontFamily || 'Montserrat Black', branding.watermarkFontFamily || 'Arial'].map(fam);   // dynamic templates: their own fonts, not changeable
   return [captions.fontFamily || preset.font, at.fontFamily || 'Montserrat Black', branding.hookFontFamily || 'Montserrat Black', branding.watermarkFontFamily || 'Arial'].map(fam);
 }
-function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hookText }) {
+function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hookText, part = 'all' }) {
   const preset = PRESETS[captions.style] || PRESETS['capcut-emoji'];
   const k = W / 1080;
   const size = Math.round(captions.fontSize * 3.4 * k);
   const outline = Math.round((captions.outlineWidth || 3) * (preset.outline / 4) * k);
   const actives = (USER_COLOR_STYLES.has(captions.style) && captions.highlightColor) ? [captions.highlightColor, ...preset.active.slice(1)] : preset.active;
   const at = branding.autoTitle || {};
-  const [capFont, titleFont, hookFont, markFont] = fontsUsed({ captions, branding });
+  const dynTpl = DYN.get(captions.style);
+  const [capFont, titleFont, hookFont, markFont] = dynTpl ? [DYN.fontsOf(dynTpl)[0], ...fontsUsed({ captions, branding }).slice(-3)].map(fam) : fontsUsed({ captions, branding });
   const L = [
     '[Script Info]', 'ScriptType: v4.00+', `PlayResX: ${W}`, `PlayResY: ${H}`, 'WrapStyle: 2', '',
     '[V4+ Styles]',
@@ -58,7 +62,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
   const dur = clipEnd - clipStart;
   const pos = (x, y) => `{\\pos(${Math.round(x / 100 * W)},${Math.round(y / 100 * H)})}`;
   const tShow = (at.showSeconds > 0) ? Math.min(dur, at.showSeconds) : dur;
-  if (at.enabled && title) {
+  if (at.enabled && title && part !== 'behind') {
     const ai = at.animIn || 'none', ao = at.animOut || 'none', ms = Math.round(tShow * 1000);
     const px = Math.round((at.positionX ?? 50) / 100 * W), py = Math.round((at.positionY ?? 10) / 100 * H);
     let place = `{\\pos(${px},${py})}`, fx = '';
@@ -71,11 +75,13 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
     const hs = HK.hookFontPx(hk.join('\n'), W, at.size);
     L.push(`Dialogue: 2,${ts(0)},${ts(tShow)},Title,,0,0,0,,${place}{\\fs${hs}}${fx ? '{' + fx + '}' : ''}${hk.map(l => esc(l.toUpperCase())).join('\\N')}`);
   }
-  if (branding.showHookTitle && branding.hookTitle)
+  if (branding.showHookTitle && branding.hookTitle && part !== 'behind')
     L.push(`Dialogue: 2,${ts(0)},${ts(dur)},Hook,,0,0,0,,${pos(branding.bannerPositionX ?? 50, branding.bannerPositionY ?? 8)}${wrap(esc(plain(branding.hookTitle).toUpperCase()), Math.round(54 * k), W)}`);
-  if (branding.showWatermark && branding.watermarkType !== 'image' && branding.creatorHandle)
+  if (branding.showWatermark && branding.watermarkType !== 'image' && branding.creatorHandle && part !== 'behind')
     L.push(`Dialogue: 2,${ts(0)},${ts(dur)},Mark,,0,0,0,,${pos(branding.watermarkPositionX ?? 20, branding.watermarkPositionY ?? 92)}${esc(branding.creatorHandle)}`);
-  if (captions.enabled) {
+  if (captions.enabled && dynTpl) {
+    DYN.build({ words, clipStart, clipEnd, W, H, captions, tpl: dynTpl, part }).forEach(l => L.push(l));
+  } else if (captions.enabled && part !== 'behind') {
     const off = Math.max(-0.5, Math.min(0.5, Number(captions.syncOffset) || 0));
     const cw = words.filter(w => w.start >= clipStart && w.start < clipEnd).map(w => (off ? { ...w, start: w.start + off, end: w.end + off } : w));
     const n = preset.single ? 1 : Math.max(1, captions.maxWordsPerBeat || 2);

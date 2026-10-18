@@ -8,6 +8,7 @@ const R = require('./render.cjs');
 const ASS = require('./ass.cjs');
 const EMOJI = require('./emoji.cjs');
 const FX = require('./fx.cjs');
+const BH = require('./behind.cjs');
 
 const stateFile = (outDir) => path.join(outDir, '.clipforge-edit.json');
 function saveState(outDir, st) {
@@ -22,7 +23,7 @@ const nn = i => String(i + 1).padStart(2, '0');
 const editDir = (outDir) => { const d = path.join(outDir, '.edit'); fs.mkdirSync(d, { recursive: true }); return d; };
 
 // Everything renderClip needs for clip i (same rules as the main pipeline), with the user's caption/hook changes applied.
-async function ctxFor(st, i, ov = {}, work) {
+async function ctxFor(st, i, ov = {}, work, extra = {}) {
   const shorts = st.kind === 'shorts';
   const captions = { ...(st.captions || {}), ...(ov.captions || {}) };
   const hookText0 = ov.hookText != null ? ov.hookText : (st.clips[i].hookText || st.clips[i].title);
@@ -37,7 +38,14 @@ async function ctxFor(st, i, ov = {}, work) {
   const k = Wd / 1080, capPx = (captions.fontSize || 24) * 3.4 * k, eSize = Math.round(capPx * 1.5);
   const emojiBox = { size: eSize, x: Math.round((captions.positionX ?? 50) / 100 * Wd - eSize / 2), y: Math.max(0, Math.round((captions.positionY ?? 72) / 100 * Ht - capPx * 0.65 - eSize)) };
   const useEmoji = captions.enabled && captions.showEmoji && captions.style === 'capcut-emoji';
-  const ass = ASS.build({ words: cw, clipStart: start, clipEnd: end, W: Wd, H: Ht, captions, branding, title: hookText, hookText });
+  const assArgs = { words: cw, clipStart: start, clipEnd: end, W: Wd, H: Ht, captions, branding, title: hookText, hookText };
+  let behind = null;
+  if (extra.outDir && extra.deps && extra.deps.segment && BH.wants(captions)) {
+    const info0 = shorts ? st.infos[i] : st.info;
+    behind = await BH.masks({ R, segment: extra.deps.segment, cacheDir: path.join(editDir(extra.outDir), `mask_${nn(i)}`), workDir: path.join(os.tmpdir(), `cf_bh_${process.pid}_${i}`), input: shorts ? st.files[i] : st.input, start, end, ratio: st.ratio || '9:16',
+      framing: st.framing, grading: st.grading, track: (st.tracks || [])[i] || null, srcAspect: info0.width / info0.height, split: st.split || undefined, log: extra.log });
+  }
+  const ass = ASS.build({ ...assArgs, part: behind ? 'front' : 'all' }), assBehind = behind ? ASS.build({ ...assArgs, part: 'behind' }) : '';
   const emojis = [...(useEmoji ? EMOJI.plan(ow, start, end, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
     ...ASS.titleEmojis({ title: hookText, branding, W: Wd, H: Ht, dur: dur })];
   let watermark = null;
@@ -50,7 +58,7 @@ async function ctxFor(st, i, ov = {}, work) {
     music = { file: bm.path, startSec: bm.startSec || 0, volumeDb: bm.volumeDb ?? -18, duration: d, fade: bm.fade !== false };
   }
   const info = shorts ? st.infos[i] : st.info;
-  return { captions, branding, quality, Wd, Ht, start, end, ass, emojis, emojiBox, watermark, music, info, cw, fontFamilies: ASS.fontsUsed({ captions, branding }), input: shorts ? st.files[i] : st.input };
+  return { captions, branding, quality, Wd, Ht, start, end, ass, assBehind, behind, emojis, emojiBox, watermark, music, info, cw, fontFamilies: ASS.fontsUsed({ captions, branding }), input: shorts ? st.files[i] : st.input };
 }
 
 // A clean copy of the clip (framing, face tracking and grading applied, but NO captions / hook / emoji) at a small size. Used for the live preview.
@@ -69,14 +77,14 @@ async function prepare(outDir, i) {
 }
 
 // Re-render clip i with the user's caption / hook changes and replace the old file. The new settings are remembered.
-async function rerender(outDir, i, ov, onProgress) {
+async function rerender(outDir, i, ov, onProgress, deps) {
   const st = loadState(outDir); if (!st) throw new Error('This project was made with an older version, so its clips cannot be edited.');
-  const x = await ctxFor(st, i, ov, null);
+  const x = await ctxFor(st, i, ov, null, { outDir, deps, log: m => { try { onProgress && onProgress(0); } catch {} } });
   const out = path.join(outDir, `clip_${nn(i)}.mp4`), tmp = path.join(outDir, `clip_${nn(i)}.edit.mp4`);
   const w = path.join(os.tmpdir(), `cf_edit_${process.pid}_${i}`);
   let fx; const o = st.grading && st.grading.fx;
   if (o && o.enabled) { try { fx = FX.plan(x.cw, x.start, x.end, o, i + 1); } catch {} }
-  await R.renderClip({ quality: x.quality, fx, input: x.input, start: x.start, end: x.end, out: tmp, assText: x.ass, ratio: st.ratio || '9:16', framing: st.framing, grading: st.grading,
+  await R.renderClip({ behind: x.behind, assBehind: x.assBehind, quality: x.quality, fx, input: x.input, start: x.start, end: x.end, out: tmp, assText: x.ass, ratio: st.ratio || '9:16', framing: st.framing, grading: st.grading,
     workDir: w, track: (st.tracks || [])[i] || null, emojis: x.emojis, emojiBox: x.emojiBox, srcAspect: x.info.width / x.info.height, hasAudio: x.info.hasAudio !== false, fontFamilies: x.fontFamilies,
     watermark: x.watermark, music: x.music, split: st.split || undefined, fps: Math.round(x.info.fps || 30) || 30, onProgress });
   try { fs.unlinkSync(out); } catch {}

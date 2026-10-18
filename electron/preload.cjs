@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   engineStatus: () => ipcRenderer.invoke('engine-status'),
   startPipeline: (job) => ipcRenderer.invoke('start-pipeline', job),
   deleteProjectFiles: (args) => ipcRenderer.invoke('delete-project-files', args),
+  deleteClipFile: (args) => ipcRenderer.invoke('delete-clip-file', args),
   cancelPipeline: () => ipcRenderer.invoke('cancel-pipeline'),
   listUserFonts: () => ipcRenderer.invoke('list-user-fonts'),
   importFont: () => ipcRenderer.invoke('import-font'),

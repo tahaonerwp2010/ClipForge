@@ -38,7 +38,7 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
     });
   };
 
-  const fx = { enabled: false, intensity: 'subtle' as const, zoom: true, flash: true, shake: true, glitch: true, sfx: true, sfxDb: -6, ...(grading.fx || {}) };
+  const fx = { enabled: false, intensity: 'subtle' as const, zoom: true, flash: true, shake: true, glitch: true, color: true, sfx: true, sfxDb: -6, ...(grading.fx || {}) };
   const setFx = (patch: Partial<typeof fx>) => onGradingChange({ ...grading, fx: { ...fx, ...patch } });
   const handleSwitchToFillCrop = () => {
     if (!framing || !onFramingChange) return;
@@ -305,10 +305,11 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
             ))}
           </div>
           <div className="flex flex-wrap gap-4 text-[11px] text-neutral-300">
-            <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.zoom} onChange={e => setFx({ zoom: e.target.checked })} /> Punch-in zoom</label>
-            <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.flash} onChange={e => setFx({ flash: e.target.checked })} /> Flash (Balanced / Wild)</label>
-            <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.shake} onChange={e => setFx({ shake: e.target.checked })} /> Camera shake (Balanced / Wild)</label>
-            <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.glitch} onChange={e => setFx({ glitch: e.target.checked })} /> Glitch (Wild)</label>
+            <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.zoom} onChange={e => setFx({ zoom: e.target.checked })} /> Zoom effects (punch, push, pull, pulse)</label>
+            <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.flash} onChange={e => setFx({ flash: e.target.checked })} /> Flash (flash, dip, strobe, negative)</label>
+            <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.shake} onChange={e => setFx({ shake: e.target.checked })} /> Motion (shake, tilt, whip-pan)</label>
+            <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.glitch} onChange={e => setFx({ glitch: e.target.checked })} /> Glitch (glitch, VHS, chromatic)</label>
+            <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.color !== false} onChange={e => setFx({ color: e.target.checked })} /> Colour looks (mono, colour pop, glow, blur)</label>
             <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={fx.sfx} onChange={e => setFx({ sfx: e.target.checked })} /> Sound effects</label>
           </div>
           {fx.sfx && (

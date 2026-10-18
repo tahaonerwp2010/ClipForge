@@ -57,7 +57,7 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
               ? 'Queued: waiting for the current project to finish'
               : project.status === 'Failed'
               ? 'Failed: open Progress to see why'
-              : `${project.currentStep ?? 1} of 9 steps done`;
+              : `${project.stepsDone ?? 0} of ${project.stepsTotal ?? 9} steps done`;
 
             return (
               <div
@@ -93,8 +93,10 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
                   {/* 1. CLIPS (Voltage Lime Button) */}
                   <button
                     type="button"
-                    onClick={() => onOpenClips(project)}
-                    className="px-5 py-2 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs shadow-md shadow-[#3f9a5a]/15 transition-all active:scale-95 cursor-pointer"
+                    onClick={() => isFinished && onOpenClips(project)}
+                    disabled={!isFinished}
+                    title={isFinished ? '' : 'Clips open when processing is finished'}
+                    className={`px-5 py-2 rounded-xl font-extrabold text-xs transition-all ${isFinished ? 'bg-[#bef264] hover:bg-[#a3e635] text-black shadow-md shadow-[#3f9a5a]/15 active:scale-95 cursor-pointer' : 'bg-[#1a2a22] text-neutral-500 cursor-not-allowed opacity-60'}`}
                   >
                     Clips
                   </button>

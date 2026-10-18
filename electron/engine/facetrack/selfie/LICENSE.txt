@@ -1,0 +1,1 @@
+MediaPipe Selfie Segmentation (@mediapipe/selfie_segmentation 0.1.1675465747) - Apache License 2.0, Copyright Google LLC. https://www.apache.org/licenses/LICENSE-2.0

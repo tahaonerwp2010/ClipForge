@@ -15,6 +15,7 @@ const TR = require('./translate.cjs');
 const AL = require('./align.cjs');
 const AI = require('./ai.cjs');
 const FX = require('./fx.cjs');
+const BH = require('./behind.cjs');
 const SFX = require('./sfxlib.cjs');
 
 // The UI sends labels ('Hinglish', 'English', 'As spoken') or a language code; whisper only understands codes.
@@ -33,7 +34,7 @@ async function planFx(job, words, s, e, seed, log) {
   if (!o || !o.enabled) return undefined;
   try {
     const f = FX.plan(words, s, e, o, seed);
-    if (f && f.events) log('FFmpeg', `Auto effects: ${f.events} moment${f.events === 1 ? '' : 's'}`);
+    if (f && f.events) log('FFmpeg', `Auto effects: ${f.events} moment${f.events === 1 ? '' : 's'} (${Object.entries(f.kinds || {}).map(([k, v]) => k + (v > 1 ? '×' + v : '')).join(', ')})`);
     return f;
   } catch (err) { log('FFmpeg', 'Auto effects skipped: ' + (err && err.message), 'warn'); return undefined; }
 }
@@ -281,11 +282,13 @@ async function runInner(job, emit, deps = {}) {
     const done = readJson(`res_${n}.json`);
     if (done && fs.existsSync(out)) { result.push(done); setPct(8, (i + 1) / clips.length); continue; }
     log('FFmpeg', `Rendering clip ${i + 1}/${clips.length} (${(c.end - c.start).toFixed(0)}s)…`);
-    const ass = ASS.build({ words: capWords, clipStart: c.start, clipEnd: c.end, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText });
+    const bh = (BH.wants(job.captions) && deps.segment) ? await BH.masks({ R, segment: deps.segment, cacheDir: path.join(outDir, '.edit', `mask_${n}`), workDir: path.join(work, `c${n}`), input: job.filePath, start: c.start, end: c.end, ratio, framing: job.framing, grading: job.grading, track: tracks[i], srcAspect: info.width / info.height, split, log: m => log('Captions', m) }) : null;
+    const assArgs = { words: capWords, clipStart: c.start, clipEnd: c.end, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText };
+    const ass = ASS.build({ ...assArgs, part: bh ? 'front' : 'all' }), assBehind = bh ? ASS.build({ ...assArgs, part: 'behind' }) : '';
     const emojis = [...(useEmoji ? EMOJI.plan(capWords === words ? words : words, c.start, c.end, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
       ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur: c.end - c.start })];
     const fx = await planFx(job, capWords, c.start, c.end, i + 1, log);
-    const { note } = await R.renderClip({ quality, fx, input: job.filePath, start: c.start, end: c.end, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
+    const { note } = await R.renderClip({ behind: bh, assBehind, quality, fx, input: job.filePath, start: c.start, end: c.end, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
       workDir: path.join(work, `c${n}`), track: tracks[i], emojis, emojiBox, srcAspect: info.width / info.height, fontFamilies, watermark, music, split, fps: Math.round(info.fps || 30) || 30, onProgress: p => setPct(8, (i + p * 0.97) / clips.length) });
     if (note && i === 0) log('FFmpeg', note, 'warn');
     let thumb; try { thumb = await R.thumbnail(out, path.join(work, `t${n}.jpg`)); } catch {}
@@ -516,11 +519,13 @@ async function runShortsInner(job, emit, deps = {}) {
     if (done && fs.existsSync(out)) { result.push(done); setPct(8, (i + 1) / N); continue; }
     log('FFmpeg', `Rendering clip ${i + 1}/${N} (${dur.toFixed(0)}s)…`);
     const cw = capWords[i];
-    const ass = ASS.build({ words: cw, clipStart: 0, clipEnd: dur, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText });
+    const bh = (BH.wants(job.captions) && deps.segment) ? await BH.masks({ R, segment: deps.segment, cacheDir: path.join(outDir, '.edit', `mask_${n}`), workDir: path.join(work, `c${n}`), input: files[i].path, start: 0, end: dur, ratio, framing: job.framing, grading: job.grading, track: tracks[i], srcAspect: infos[i].width / infos[i].height, log: m => log('Captions', m) }) : null;
+    const assArgs = { words: cw, clipStart: 0, clipEnd: dur, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText };
+    const ass = ASS.build({ ...assArgs, part: bh ? 'front' : 'all' }), assBehind = bh ? ASS.build({ ...assArgs, part: 'behind' }) : '';
     const emojis = [...(useEmoji ? EMOJI.plan(words[i], 0, dur, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
       ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur })];
     const fx = await planFx(job, cw, 0, dur, i + 1, log);
-    const { note } = await R.renderClip({ quality, fx, input: files[i].path, start: 0, end: dur, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
+    const { note } = await R.renderClip({ behind: bh, assBehind, quality, fx, input: files[i].path, start: 0, end: dur, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
       workDir: path.join(work, `c${n}`), track: tracks[i], emojis, emojiBox, srcAspect: infos[i].width / infos[i].height, hasAudio: infos[i].hasAudio, fontFamilies, watermark, music, onProgress: p => setPct(8, (i + p * 0.97) / N) });
     if (note && i === 0) log('FFmpeg', note, 'warn');
     let thumb; try { thumb = await R.thumbnail(out, path.join(work, `t${n}.jpg`)); } catch {}

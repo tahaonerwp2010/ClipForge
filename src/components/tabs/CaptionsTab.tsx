@@ -11,6 +11,8 @@ import {
   Maximize2
 } from 'lucide-react';
 import { FontPicker } from '../common/FontPicker';
+import { DynCaption } from '../DynCaption';
+import { DYN_TEMPLATES, isDynStyle } from '../../utils/dynCaptions';
 import { POPULAR_CAPTION_PRESETS } from '../../utils/captionHelpers';
 
 interface CaptionsTabProps {
@@ -26,6 +28,7 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
 }) => {
   // Independent collapsible category states
   const [openTemplates, setOpenTemplates] = useState(false);
+  const [openDyn, setOpenDyn] = useState(true);
   const [openPosition, setOpenPosition] = useState(false);
   const [openLang, setOpenLang] = useState(false);
 
@@ -301,8 +304,47 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
             )}
           </section>
 
-                    {/* Caption font */}
+          {/* DYNAMIC CAPTIONS: separate category, fonts are locked to the template */}
+          <section className="rounded-xl bg-[#0b1410] border border-[#172820] overflow-hidden shadow-md">
+            <div onClick={() => setOpenDyn(!openDyn)} className="p-3.5 px-4 flex items-center justify-between cursor-pointer hover:bg-[#111e18] transition-colors border-b border-[#172820]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-extrabold text-white text-xs uppercase tracking-wider">Dynamic Captions</h3>
+                  <span className="text-[10px] text-[#facc15] font-mono font-bold bg-[#facc15]/10 px-1.5 py-0.5 rounded border border-[#facc15]/20">{DYN_TEMPLATES.length} Templates</span>
+                </div>
+                <p className="text-[10px] text-neutral-400">Mixed fonts and sizes, shiny metallic important words. Each template has its own fonts (locked).</p>
+              </div>
+              {openDyn ? <ChevronUp className="w-4 h-4 text-neutral-400" /> : <ChevronDown className="w-4 h-4 text-neutral-400" />}
+            </div>
+            {openDyn && (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                {DYN_TEMPLATES.map(t => {
+                  const sel = captions.style === t.id;
+                  return (
+                    <div key={t.id} onClick={() => onCaptionsChange({ ...captions, style: t.id as any, fontFamily: undefined })}
+                      className={`p-3 rounded-xl border cursor-pointer transition-all ${sel ? 'bg-[#101d17] border-[#3f9a5a] ring-1 ring-[#3f9a5a]/50' : 'bg-[#0e1914] border-[#1a2c24] hover:border-[#2b4338]'}`}>
+                      <div className="h-20 rounded-lg bg-gradient-to-b from-[#2a3440] to-[#0d1117] flex items-center justify-center overflow-hidden mb-2 border border-[#1c3127]">
+                        <DynCaption tpl={t} base={15} sample />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-white">{t.name}</span>
+                        <span className="text-[9px] text-neutral-500 uppercase tracking-wider">{(t as any).behind ? 'behind person · font locked' : 'font locked'}</span>
+                      </div>
+                      <p className="text-[10px] text-neutral-400 mt-0.5">{t.tagline}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* Caption font */}
+          {isDynStyle(captions.style) ? (
           <section className="rounded-xl bg-[#0b1410] border border-[#172820] shadow-md p-4">
+            <div className="text-xs font-black uppercase tracking-wider text-white">Caption Font</div>
+            <p className="text-[11px] text-neutral-400 mt-1.5">Locked: Dynamic Captions use their own fonts. Pick a classic style to choose a custom font.</p>
+          </section>
+          ) : <section className="rounded-xl bg-[#0b1410] border border-[#172820] shadow-md p-4">
             <FontPicker
               label="Caption Font"
               value={captions.fontFamily}
@@ -310,7 +352,7 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
               onChange={(f) => onCaptionsChange({ ...captions, fontFamily: f })}
             />
             <p className="text-[10px] text-neutral-500 mt-2">Pick any font for your captions. "Style default" keeps the font that comes with the caption style.</p>
-          </section>
+          </section>}
 
 {!hideLanguage && <section className="rounded-xl bg-[#0b1410] border border-[#172820] overflow-hidden shadow-md">
             <button type="button" onClick={() => setOpenLang(!openLang)} className="w-full p-4 flex items-center justify-between cursor-pointer">

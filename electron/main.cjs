@@ -292,7 +292,7 @@ ipcMain.handle('projects-save', async (e, list) => { try { const f = projectsFil
 const EDIT = require('./engine/edit.cjs');
 ipcMain.handle('edit-load', async (e, outDir) => { const st = EDIT.loadState(outDir); return st ? { ok: true, captions: st.captions, branding: st.branding, framing: st.framing, grading: st.grading, ratio: st.ratio, clips: st.clips.map(c => ({ hookText: c.hookText, title: c.title })) } : { ok: false }; });
 ipcMain.handle('edit-prepare', async (e, a) => { try { const r = await EDIT.prepare(a.outDir, a.index); return { ok: true, url: require('url').pathToFileURL(r.base).toString(), dims: r.dims }; } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 300) }; } });
-ipcMain.handle('edit-render', async (e, a) => { try { const r = await EDIT.rerender(a.outDir, a.index, a.overrides || {}, p => send('edit-progress', { index: a.index, p })); return { ok: true, ...r }; } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 300) }; } });
+ipcMain.handle('edit-render', async (e, a) => { try { const r = await EDIT.rerender(a.outDir, a.index, a.overrides || {}, p => send('edit-progress', { index: a.index, p }), { segment: (frames) => require('./engine/facetrack.cjs').segmentFrames(frames, { BrowserWindow }) }); return { ok: true, ...r }; } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 300) }; } });
 // ---- Pro licence (Supabase) ----
 const LIC = require('./engine/license.cjs');
 ipcMain.handle('license-status', async () => LIC.status());
@@ -376,7 +376,8 @@ ipcMain.handle('start-pipeline', async (event, job) => {
   resetCancel();
   job = { ...job, clipsBase: Settings.clipsDir() };
   const p = runPipeline(job, (ev) => send('pipeline-event', ev), {
-    detectFaces: (frames) => require('./engine/facetrack.cjs').detectFaces(frames, { BrowserWindow })
+    detectFaces: (frames) => require('./engine/facetrack.cjs').detectFaces(frames, { BrowserWindow }),
+    segment: (frames) => require('./engine/facetrack.cjs').segmentFrames(frames, { BrowserWindow })
   });
   currentRun = p.catch(() => {}).then(() => { if (currentRun === tracked) currentRun = null; });
   const tracked = currentRun;
@@ -395,9 +396,22 @@ ipcMain.handle('delete-project-files', async (e, { name, outputDir, files }) => 
     for (const f of fs.readdirSync(d)) {
       if (/^clip_\d+\.mp4$/i.test(f)) { try { fs.unlinkSync(path.join(d, f)); removed++; } catch {} }   // only files ClipForge created
     }
+    try { fs.rmSync(path.join(d, '.edit'), { recursive: true, force: true }); for (const h of ['.clipforge-edit.json', '.clipforge.json']) fs.rmSync(path.join(d, h), { force: true }); } catch {}
     try { fs.rmdirSync(d); } catch {}    // removes the folder only if it is now empty
   }
   return { removed };
+});
+// Delete ONE finished clip file (and its editor preview). Only files ClipForge made (clip_NN.mp4) inside the project folder are touched.
+ipcMain.handle('delete-clip-file', async (e, { outputPath, outputDir }) => {
+  try {
+    const f = path.resolve(String(outputPath || ''));
+    const m = /^clip_(\d+)\.mp4$/i.exec(path.basename(f));
+    if (!m) return { ok: false, error: 'Not a ClipForge clip file.' };
+    if (outputDir && path.resolve(outputDir) !== path.dirname(f)) return { ok: false, error: 'File is outside the project folder.' };
+    let removed = 0;
+    for (const x of [f, path.join(path.dirname(f), '.edit', `base_${m[1]}.mp4`)]) { try { if (fs.existsSync(x)) { fs.unlinkSync(x); removed++; } } catch {} }
+    return { ok: true, removed };
+  } catch (err) { return { ok: false, error: String(err.message || err) }; }
 });
 ipcMain.handle('cancel-pipeline', async () => { killAll(); if (currentRun) { try { await currentRun; } catch {} } return true; });
 ipcMain.handle('discard-checkpoint', async (e, job) => { try { fs.rmSync(workDirFor(job), { recursive: true, force: true }); } catch {} return true; });
@@ -443,6 +457,10 @@ ipcMain.handle('update-install', async (e, { filePath }) => {
       setTimeout(() => { try { app.quit(); } catch {} }, 600);
       setTimeout(() => { try { app.exit(0); } catch {} }, 4000);
       return { ok: true, mode: installed ? 'silent' : 'installer' };
+    }
+    if (process.platform === 'android') {                       // opens Android's installer straight away; one tap on Install finishes the update
+      const err = await shell.openPath(f);
+      return err ? { ok: false, error: err } : { ok: true, mode: 'manual' };
     }
     if (process.platform === 'darwin') { await shell.openPath(f); return { ok: true, mode: 'manual' }; }
     shell.showItemInFolder(f); return { ok: true, mode: 'manual' };

@@ -277,6 +277,10 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
   const doneCount = visibleSteps.filter(x => x.status === 'completed').length;
 
   const isFinished = progressPercent >= 100;
+  useEffect(() => {   // keep the Projects list in sync ("3 of 7 steps done")
+    if (isFinished || isInitiallyFinished || !onUpdateProject) return;
+    if (project.stepsDone !== doneCount || project.stepsTotal !== visibleSteps.length) onUpdateProject({ ...project, stepsDone: doneCount, stepsTotal: visibleSteps.length });
+  }, [doneCount, visibleSteps.length, isFinished]);
   const currentStepName = steps[currentStepIdx]?.name || 'Finalizing clips';
   const aiCfg = AiService.getConfig();
   const aiOn = AiService.hasKeys(aiCfg);

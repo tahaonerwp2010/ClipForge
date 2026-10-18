@@ -17,7 +17,8 @@ export type CaptionPresetStyle =
   | 'red-punch'    // Red Alert: High intensity red punch box for urgency & shock
   | 'cinematic'    // Cinematic: Minimalist clean typography for thought leadership
   | 'comic-pop'    // Comic Pop: Chunky retro bubble font with tilted action pop
-  | 'glitch';      // Cyber Glitch: High energy digital glitch with split chromatics
+  | 'glitch'       // Cyber Glitch: High energy digital glitch with split chromatics
+  | `dyn-${string}`; // Dynamic captions (own locked fonts, metallic highlights) - see utils/dynCaptions.ts
 
 export interface CaptionConfig {
   enabled: boolean;          // Master On / Off switch
@@ -54,6 +55,7 @@ export interface AutoFxConfig {
   flash: boolean;
   shake?: boolean;
   glitch?: boolean;
+  color?: boolean;
   sfx: boolean;
   sfxDb: number;
 }
@@ -225,6 +227,8 @@ export interface ProjectItem {
   clipCount: number;
   status: 'Finished' | 'Processing' | 'Paused' | 'Draft' | 'Queued' | 'Failed';
   currentStep?: number;
+  stepsDone?: number;     // live counters shown in the Projects list while a project is running
+  stepsTotal?: number;
   progressPercent?: number;
   steps?: PipelineStep[];
   createdAt: string;

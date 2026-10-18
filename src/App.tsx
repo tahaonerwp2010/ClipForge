@@ -545,6 +545,8 @@ export default function App() {
                 setEditClipId(clip.id);
               }}
               onDeleteClip={(clipId) => {
+                const gone = getProjectClips(activeProject).find(c => c.id === clipId);
+                if (gone?.outputPath) window.electronAPI?.deleteClipFile?.({ outputPath: gone.outputPath, outputDir: activeProject.outputDir });   // also remove the file from the clips folder
                 setProjects(prev => prev.map(p => {
                   if (p.id === activeProject.id) {
                     const currentClips = getProjectClips(p);
@@ -553,7 +555,7 @@ export default function App() {
                   }
                   return p;
                 }));
-                showToast('Clip removed from project');
+                showToast('Clip deleted');
               }}
               canvasRatio={canvasRatio}
               framing={framing}
@@ -563,10 +565,12 @@ export default function App() {
             />
           
             {editClipId && activeProject && (() => {
+              // a clip keeps its engine number (clip_NN.mp4) even after other clips were deleted, so never use the position in the list
+              const engIdx = (c: any) => { const m = /-clip-(\d+)$/.exec(String(c.id)); return m ? parseInt(m[1], 10) - 1 : -1; };
               const cl = getProjectClips(activeProject); const k = cl.findIndex(c => c.id === editClipId); if (k < 0) return null;
-              return <ClipEditor clip={cl[k]} index={k} outDir={activeProject.outputDir || ''} total={cl.length} fallback={{ captions, branding, grading, framing }}
+              return <ClipEditor key={editClipId} clip={cl[k]} index={engIdx(cl[k])} outDir={activeProject.outputDir || ''} total={cl.length} allIdx={cl.map(engIdx).filter(n => n >= 0)} fallback={{ captions, branding, grading, framing }}
                 onClose={() => setEditClipId(null)}
-                onSaved={(i, r) => { const v = '?v=' + Date.now(); const tid = cl[i]?.id; setProjects(prev => prev.map(p => p.id !== activeProject.id ? p : { ...p, clips: getProjectClips(p).map(c => c.id !== tid ? c : { ...c, outputPath: r.outputPath, thumbnailUrl: r.thumbnailUrl || c.thumbnailUrl, videoUrl: (c.videoUrl || '').split('?')[0] + v }) })); }} />;
+                onSaved={(i, r) => { const v = '?v=' + Date.now(); setProjects(prev => prev.map(p => p.id !== activeProject.id ? p : { ...p, clips: getProjectClips(p).map(c => engIdx(c) !== i ? c : { ...c, outputPath: r.outputPath, thumbnailUrl: r.thumbnailUrl || c.thumbnailUrl, videoUrl: (c.videoUrl || '').split('?')[0] + v }) })); }} />;
             })()}
           </main>
         )}

@@ -296,7 +296,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
                       )}
 
                       {/* Hook Banner */}
-                      {branding.showHookTitle && (
+                      {!clip.outputPath && branding.showHookTitle && (
                         <div 
                           className="absolute z-20 pointer-events-none"
                           style={{

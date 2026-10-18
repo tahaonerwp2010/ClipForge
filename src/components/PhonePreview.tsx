@@ -15,6 +15,8 @@ import {
   SplitConfig
 } from '../types/clipper';
 import { SplitPreview } from './SplitPreview';
+import { DynCaption } from './DynCaption';
+import { getDyn } from '../utils/dynCaptions';
 import { SECONDARY_FOOTAGE } from '../data/sampleVideos';
 import { getContextualEmoji, CAPCUT_DYNAMIC_COLORS, hookLines, hookFontPx } from '../utils/captionHelpers';
 
@@ -970,6 +972,10 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                     - Multiline wrapping & NO BACKGROUND BANNER!
                     - Emoji scales proportionally down with font size!
                 ============================================================= */}
+                {getDyn(captions.style) && (
+                  <DynCaption tpl={getDyn(captions.style)!} words={words} currentTime={currentTime} base={scaledFontSize * 1.15 * getDyn(captions.style)!.sizeMul} />
+                )}
+
                 {captions.style === 'capcut-emoji' && (
                   <div className="flex flex-col items-center text-center">
                     {/* Bouncing Contextual Speech Emoji (Proportionally scaled with font size down to 0) */}

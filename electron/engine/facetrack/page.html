@@ -39,4 +39,26 @@ window.runDetect = async function (model, urls) {
   }
   return out;
 };
+
+// ---- person cut-out (MediaPipe selfie segmentation, runs offline from ./selfie) ----
+// window.runSeg(frameUrls) -> [dataUrl|null]  grey PNG per frame (white = person)
+let seg = null;
+window.runSeg = async function (urls) {
+  if (!window.SelfieSegmentation) await new Promise((ok, bad) => { const s = document.createElement('script'); s.src = 'selfie/selfie_segmentation.js'; s.onload = ok; s.onerror = () => bad(new Error('Person cut-out files are missing')); document.head.appendChild(s); });
+  if (!seg) { seg = new SelfieSegmentation({ locateFile: f => 'selfie/' + f }); seg.setOptions({ modelSelection: 0, selfieMode: false }); await seg.initialize(); }
+  let res = null; seg.onResults(r => { res = r; });
+  const out = [], cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
+  for (const u of urls) {
+    const img = new Image(); if (/^http/i.test(u)) img.crossOrigin = 'anonymous'; img.src = u;
+    try { await img.decode(); } catch (e) { out.push(null); continue; }
+    res = null; await seg.send({ image: img });
+    if (!res) { out.push(null); continue; }
+    const m = res.segmentationMask, w = Math.min(m.width, 360), h = Math.max(2, Math.round(m.height * w / m.width));
+    cv.width = w; cv.height = h; cx.clearRect(0, 0, w, h); cx.drawImage(m, 0, 0, w, h);
+    const d = cx.getImageData(0, 0, w, h), p = d.data;
+    for (let i = 0; i < p.length; i += 4) { const v = p[i + 3]; p[i] = p[i + 1] = p[i + 2] = v; p[i + 3] = 255; }
+    cx.putImageData(d, 0, 0); out.push(cv.toDataURL('image/png'));
+  }
+  return out;
+};
 </script>

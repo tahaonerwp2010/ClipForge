@@ -1,0 +1,1239 @@
+{
+ "templates": [
+  {
+   "id": "dyn-gold",
+   "name": "Gold Metal",
+   "tagline": "White chrome words, important words in shiny gold.",
+   "sample": [
+    "This",
+    "is",
+    "pure",
+    "GOLD"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.46,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Anton",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 5,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Anton",
+    "scale": 0.62,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Anton",
+    "scale": 1.75,
+    "colors": [
+     [
+      "#FFF4B8",
+      "#D89A00"
+     ],
+     [
+      "#FFE9A0",
+      "#C98600"
+     ]
+    ],
+    "outline": "#3A2400",
+    "ow": 7,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-chrome",
+   "name": "Ice Chrome",
+   "tagline": "Silver words with icy blue chrome highlights.",
+   "sample": [
+    "Stay",
+    "ice",
+    "COLD",
+    "always"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.6,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Montserrat Black",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 5,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Montserrat Black",
+    "scale": 0.62,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Montserrat Black",
+    "scale": 1.55,
+    "colors": [
+     [
+      "#EAFDFF",
+      "#25A5E6"
+     ],
+     [
+      "#FFFFFF",
+      "#7FB6FF"
+     ]
+    ],
+    "outline": "#06243A",
+    "ow": 6,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-lava",
+   "name": "Lava Fire",
+   "tagline": "Bold condensed white, key words burn orange to red.",
+   "sample": [
+    "This",
+    "is",
+    "ON",
+    "FIRE"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.4,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "League Gothic",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 5,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "League Gothic",
+    "scale": 0.62,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "League Gothic",
+    "scale": 2.0,
+    "colors": [
+     [
+      "#FFE58A",
+      "#FF3D00"
+     ],
+     [
+      "#FFD36B",
+      "#E01E00"
+     ]
+    ],
+    "outline": "#3B0800",
+    "ow": 7,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-emerald",
+   "name": "Emerald Shine",
+   "tagline": "White metal text with emerald green shiny emphasis.",
+   "sample": [
+    "Make",
+    "real",
+    "MONEY",
+    "today"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.55,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Outfit ExtraBold",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 5,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Outfit ExtraBold",
+    "scale": 0.62,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Outfit ExtraBold",
+    "scale": 1.6,
+    "colors": [
+     [
+      "#E3FFEC",
+      "#12B25A"
+     ]
+    ],
+    "outline": "#042B14",
+    "ow": 6,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-rose",
+   "name": "Rose Gold Script",
+   "tagline": "Serif words with big rose-gold script on key words.",
+   "sample": [
+    "Pure",
+    "elegant",
+    "Beauty",
+    "daily"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.5,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Playfair Display Black",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 5,
+    "upper": false,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Playfair Display Black",
+    "scale": 0.62,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": false,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Dancing Script Bold",
+    "scale": 2.0,
+    "colors": [
+     [
+      "#FFE9E4",
+      "#E58C8C"
+     ]
+    ],
+    "outline": "#4A1C1C",
+    "ow": 5,
+    "upper": false,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-script",
+   "name": "Bold + Script",
+   "tagline": "Bold white sans with big yellow script on the key word.",
+   "sample": [
+    "Every",
+    "Single",
+    "Day"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.58,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": false,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Raleway ExtraBold",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 5,
+    "upper": false,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Raleway ExtraBold",
+    "scale": 0.62,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": false,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Pacifico",
+    "scale": 1.6,
+    "colors": [
+     [
+      "#FACC15",
+      "#FACC15"
+     ]
+    ],
+    "outline": "#000000",
+    "ow": 6,
+    "upper": false,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-serif",
+   "name": "Serif Pop",
+   "tagline": "Clean sans with a pink italic serif highlight.",
+   "sample": [
+    "where",
+    "you",
+    "have",
+    "Never",
+    "gone"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.56,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": false,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "DM Sans ExtraBold",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 5,
+    "upper": false,
+    "italic": 0
+   },
+   "fill": {
+    "font": "DM Sans ExtraBold",
+    "scale": 0.62,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": false,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Abril Fatface",
+    "scale": 1.8,
+    "colors": [
+     [
+      "#FF7AB6",
+      "#FF7AB6"
+     ]
+    ],
+    "outline": "#000000",
+    "ow": 5,
+    "upper": false,
+    "italic": 1
+   }
+  },
+  {
+   "id": "dyn-creator",
+   "name": "Creator",
+   "tagline": "Uppercase with a pink box that follows the spoken word.",
+   "sample": [
+    "our",
+    "business",
+    "is",
+    "EDITING"
+   ],
+   "maxWords": 3,
+   "maxPerLine": 3,
+   "cw": 0.62,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": false,
+   "active": {
+    "mode": "box",
+    "color": "#FF3D81",
+    "text": "#FFFFFF",
+    "pad": 11
+   },
+   "hollow": false,
+   "plain": {
+    "font": "Poppins Black",
+    "scale": 0.95,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Poppins Black",
+    "scale": 0.95,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Poppins Black",
+    "scale": 1.0,
+    "colors": [
+     [
+      "#FFFFFF",
+      "#FFFFFF"
+     ]
+    ],
+    "outline": "#3A2400",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-creator2",
+   "name": "Creator 2",
+   "tagline": "Black text in a yellow box that jumps word to word.",
+   "sample": [
+    "and",
+    "I'll",
+    "send",
+    "it"
+   ],
+   "maxWords": 3,
+   "maxPerLine": 3,
+   "cw": 0.45,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": false,
+   "active": {
+    "mode": "box",
+    "color": "#FACC15",
+    "text": "#000000",
+    "pad": 10
+   },
+   "hollow": false,
+   "plain": {
+    "font": "Passion One Black",
+    "scale": 1.05,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Passion One Black",
+    "scale": 1.05,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Passion One Black",
+    "scale": 1.05,
+    "colors": [
+     [
+      "#FFFFFF",
+      "#FFFFFF"
+     ]
+    ],
+    "outline": "#3A2400",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-story",
+   "name": "Story",
+   "tagline": "Handwritten lowercase, soft and personal.",
+   "sample": [
+    "it",
+    "was",
+    "a",
+    "story"
+   ],
+   "maxWords": 5,
+   "maxPerLine": 4,
+   "cw": 0.4,
+   "sizeMul": 1.2,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": false,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Caveat Bold",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": false,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Caveat Bold",
+    "scale": 0.8,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": false,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Caveat Bold",
+    "scale": 1.45,
+    "colors": [
+     [
+      "#FFE66D",
+      "#FFE66D"
+     ]
+    ],
+    "outline": "#000000",
+    "ow": 5,
+    "upper": false,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-gamer",
+   "name": "Gamer",
+   "tagline": "Neon cyan sci-fi caps with magenta power words.",
+   "sample": [
+    "LEVEL",
+    "UP",
+    "NOW"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.68,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Orbitron ExtraBold",
+    "scale": 1,
+    "colors": [
+     "#E9FFFF",
+     "#18C8E0"
+    ],
+    "outline": "#062433",
+    "ow": 6,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Orbitron ExtraBold",
+    "scale": 0.62,
+    "colors": [
+     "#E9FFFF",
+     "#18C8E0"
+    ],
+    "outline": "#062433",
+    "ow": 5,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Black Ops One",
+    "scale": 1.6,
+    "colors": [
+     [
+      "#FFD6FF",
+      "#C400FF"
+     ]
+    ],
+    "outline": "#2A0640",
+    "ow": 7,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-clean",
+   "name": "Clean Subtitle",
+   "tagline": "Classic readable subtitle, the spoken word turns yellow.",
+   "sample": [
+    "This",
+    "food",
+    "is",
+    "incredible"
+   ],
+   "maxWords": 5,
+   "maxPerLine": 5,
+   "cw": 0.58,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": false,
+   "active": {
+    "mode": "color",
+    "color": "#FACC15"
+   },
+   "hollow": false,
+   "plain": {
+    "font": "Inter ExtraBold",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": false,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Inter ExtraBold",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": false,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Inter ExtraBold",
+    "scale": 1,
+    "colors": [
+     [
+      "#FFFFFF",
+      "#FFFFFF"
+     ]
+    ],
+    "outline": "#3A2400",
+    "ow": 4,
+    "upper": false,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-outline",
+   "name": "Outline Pop",
+   "tagline": "Hollow outlined words, key words filled solid.",
+   "sample": [
+    "Waking",
+    "up",
+    "EARLY"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.45,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": false,
+   "active": null,
+   "hollow": true,
+   "plain": {
+    "font": "Staatliches",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 3,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Staatliches",
+    "scale": 0.62,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 3,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Staatliches",
+    "scale": 1.8,
+    "colors": [
+     [
+      "#FFFFFF",
+      "#FFFFFF"
+     ]
+    ],
+    "outline": "#000000",
+    "ow": 6,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-comic",
+   "name": "Comic Burst",
+   "tagline": "Chunky comic words, red burst on important ones.",
+   "sample": [
+    "So",
+    "tonight",
+    "is",
+    "GOING"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.5,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": false,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Bangers",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 6,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Lilita One",
+    "scale": 0.62,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 5,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Bangers",
+    "scale": 1.7,
+    "colors": [
+     [
+      "#FFD93B",
+      "#FF2D2D"
+     ]
+    ],
+    "outline": "#000000",
+    "ow": 8,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-behind-gold",
+   "name": "Behind Gold",
+   "tagline": "Huge shiny gold word sits BEHIND the speaker.",
+   "sample": [
+    "Make",
+    "more",
+    "MONEY"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.42,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "behind": true,
+   "plain": {
+    "font": "Barlow Condensed ExtraBold",
+    "scale": 0.8,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Barlow Condensed ExtraBold",
+    "scale": 0.55,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 3,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Bebas Neue",
+    "scale": 3.0,
+    "colors": [
+     [
+      "#FFF4B8",
+      "#D89A00"
+     ]
+    ],
+    "outline": "#3A2400",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-behind-chrome",
+   "name": "Behind Chrome",
+   "tagline": "Giant chrome-blue word behind the person.",
+   "sample": [
+    "Stay",
+    "ice",
+    "COLD"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.62,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "behind": true,
+   "plain": {
+    "font": "Work Sans ExtraBold",
+    "scale": 0.8,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Work Sans ExtraBold",
+    "scale": 0.55,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 3,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Archivo Black",
+    "scale": 3.0,
+    "colors": [
+     [
+      "#F2FEFF",
+      "#2A9DE0"
+     ]
+    ],
+    "outline": "#06243A",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-behind-fire",
+   "name": "Behind Fire",
+   "tagline": "Burning orange-red word behind the person.",
+   "sample": [
+    "This",
+    "is",
+    "FIRE"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.45,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "behind": true,
+   "plain": {
+    "font": "Oswald Bold",
+    "scale": 0.8,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Oswald Bold",
+    "scale": 0.55,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 3,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Fjalla One",
+    "scale": 3.0,
+    "colors": [
+     [
+      "#FFE58A",
+      "#FF3D00"
+     ]
+    ],
+    "outline": "#3B0800",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-behind-neon",
+   "name": "Behind Neon",
+   "tagline": "Pink-violet neon word behind the person.",
+   "sample": [
+    "Feel",
+    "the",
+    "VIBE"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.66,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "pop",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "behind": true,
+   "plain": {
+    "font": "Rubik ExtraBold",
+    "scale": 0.8,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Rubik ExtraBold",
+    "scale": 0.55,
+    "colors": [
+     "#FFFFFF",
+     "#AFB9C6"
+    ],
+    "outline": "#000000",
+    "ow": 3,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Bungee",
+    "scale": 3.0,
+    "colors": [
+     [
+      "#FFD6FF",
+      "#B400FF"
+     ]
+    ],
+    "outline": "#2A0640",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   }
+  }
+ ],
+ "words": {
+  "power": [
+   "never",
+   "always",
+   "secret",
+   "secrets",
+   "money",
+   "free",
+   "insane",
+   "crazy",
+   "huge",
+   "biggest",
+   "best",
+   "worst",
+   "mistake",
+   "mistakes",
+   "truth",
+   "stop",
+   "million",
+   "billion",
+   "thousand",
+   "important",
+   "wrong",
+   "rich",
+   "success",
+   "fail",
+   "failure",
+   "win",
+   "lose",
+   "dangerous",
+   "powerful",
+   "shocking",
+   "unbelievable",
+   "impossible",
+   "everything",
+   "nothing",
+   "nobody",
+   "everyone",
+   "only",
+   "first",
+   "last",
+   "now",
+   "warning",
+   "finally",
+   "literally",
+   "actually",
+   "boom",
+   "wow",
+   "omg",
+   "incredible",
+   "massive",
+   "extreme",
+   "ultimate",
+   "guaranteed",
+   "proven",
+   "banned",
+   "illegal",
+   "love",
+   "hate",
+   "dead",
+   "fire",
+   "gold",
+   "king",
+   "queen",
+   "god",
+   "power"
+  ],
+  "stop": [
+   "the",
+   "a",
+   "an",
+   "and",
+   "or",
+   "but",
+   "so",
+   "to",
+   "of",
+   "in",
+   "on",
+   "at",
+   "is",
+   "are",
+   "was",
+   "were",
+   "be",
+   "been",
+   "it",
+   "its",
+   "this",
+   "that",
+   "these",
+   "those",
+   "you",
+   "your",
+   "i",
+   "me",
+   "my",
+   "we",
+   "our",
+   "they",
+   "them",
+   "their",
+   "he",
+   "she",
+   "his",
+   "her",
+   "him",
+   "as",
+   "for",
+   "with",
+   "from",
+   "by",
+   "if",
+   "then",
+   "than",
+   "just",
+   "very",
+   "too",
+   "also",
+   "have",
+   "has",
+   "had",
+   "do",
+   "does",
+   "did",
+   "not",
+   "dont",
+   "am",
+   "will",
+   "would",
+   "can",
+   "could",
+   "should",
+   "about",
+   "into",
+   "over",
+   "out",
+   "up",
+   "down",
+   "what",
+   "when",
+   "where",
+   "who",
+   "which",
+   "how",
+   "there",
+   "here",
+   "some",
+   "any",
+   "all",
+   "more",
+   "most",
+   "one",
+   "like",
+   "get",
+   "got",
+   "gonna",
+   "gotta",
+   "kind",
+   "thing",
+   "things",
+   "yeah",
+   "okay",
+   "well",
+   "um",
+   "uh"
+  ]
+ }
+}
