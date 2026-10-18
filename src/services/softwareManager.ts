@@ -120,6 +120,7 @@ export class SoftwareManager {
   ): Promise<void> {
     const target = this.models.find(m => m.id === modelId);
     if (!target) return;
+    if (target.status === 'downloading') return;        // already running: a second click must not start a second download
 
     target.status = 'downloading';
     target.downloadProgress = 0;
@@ -136,8 +137,8 @@ export class SoftwareManager {
       // REAL download (Electron main process -> HuggingFace -> models folder)
       const off = api.onDownloadProgress?.((d: any) => {
         if (d.modelId !== modelId) return;
-        target.downloadProgress = d.progress;
-        onProgress?.(d.progress);
+        target.downloadProgress = Math.max(target.downloadProgress || 0, d.progress);   // never show the bar going back
+        onProgress?.(target.downloadProgress);
       });
       try {
         await api.downloadModel(modelId);

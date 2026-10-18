@@ -242,21 +242,31 @@ ipcMain.handle('engine-status', async () => ({
   ffmpeg: !!Paths.resolveBin('ffmpeg'), whisper: !!(Paths.resolveBin('whisper-cli') || Paths.resolveBin('main')),
 }));
 
+const activeDl = new Map();                      // one download per model: a second click joins the first instead of starting a parallel one (two streams into the same file made the % jump back and forth)
 ipcMain.handle('download-model', async (event, { modelId }) => {
   const url = MODEL_URLS[modelId];
   if (!url) throw new Error(`Unknown model: ${modelId}`);
-  fs.mkdirSync(Paths.modelsDir(), { recursive: true });
-  const finalPath = mfile(modelId), tmp = finalPath + '.part';
-  try {
-    await fetchToFile(url, tmp, (downloadedBytes, totalBytes) => {
-      send('download-progress', { modelId, progress: totalBytes ? Math.round(downloadedBytes / totalBytes * 100) : 0, downloadedBytes, totalBytes });
-    });
-    fs.renameSync(tmp, finalPath);
-    return { success: true, filePath: finalPath };
-  } catch (e) {
-    try { fs.unlinkSync(tmp); } catch {}
-    throw e;
-  }
+  if (activeDl.has(modelId)) return activeDl.get(modelId);
+  const job = (async () => {
+    fs.mkdirSync(Paths.modelsDir(), { recursive: true });
+    const finalPath = mfile(modelId), tmp = finalPath + '.part';
+    let last = -1;
+    try {
+      await fetchToFile(url, tmp, (downloadedBytes, totalBytes) => {
+        const progress = totalBytes ? Math.round(downloadedBytes / totalBytes * 100) : 0;
+        if (progress < last) return;               // never go backwards
+        last = progress;
+        send('download-progress', { modelId, progress, downloadedBytes, totalBytes });
+      });
+      fs.renameSync(tmp, finalPath);
+      return { success: true, filePath: finalPath };
+    } catch (e) {
+      try { fs.unlinkSync(tmp); } catch {}
+      throw e;
+    }
+  })();
+  activeDl.set(modelId, job);
+  try { return await job; } finally { activeDl.delete(modelId); }
 });
 
 // ---- Real file picker (gives a real disk path; blob: URLs can't be read by ffmpeg) ----
