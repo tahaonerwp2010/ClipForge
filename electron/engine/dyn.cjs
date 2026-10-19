@@ -12,7 +12,9 @@ const bgr = hex => { const h = hex.replace('#', ''); return `&H${h.slice(4, 6)}$
 const esc = t => String(t).replace(/[{}\\]/g, '');
 const ts = sec => { const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return `${h}:${String(m).padStart(2, '0')}:${s.toFixed(2).padStart(5, '0')}`; };
 const clean = w => String(w).toLowerCase().replace(/[^a-z0-9']/g, '');
-const score = w => { const n = clean(w); if (n.length < 3 || STOP.has(n)) return -1; let s = 0; if (POWER.has(n)) s += 3; if (/\d/.test(n)) s += 3; if (n.length >= 7) s += 1.5; else if (n.length >= 5) s += 1; return s; };
+// Only genuinely special words get the big treatment: strong words from the list, numbers, or the clip's own AI keywords.
+// Ordinary words (even long ones) never do, and contractions like "that's" never do.
+const score = (w, kw) => { const n = clean(w); if (n.length < 4 || STOP.has(n) || n.includes("'")) return -1; let s = 0; if (POWER.has(n)) s += 3; if (/\d/.test(n)) s += 3; if (kw && kw.has(n)) s += 3; return s; };
 
 // words -> phrases (end at . ? ! , a pause, or maxWords)
 function phrases(cw, tpl) {
@@ -26,10 +28,9 @@ function phrases(cw, tpl) {
   return out;
 }
 // one phrase -> lines of {idx, cls, text}; cls: emph | plain | fill
-function layout(ws, tpl, W, base, H) {
-  let emph = -1, best = 1;
-  ws.forEach((w, j) => { const s = score(w); if (s > best) { best = s; emph = j; } });
-  if (emph < 0) { let L = 0; ws.forEach((w, j) => { const n = clean(w); if (n.length >= 5 && !STOP.has(n) && n.length > L) { L = n.length; emph = j; } }); }
+function layout(ws, tpl, W, base, H, kw, allowEmph = true) {
+  let emph = -1, best = 2.9;
+  if (allowEmph) ws.forEach((w, j) => { const s = score(w, kw); if (s > best) { best = s; emph = j; } });
   const items = ws.map((w, j) => {
     const cls = j === emph ? 'emph' : (STOP.has(clean(w)) && clean(w).length <= 4 ? 'fill' : 'plain');
     const st = tpl[cls], t = st.upper ? String(w).toUpperCase() : String(w);
@@ -55,7 +56,7 @@ function layout(ws, tpl, W, base, H) {
   });
 }
 
-function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all' }) {
+function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', keywords, behindBox }) {
   const k = W / 1080, base = Math.round(captions.fontSize * 3.4 * k * tpl.sizeMul * 1.15);
   const off = Math.max(-0.5, Math.min(0.5, Number(captions.syncOffset) || 0));
   const cw = words.filter(w => w.start >= clipStart && w.start < clipEnd).map(w => (off ? { ...w, start: w.start + off, end: w.end + off } : w));
@@ -63,17 +64,20 @@ function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all' })
   cw.forEach((w, i) => { tS[i] = Math.max(0, w.start - clipStart - LEAD); if (i && tS[i] < tS[i - 1] + 0.04) tS[i] = tS[i - 1] + 0.04; });
   const cx = Math.round((captions.positionX ?? 50) / 100 * W), cy = (captions.positionY ?? 72) / 100 * H;
   const ph = phrases(cw, tpl);
-  let emphN = 0;
+  let emphN = 0, lastEmphT = -99;
+  const kw = new Set((keywords || []).map(x => clean(String(x))).filter(Boolean));
   ph.forEach((idxs, pi) => {
     const first = idxs[0], last = idxs[idxs.length - 1], nxt = ph[pi + 1];
     let pEnd = (cw[last].end - clipStart) + 0.18;
     if (nxt) pEnd = Math.min(pEnd, tS[nxt[0]]);
     pEnd = Math.max(pEnd, tS[last] + 0.12);
-    const lines = layout(idxs.map(i => cw[i].word), tpl, W, base, H);
+    const pStart = tS[first], gapNeeded = tpl.behind ? 2.4 : 1.6;
+    const lines = layout(idxs.map(i => cw[i].word), tpl, W, base, H, kw, pStart - lastEmphT >= gapNeeded);
+    if (lines.some(l => l.items[0].cls === 'emph')) lastEmphT = pStart;
     const isEm = lines.map(l => !!(tpl.behind && l.items[0].cls === 'emph'));          // behind-the-person: the big word is drawn on its own layer, higher up
     const hs = lines.map((l, i) => isEm[i] ? 0 : l.size * 1.02 * tpl.lh), total = hs.reduce((a, b) => a + b, 0);
     let y0 = Math.max(total / 2 + 20 * k, Math.min(H - total / 2 - 20 * k, cy)) - total / 2;
-    const emY = Math.round(Math.max(0.2 * H, cy - 0.40 * H));
+    const emY = Math.round(behindBox && behindBox.bottom > behindBox.top ? Math.max(0.18 * H, Math.min(0.55 * H, H * (behindBox.top + 0.28 * (behindBox.bottom - behindBox.top)))) : 0.35 * H);   // inside the speaker: upper chest / head area
     const ecol = (() => { const pal = tpl.emph.colors; return pal[emphN++ % pal.length]; })();
     lines.forEach((ln, li) => {
       const yc = isEm[li] ? emY : Math.round(y0 + hs[li] / 2); y0 += hs[li];

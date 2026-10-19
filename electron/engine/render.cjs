@@ -155,11 +155,11 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
   if (g.grain) post.push('noise=alls=8:allf=t');
   const win = (list, d) => (list || []).map(t => `between(t,${t},${(t + d).toFixed(2)})`).join('+');
   const mo = fxMore || {};
-  { const m = win(mo.mono, 0.8), c = win(mo.colorpop, 0.9), gl = win(mo.glow, 0.6), ch = win(mo.chroma, 0.2);   // colour looks go under the captions so the text stays clean
+  { const m = win(mo.mono, 0.8), c = win(mo.colorpop, 0.9), gl = win(mo.glow, 0.6), ch = win(mo.chroma, 0.3);   // colour looks go under the captions so the text stays clean
     if (m) post.push(`hue=s=0:enable='${m}'`, `eq=contrast=1.18:enable='${m}'`);
-    if (c) post.push(`eq=saturation=1.75:contrast=1.08:enable='${c}'`);
-    if (gl) post.push(`eq=brightness=0.07:saturation=1.25:gamma=1.08:enable='${gl}'`);
-    if (ch) post.push(`rgbashift=rh=-9:bh=9:rv=2:bv=-2:enable='${ch}'`); }
+    if (c) post.push(`eq=saturation=2.1:contrast=1.12:enable='${c}'`);
+    if (gl) post.push(`eq=brightness=0.1:saturation=1.4:gamma=1.12:enable='${gl}'`);
+    if (ch) post.push(`rgbashift=rh=-16:bh=16:rv=3:bv=-3:enable='${ch}'`); }
   if (hasAss && !(behind && !splitArgs)) post.push('ass=captions.ass:fontsdir=fonts');
   let graph;
   const pushL = mo.push || [], pullL = mo.pull || [], pulseL = mo.pulse || [], panL = mo.pan || [], tiltL = mo.tilt || [];

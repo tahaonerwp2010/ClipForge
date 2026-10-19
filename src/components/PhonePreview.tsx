@@ -922,6 +922,11 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
               - All other templates have NO emojis!
               - Scale can go all the way down to 0!
           ===================================================================== */}
+          {captions.enabled && captions.fontSize > 0 && getDyn(captions.style)?.behind && (
+            <div className="absolute z-20 pointer-events-none select-none" style={{ left: `${captions.positionX}%`, top: '35%', transform: 'translate(-50%, -50%)', width: '96%' }} title="In the exported video this word goes behind the speaker">
+              <DynCaption tpl={getDyn(captions.style)!} part="behind" words={words} currentTime={currentTime} base={scaledFontSize * 1.15 * getDyn(captions.style)!.sizeMul} fitW={scrW} />
+            </div>
+          )}
           {captions.enabled && captions.fontSize > 0 && currentChunk.length > 0 && (
             <div 
               data-snap="caption" className="absolute z-30 transition-transform select-none max-w-[88%] w-fit"
@@ -973,7 +978,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                     - Emoji scales proportionally down with font size!
                 ============================================================= */}
                 {getDyn(captions.style) && (
-                  <DynCaption tpl={getDyn(captions.style)!} words={words} currentTime={currentTime} base={scaledFontSize * 1.15 * getDyn(captions.style)!.sizeMul} />
+                  <DynCaption tpl={getDyn(captions.style)!} part={getDyn(captions.style)!.behind ? 'front' : 'all'} words={words} currentTime={currentTime} base={scaledFontSize * 1.15 * getDyn(captions.style)!.sizeMul} />
                 )}
 
                 {captions.style === 'capcut-emoji' && (

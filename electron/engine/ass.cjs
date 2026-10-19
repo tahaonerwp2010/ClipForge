@@ -40,7 +40,7 @@ function fontsUsed({ captions = {}, branding = {} }) {
   if (dyn) return [...DYN.fontsOf(dyn), at.fontFamily || 'Montserrat Black', branding.hookFontFamily || 'Montserrat Black', branding.watermarkFontFamily || 'Arial'].map(fam);   // dynamic templates: their own fonts, not changeable
   return [captions.fontFamily || preset.font, at.fontFamily || 'Montserrat Black', branding.hookFontFamily || 'Montserrat Black', branding.watermarkFontFamily || 'Arial'].map(fam);
 }
-function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hookText, part = 'all' }) {
+function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hookText, part = 'all', keywords, behindBox }) {
   const preset = PRESETS[captions.style] || PRESETS['capcut-emoji'];
   const k = W / 1080;
   const size = Math.round(captions.fontSize * 3.4 * k);
@@ -80,7 +80,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
   if (branding.showWatermark && branding.watermarkType !== 'image' && branding.creatorHandle && part !== 'behind')
     L.push(`Dialogue: 2,${ts(0)},${ts(dur)},Mark,,0,0,0,,${pos(branding.watermarkPositionX ?? 20, branding.watermarkPositionY ?? 92)}${esc(branding.creatorHandle)}`);
   if (captions.enabled && dynTpl) {
-    DYN.build({ words, clipStart, clipEnd, W, H, captions, tpl: dynTpl, part }).forEach(l => L.push(l));
+    DYN.build({ words, clipStart, clipEnd, W, H, captions, tpl: dynTpl, part, keywords, behindBox }).forEach(l => L.push(l));
   } else if (captions.enabled && part !== 'behind') {
     const off = Math.max(-0.5, Math.min(0.5, Number(captions.syncOffset) || 0));
     const cw = words.filter(w => w.start >= clipStart && w.start < clipEnd).map(w => (off ? { ...w, start: w.start + off, end: w.end + off } : w));

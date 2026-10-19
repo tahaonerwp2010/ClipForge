@@ -26,15 +26,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, proj
     { id: 'settings', label: 'Settings', Icon: Settings, active: activeView === 'settings' },
   ];
   return (
-    <><aside className="hidden md:flex w-[220px] shrink-0 h-full flex-col bg-[#060d0a] border-r border-[#122219] select-none">
-      <div className="flex items-center gap-2.5 px-4 pt-6 pb-7">
+    <><aside className="hidden md:flex w-[236px] shrink-0 overflow-hidden h-full flex-col bg-[#060d0a] border-r border-[#122219] select-none">
+      <div className="flex items-center gap-2.5 px-3.5 pt-6 pb-7">
         {logoOk
-          ? <img src="./logo.png" alt="ClipForge" className="w-12 h-12 rounded-xl shrink-0" onError={() => setLogoOk(false)} draggable={false} />
-          : <div className="w-12 h-12 rounded-xl bg-[#bef264] text-black font-black flex items-center justify-center text-xl shrink-0">C</div>}
+          ? <img src="./logo.png" alt="ClipForge" className="w-11 h-11 rounded-xl shrink-0" onError={() => setLogoOk(false)} draggable={false} />
+          : <div className="w-11 h-11 rounded-xl bg-[#bef264] text-black font-black flex items-center justify-center text-xl shrink-0">C</div>}
         <div className="min-w-0">
           <div className="flex items-baseline gap-1 whitespace-nowrap leading-none">
-            <span className="text-[21px] font-extrabold text-white tracking-tight">ClipForge</span>
-            <span className="text-[9px] font-semibold text-[#8fd0a4] tracking-normal">by taha.ai</span>
+            <span className="text-[19px] font-extrabold text-white tracking-tight">ClipForge</span>
+            <span className="text-[8.5px] font-semibold text-[#8fd0a4] tracking-normal">by taha.ai</span>
           </div>
           <div className="text-[10px] text-neutral-500 mt-1.5 whitespace-nowrap">AI clips. Real impact.</div>
         </div>

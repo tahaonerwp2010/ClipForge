@@ -12,16 +12,13 @@ export const isDynStyle = (id?: string) => !!id && DYN_TEMPLATES.some(t => t.id 
 export const getDyn = (id?: string) => DYN_TEMPLATES.find(t => t.id === id);
 const POWER = new Set<string>((DATA as any).words.power), STOP = new Set<string>((DATA as any).words.stop);
 const clean = (w: string) => w.toLowerCase().replace(/[^a-z0-9']/g, '');
-const score = (w: string) => { const n = clean(w); if (n.length < 3 || STOP.has(n)) return -1; let s = 0; if (POWER.has(n)) s += 3; if (/\d/.test(n)) s += 3; if (n.length >= 7) s += 1.5; else if (n.length >= 5) s += 1; return s; };
+const score = (w: string) => { const n = clean(w); if (n.length < 4 || STOP.has(n) || n.includes("'")) return -1; let s = 0; if (POWER.has(n)) s += 3; if (/\d/.test(n)) s += 3; return s; };
 
 export interface DynWord { j: number; text: string; cls: 'emph' | 'plain' | 'fill' }
 /** phrase of words -> lines (the important word gets its own bigger line) */
 export function dynLayout(ws: string[], tpl: DynTemplate, emphIndex?: number): DynWord[][] {
-  let emph = emphIndex ?? -1, best = 1;
-  if (emphIndex === undefined) {
-    ws.forEach((w, j) => { const s = score(w); if (s > best) { best = s; emph = j; } });
-    if (emph < 0) { let L = 0; ws.forEach((w, j) => { const n = clean(w); if (n.length >= 5 && !STOP.has(n) && n.length > L) { L = n.length; emph = j; } }); }
-  }
+  let emph = emphIndex ?? -1, best = 2.9;
+  if (emphIndex === undefined) ws.forEach((w, j) => { const s = score(w); if (s > best) { best = s; emph = j; } });
   const lines: DynWord[][] = []; let line: DynWord[] = [];
   ws.forEach((w, j) => {
     const cls: DynWord['cls'] = j === emph ? 'emph' : (STOP.has(clean(w)) && clean(w).length <= 4 ? 'fill' : 'plain');

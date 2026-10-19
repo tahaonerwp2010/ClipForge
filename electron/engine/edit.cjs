@@ -40,11 +40,12 @@ async function ctxFor(st, i, ov = {}, work, extra = {}) {
   const useEmoji = captions.enabled && captions.showEmoji && captions.style === 'capcut-emoji';
   const assArgs = { words: cw, clipStart: start, clipEnd: end, W: Wd, H: Ht, captions, branding, title: hookText, hookText };
   let behind = null;
-  if (extra.outDir && extra.deps && extra.deps.segment && BH.wants(captions)) {
+  if (extra.outDir && extra.deps && (extra.deps.segment || extra.deps.detectFaces) && BH.wants(captions)) {
     const info0 = shorts ? st.infos[i] : st.info;
-    behind = await BH.masks({ R, segment: extra.deps.segment, cacheDir: path.join(editDir(extra.outDir), `mask_${nn(i)}`), workDir: path.join(os.tmpdir(), `cf_bh_${process.pid}_${i}`), input: shorts ? st.files[i] : st.input, start, end, ratio: st.ratio || '9:16',
+    behind = await BH.masks({ R, segment: extra.deps.segment, detectFaces: extra.deps.detectFaces, cacheDir: path.join(editDir(extra.outDir), `mask_${nn(i)}`), workDir: path.join(os.tmpdir(), `cf_bh_${process.pid}_${i}`), input: shorts ? st.files[i] : st.input, start, end, ratio: st.ratio || '9:16',
       framing: st.framing, grading: st.grading, track: (st.tracks || [])[i] || null, srcAspect: info0.width / info0.height, split: st.split || undefined, log: extra.log });
   }
+  assArgs.behindBox = behind && behind.box; assArgs.keywords = ((shorts ? st.clips : st.clips) || [])[i] && ((st.clips || [])[i].keywords);
   const ass = ASS.build({ ...assArgs, part: behind ? 'front' : 'all' }), assBehind = behind ? ASS.build({ ...assArgs, part: 'behind' }) : '';
   const emojis = [...(useEmoji ? EMOJI.plan(ow, start, end, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
     ...ASS.titleEmojis({ title: hookText, branding, W: Wd, H: Ht, dur: dur })];
@@ -82,6 +83,7 @@ async function rerender(outDir, i, ov, onProgress, deps) {
   const x = await ctxFor(st, i, ov, null, { outDir, deps, log: m => { try { onProgress && onProgress(0); } catch {} } });
   const out = path.join(outDir, `clip_${nn(i)}.mp4`), tmp = path.join(outDir, `clip_${nn(i)}.edit.mp4`);
   const w = path.join(os.tmpdir(), `cf_edit_${process.pid}_${i}`);
+  if (ov.fx) st.grading = { ...(st.grading || {}), fx: { ...((st.grading || {}).fx || {}), ...ov.fx } };
   let fx; const o = st.grading && st.grading.fx;
   if (o && o.enabled) { try { fx = FX.plan(x.cw, x.start, x.end, o, i + 1); } catch {} }
   await R.renderClip({ behind: x.behind, assBehind: x.assBehind, quality: x.quality, fx, input: x.input, start: x.start, end: x.end, out: tmp, assText: x.ass, ratio: st.ratio || '9:16', framing: st.framing, grading: st.grading,

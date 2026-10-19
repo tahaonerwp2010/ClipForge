@@ -282,8 +282,8 @@ async function runInner(job, emit, deps = {}) {
     const done = readJson(`res_${n}.json`);
     if (done && fs.existsSync(out)) { result.push(done); setPct(8, (i + 1) / clips.length); continue; }
     log('FFmpeg', `Rendering clip ${i + 1}/${clips.length} (${(c.end - c.start).toFixed(0)}s)…`);
-    const bh = (BH.wants(job.captions) && deps.segment) ? await BH.masks({ R, segment: deps.segment, cacheDir: path.join(outDir, '.edit', `mask_${n}`), workDir: path.join(work, `c${n}`), input: job.filePath, start: c.start, end: c.end, ratio, framing: job.framing, grading: job.grading, track: tracks[i], srcAspect: info.width / info.height, split, log: m => log('Captions', m) }) : null;
-    const assArgs = { words: capWords, clipStart: c.start, clipEnd: c.end, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText };
+    const bh = (BH.wants(job.captions) && (deps.segment || deps.detectFaces)) ? await BH.masks({ R, segment: deps.segment, detectFaces: deps.detectFaces, cacheDir: path.join(outDir, '.edit', `mask_${n}`), workDir: path.join(work, `c${n}`), input: job.filePath, start: c.start, end: c.end, ratio, framing: job.framing, grading: job.grading, track: tracks[i], srcAspect: info.width / info.height, split, log: m => log('Captions', m) }) : null;
+    const assArgs = { words: capWords, clipStart: c.start, clipEnd: c.end, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText, keywords: c.keywords, behindBox: bh && bh.box };
     const ass = ASS.build({ ...assArgs, part: bh ? 'front' : 'all' }), assBehind = bh ? ASS.build({ ...assArgs, part: 'behind' }) : '';
     const emojis = [...(useEmoji ? EMOJI.plan(capWords === words ? words : words, c.start, c.end, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
       ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur: c.end - c.start })];
@@ -519,8 +519,8 @@ async function runShortsInner(job, emit, deps = {}) {
     if (done && fs.existsSync(out)) { result.push(done); setPct(8, (i + 1) / N); continue; }
     log('FFmpeg', `Rendering clip ${i + 1}/${N} (${dur.toFixed(0)}s)…`);
     const cw = capWords[i];
-    const bh = (BH.wants(job.captions) && deps.segment) ? await BH.masks({ R, segment: deps.segment, cacheDir: path.join(outDir, '.edit', `mask_${n}`), workDir: path.join(work, `c${n}`), input: files[i].path, start: 0, end: dur, ratio, framing: job.framing, grading: job.grading, track: tracks[i], srcAspect: infos[i].width / infos[i].height, log: m => log('Captions', m) }) : null;
-    const assArgs = { words: cw, clipStart: 0, clipEnd: dur, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText };
+    const bh = (BH.wants(job.captions) && (deps.segment || deps.detectFaces)) ? await BH.masks({ R, segment: deps.segment, detectFaces: deps.detectFaces, cacheDir: path.join(outDir, '.edit', `mask_${n}`), workDir: path.join(work, `c${n}`), input: files[i].path, start: 0, end: dur, ratio, framing: job.framing, grading: job.grading, track: tracks[i], srcAspect: infos[i].width / infos[i].height, log: m => log('Captions', m) }) : null;
+    const assArgs = { words: cw, clipStart: 0, clipEnd: dur, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText, keywords: c.keywords, behindBox: bh && bh.box };
     const ass = ASS.build({ ...assArgs, part: bh ? 'front' : 'all' }), assBehind = bh ? ASS.build({ ...assArgs, part: 'behind' }) : '';
     const emojis = [...(useEmoji ? EMOJI.plan(words[i], 0, dur, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
       ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur })];

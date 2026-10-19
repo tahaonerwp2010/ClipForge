@@ -18,9 +18,13 @@ const NUMW = S('zero one two three four five six seven eight nine ten twenty thi
 const STOP = S('the a an and or but so to of in on at is are was were be been it its this that these those you your yours i me my we our they them their he she his her him as for with from by if then than just very too also have has had do does did not dont am will would can could should about into over out up down what when where who which how there here some any all more most one like get got gonna gotta kind sort thing things stuff yeah okay well um uh hmm mein hai hain ka ki ke ko se ne par aur yeh woh kya tha thi hota hoti');
 
 const LEVEL = {
-  subtle:   { gap: 5,   thr: 4, amp: 0.05, kinds: 'punch push pull glow colorpop pan', layer: 0 },
-  balanced: { gap: 3.4, thr: 3, amp: 0.08, kinds: 'punch push pull pulse shake tilt pan flash dip chroma blur mono colorpop glow', layer: 0.25 },
-  wild:     { gap: 2.0, thr: 2, amp: 0.12, kinds: 'punch push pull pulse shake tilt pan flash dip strobe negate glitch vhs chroma blur mono colorpop glow', layer: 0.45 },
+  subtle:   { gap: 5,   min: 8,   thr: 4, amp: 0.05, kinds: 'punch push pull glow colorpop pan', layer: 0 },
+  balanced: { gap: 3.4, min: 4.5, thr: 3, amp: 0.08, kinds: 'punch push pull pulse shake tilt pan flash dip chroma blur mono colorpop glow', layer: 0.25 },
+  wild:     { gap: 2.0, min: 3,   thr: 2, amp: 0.12, kinds: 'punch push pull pulse shake tilt pan flash dip strobe negate glitch vhs chroma blur mono colorpop glow', layer: 0.45 },
+};
+const BIAS = {   // wild = loud and punchy, balanced = a little punchier than neutral
+  wild: { shake: 2, punch: 1.8, pulse: 1.6, flash: 2, strobe: 1.6, glitch: 2, vhs: 1.5, negate: 1.5, tilt: 1.6, dip: 1.5, glow: 0.5, pull: 0.6, push: 0.6 },
+  balanced: { shake: 1.3, punch: 1.3, flash: 1.3, glow: 0.8 },
 };
 const FAMILY = { punch: 'zoom', push: 'zoom', pull: 'zoom', pulse: 'zoom', shake: 'motion', tilt: 'motion', pan: 'motion', flash: 'flash', dip: 'flash', strobe: 'flash', negate: 'flash', glitch: 'glitch', vhs: 'glitch', chroma: 'glitch', mono: 'color', colorpop: 'color', glow: 'color', blur: 'color' };
 // What fits what: ctx -> kind weights
@@ -31,7 +35,7 @@ const WEIGHTS = {
   hit:   { shake: 3, punch: 3, flash: 2, tilt: 2, chroma: 2, strobe: 1, negate: 1, pulse: 1 },
   trans: { pan: 3, dip: 2, blur: 2, flash: 2, glitch: 1, pull: 2, push: 1 },
   quest: { pull: 3, tilt: 2, push: 2, blur: 1, pan: 1 },
-  plain: { push: 3, pan: 2, pull: 2, glow: 1, chroma: 1, pulse: 1, punch: 1 },
+  plain: { push: 3, pan: 2, pull: 2, glow: 1, chroma: 1, pulse: 1, punch: 1.5, shake: 1, flash: 1, tilt: 1, glitch: 0.7, dip: 0.6 },
 };
 // Which sound roles go with each effect (first = preferred) and how to line the sound up with the word
 const SOUND = {
@@ -73,10 +77,16 @@ function plan(words, clipStart, clipEnd, opt = {}, seed = 1) {
     const q = /[!?]$/.test(String(w.word));
     if (q) s += 1;
     return { t: w.start - clipStart - 0.03, s, cls, gapBefore, q, i, len: n.length, sem };
-  }).filter(c => c && c.s >= lv.thr && c.t >= 0.5 && c.t <= dur - 0.7);
-  cands.sort((a, b) => b.s - a.s);
+  }).filter(c => c && c.t >= 0.5 && c.t <= dur - 0.7);
+  const strong = cands.filter(c => c.s >= lv.thr).sort((a, b) => b.s - a.s);
   const picked = [], max = Math.max(1, Math.ceil(dur / lv.gap));
-  for (const c of cands) { if (picked.length >= max) break; if (picked.every(p => Math.abs(p.t - c.t) >= lv.gap)) picked.push(c); }
+  for (const c of strong) { if (picked.length >= max) break; if (picked.every(p => Math.abs(p.t - c.t) >= lv.gap)) picked.push(c); }
+  // never leave a clip bare: if too few strong moments, add the next best words (still real words, spaced out)
+  const want = Math.max(1, Math.ceil(dur / lv.min));
+  if (picked.length < want) {
+    const rest = cands.filter(c => !picked.includes(c)).sort((a, b) => (b.s - a.s) || (b.gapBefore - a.gapBefore));
+    for (const c of rest) { if (picked.length >= want) break; if (picked.every(p => Math.abs(p.t - c.t) >= lv.gap * 0.7)) picked.push(c); }
+  }
   picked.sort((a, b) => a.t - b.t);
 
   // ---- sound picking: by role, never the same sound twice in a row, least-used first ----
@@ -113,7 +123,7 @@ function plan(words, clipStart, clipEnd, opt = {}, seed = 1) {
     const base = WEIGHTS[ctx] || WEIGHTS.plain, ws = [];
     for (const [k, w0] of Object.entries(base)) {
       if (!allowed.has(k) || k === exclude) continue;
-      let w = w0 / (1 + 2 * (usedK[k] || 0));
+      let w = (w0 * ((BIAS[opt.intensity] || {})[k] || 1)) / (1 + 2 * (usedK[k] || 0));
       if (hist[hist.length - 1] === k) continue;
       const fam = FAMILY[k];
       if (hist.length >= 2 && FAMILY[hist[hist.length - 1]] === fam && FAMILY[hist[hist.length - 2]] === fam) w *= 0.15;

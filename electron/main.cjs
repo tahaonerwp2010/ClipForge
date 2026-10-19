@@ -292,7 +292,7 @@ ipcMain.handle('projects-save', async (e, list) => { try { const f = projectsFil
 const EDIT = require('./engine/edit.cjs');
 ipcMain.handle('edit-load', async (e, outDir) => { const st = EDIT.loadState(outDir); return st ? { ok: true, captions: st.captions, branding: st.branding, framing: st.framing, grading: st.grading, ratio: st.ratio, clips: st.clips.map(c => ({ hookText: c.hookText, title: c.title })) } : { ok: false }; });
 ipcMain.handle('edit-prepare', async (e, a) => { try { const r = await EDIT.prepare(a.outDir, a.index); return { ok: true, url: require('url').pathToFileURL(r.base).toString(), dims: r.dims }; } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 300) }; } });
-ipcMain.handle('edit-render', async (e, a) => { try { const r = await EDIT.rerender(a.outDir, a.index, a.overrides || {}, p => send('edit-progress', { index: a.index, p }), { segment: (frames) => require('./engine/facetrack.cjs').segmentFrames(frames, { BrowserWindow }) }); return { ok: true, ...r }; } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 300) }; } });
+ipcMain.handle('edit-render', async (e, a) => { try { const r = await EDIT.rerender(a.outDir, a.index, a.overrides || {}, p => send('edit-progress', { index: a.index, p }), { segment: (frames) => require('./engine/facetrack.cjs').segmentFrames(frames, { BrowserWindow }), detectFaces: (frames) => require('./engine/facetrack.cjs').detectFaces(frames, { BrowserWindow }) }); return { ok: true, ...r }; } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 300) }; } });
 // ---- Pro licence (Supabase) ----
 const LIC = require('./engine/license.cjs');
 ipcMain.handle('license-status', async () => LIC.status());

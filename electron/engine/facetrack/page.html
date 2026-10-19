@@ -47,7 +47,7 @@ window.runSeg = async function (urls) {
   if (!window.SelfieSegmentation) await new Promise((ok, bad) => { const s = document.createElement('script'); s.src = 'selfie/selfie_segmentation.js'; s.onload = ok; s.onerror = () => bad(new Error('Person cut-out files are missing')); document.head.appendChild(s); });
   if (!seg) { seg = new SelfieSegmentation({ locateFile: f => 'selfie/' + f }); seg.setOptions({ modelSelection: 0, selfieMode: false }); await seg.initialize(); }
   let res = null; seg.onResults(r => { res = r; });
-  const out = [], cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
+  const out = [], tops = [], bots = [], cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
   for (const u of urls) {
     const img = new Image(); if (/^http/i.test(u)) img.crossOrigin = 'anonymous'; img.src = u;
     try { await img.decode(); } catch (e) { out.push(null); continue; }
@@ -57,8 +57,12 @@ window.runSeg = async function (urls) {
     cv.width = w; cv.height = h; cx.clearRect(0, 0, w, h); cx.drawImage(m, 0, 0, w, h);
     const d = cx.getImageData(0, 0, w, h), p = d.data;
     for (let i = 0; i < p.length; i += 4) { const v = p[i + 3]; p[i] = p[i + 1] = p[i + 2] = v; p[i + 3] = 255; }
+    let t = -1, b = -1; const need = Math.max(2, w * 0.04);
+    for (let y = 0; y < h; y++) { let c = 0; for (let x = 0; x < w; x++) if (p[(y * w + x) * 4] > 128) c++; if (c >= need) { if (t < 0) t = y; b = y; } }
+    if (t >= 0) { tops.push(t / h); bots.push((b + 1) / h); }
     cx.putImageData(d, 0, 0); out.push(cv.toDataURL('image/png'));
   }
-  return out;
+  const med = a => a.length ? a.sort((x, y) => x - y)[a.length >> 1] : null;
+  return { m: out, top: med(tops), bottom: med(bots) };
 };
 </script>

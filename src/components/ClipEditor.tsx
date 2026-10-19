@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Loader2, Save, Type, Sparkles, PanelTop, Stamp, Music, ListChecks } from 'lucide-react';
+import { X, Loader2, Save, Type, Sparkles, PanelTop, Stamp, Music, ListChecks, Zap } from 'lucide-react';
 import { PhonePreview } from './PhonePreview';
 import { CaptionsTab } from './tabs/CaptionsTab';
 import { BrandingTab } from './tabs/BrandingTab';
+import { AutoFxCard, DEFAULT_FX, FxState } from './tabs/AutoFxCard';
 import { FontPicker } from './common/FontPicker';
 import { ColorPicker } from './common/ColorPicker';
 import { hookLines } from '../utils/captionHelpers';
@@ -20,9 +21,10 @@ interface Props {
   fallback: { captions: CaptionConfig; branding: BrandingConfig; grading: VideoGradingConfig; framing: InnerFramingConfig };
 }
 
-type Cat = 'captions' | 'hook' | 'banner' | 'watermark' | 'music';
+type Cat = 'captions' | 'effects' | 'hook' | 'banner' | 'watermark' | 'music';
 const CATS: { id: Cat; label: string; Icon: React.ElementType }[] = [
   { id: 'captions', label: 'Captions', Icon: Type },
+  { id: 'effects', label: 'Effects', Icon: Zap },
   { id: 'hook', label: 'Hook', Icon: Sparkles },
   { id: 'banner', label: 'Banner', Icon: PanelTop },
   { id: 'watermark', label: 'Watermark', Icon: Stamp },
@@ -38,6 +40,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
   const [url, setUrl] = useState('');
   const [captions, setCaptions] = useState<CaptionConfig>(fallback.captions);
   const [branding, setBranding] = useState<BrandingConfig>(fallback.branding);
+  const [fx, setFxState] = useState<FxState>({ ...DEFAULT_FX, ...((fallback.grading as any)?.fx || {}) });
   const [cat, setCat] = useState<Cat>('captions');
   const [showTx, setShowTx] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -61,6 +64,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
       try {
         const st = await api?.editLoad?.(outDir);
         if (!st?.ok) throw new Error('This project was made with an older version, so its clips cannot be edited. Generate it again to enable editing.');
+        if (st.grading?.fx) setFxState(f => ({ ...f, ...st.grading.fx }));
         if (st.captions) setCaptions({ ...fallback.captions, ...st.captions });
         const b = { ...fallback.branding, ...(st.branding || {}) } as any;
         if (b.watermarkImage?.path && !b.watermarkImage.dataUrl) b.watermarkImage = { ...b.watermarkImage, dataUrl: fileUrl(b.watermarkImage.path) };
@@ -93,7 +97,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
       const i = idx[n]; cur.current = i; doneBefore.current = n; setJob(all ? `Clip ${n + 1} of ${idx.length}` : '');
       const own = i === index;
       const { title: _t, ...atNoTitle } = at as any;
-      const r = await api.editRender(outDir, i, own ? { captions, hookText, autoTitle: at, branding: bo } : { captions, autoTitle: atNoTitle, branding: bo });
+      const r = await api.editRender(outDir, i, own ? { captions, hookText, autoTitle: at, branding: bo, fx } : { captions, autoTitle: atNoTitle, branding: bo, fx });
       if (!r?.ok) { setSaving(false); setErr(r?.error || 'Render failed.'); setState('error'); return; }
       onSaved(i, { outputPath: r.outputPath, thumbnailUrl: r.thumbnailUrl });
       setPct(Math.round((n + 1) / idx.length * 100));
@@ -158,6 +162,10 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
                     <ListChecks className="w-4 h-4" /> See transcript of this clip
                   </button>
                   <CaptionsTab captions={captions} onCaptionsChange={setCaptions} hideLanguage />
+                </>)}
+                {cat === 'effects' && (<>
+                  <AutoFxCard fx={fx} setFx={p => setFxState(f => ({ ...f, ...p }))} />
+                  <p className="text-[11px] text-neutral-400">Effects are added while the clip renders, so they show in the saved clip, not in this preview. Press Save to apply them.</p>
                 </>)}
                 {cat === 'hook' && (
                   <section className="p-4 rounded-xl bg-[#0b1410] border border-[#172820] space-y-3 text-xs">
