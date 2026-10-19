@@ -203,6 +203,17 @@ function plan(words, clipStart, clipEnd, opt = {}, seed = 1) {
       }
     });
   }
+  // ---- accent sounds: lighter sounds on other meaningful words, so wild/balanced clips are never quiet between the big moments ----
+  if (useSfx && opt.intensity !== 'subtle') {
+    const sp = opt.intensity === 'wild' ? 1.1 : 2.4;
+    const extra = cands.filter(c => c.s >= 2).sort((a, b) => b.s - a.s);
+    for (const c of extra) {
+      const t = +c.t.toFixed(2);
+      if (out.sfx.some(x => Math.abs(x.t - t) < sp)) continue;
+      const roles = c.cls === 'num' ? ['pop', 'reward'] : c.cls === 'win' ? ['reward', 'pop'] : c.cls === 'neg' ? ['fail', 'funny'] : c.gapBefore >= 0.5 ? ['whoosh'] : ['pop', 'hit', 'tech'];
+      const f = pick(roles); if (f && addSfx(f, t, -2, f.useRole === 'whoosh' ? 'peak' : 'start')) out.events++;
+    }
+  }
   out.sfx.sort((a, b) => a.t - b.t);
   return out;
 }

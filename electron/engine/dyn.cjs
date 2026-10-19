@@ -28,9 +28,12 @@ function phrases(cw, tpl) {
   return out;
 }
 // one phrase -> lines of {idx, cls, text}; cls: emph | plain | fill
-function layout(ws, tpl, W, base, H, kw, allowEmph = true) {
+const SOFTSTOP = new Set('around about really actually because before through should would could little people something anything another between during against without within whether though rather having getting being doing going coming making taking looking thinking saying maybe also again always never often since until while where which their there these those other every might still'.split(' '));
+function layout(ws, tpl, W, base, H, kw, allowEmph = true, allowSoft = false) {
   let emph = -1, best = 2.9;
   if (allowEmph) ws.forEach((w, j) => { const s = score(w, kw); if (s > best) { best = s; emph = j; } });
+  // second tier (only when the clip has gone a while without a big word): a real content word of 6+ letters
+  if (emph < 0 && allowEmph && allowSoft) { let L = 5; ws.forEach((w, j) => { const n = clean(w); if (n.length > L && !STOP.has(n) && !SOFTSTOP.has(n) && !n.includes("'") && !/(ing|ly)$/.test(n)) { L = n.length; emph = j; } }); }
   const items = ws.map((w, j) => {
     const cls = j === emph ? 'emph' : (STOP.has(clean(w)) && clean(w).length <= 4 ? 'fill' : 'plain');
     const st = tpl[cls], t = st.upper ? String(w).toUpperCase() : String(w);
@@ -71,8 +74,8 @@ function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', k
     let pEnd = (cw[last].end - clipStart) + 0.18;
     if (nxt) pEnd = Math.min(pEnd, tS[nxt[0]]);
     pEnd = Math.max(pEnd, tS[last] + 0.12);
-    const pStart = tS[first], gapNeeded = tpl.behind ? 2.4 : 1.6;
-    const lines = layout(idxs.map(i => cw[i].word), tpl, W, base, H, kw, pStart - lastEmphT >= gapNeeded);
+    const pStart = tS[first], gapNeeded = tpl.behind ? 1.7 : 1.6;
+    const lines = layout(idxs.map(i => cw[i].word), tpl, W, base, H, kw, pStart - lastEmphT >= gapNeeded, pStart - lastEmphT >= (tpl.behind ? 2.8 : 3.5));
     if (lines.some(l => l.items[0].cls === 'emph')) lastEmphT = pStart;
     const isEm = lines.map(l => !!(tpl.behind && l.items[0].cls === 'emph'));          // behind-the-person: the big word is drawn on its own layer, higher up
     const hs = lines.map((l, i) => isEm[i] ? 0 : l.size * 1.02 * tpl.lh), total = hs.reduce((a, b) => a + b, 0);
