@@ -46,6 +46,24 @@ function createWindow() {
     }
   });
 
+  // If the window freezes or its process dies, offer a reload instead of leaving the app stuck (progress is kept in the project files)
+  let askedFreeze = false;
+  mainWindow.webContents.on('unresponsive', () => {
+    if (askedFreeze) return; askedFreeze = true;
+    setTimeout(async () => {
+      try {
+        if (!mainWindow || mainWindow.isDestroyed()) return;
+        const r = await dialog.showMessageBox(mainWindow, { type: 'warning', buttons: ['Reload ClipForge', 'Keep waiting'], defaultId: 0, cancelId: 1, title: 'ClipForge is not responding', message: 'ClipForge stopped responding.', detail: 'Reloading usually fixes it. Your finished clips and projects are not affected.' });
+        if (r.response === 0 && !mainWindow.isDestroyed()) mainWindow.webContents.reload();
+      } catch {}
+      askedFreeze = false;
+    }, 6000);
+  });
+  mainWindow.webContents.on('responsive', () => { askedFreeze = false; });
+  mainWindow.webContents.on('render-process-gone', (e, d) => {
+    console.error('ClipForge window process ended:', d && d.reason);
+    if (d && d.reason !== 'clean-exit' && mainWindow && !mainWindow.isDestroyed()) setTimeout(() => { try { mainWindow.webContents.reload(); } catch {} }, 500);
+  });
   // Log render crashes or loading failures
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
     console.error(`ClipForge window failed to load [${errorCode}]: ${errorDescription} at ${validatedURL}`);

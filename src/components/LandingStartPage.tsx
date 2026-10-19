@@ -34,8 +34,10 @@ function readVideoMeta(url: string, thumbW = 480): Promise<{ duration: number; t
     const v = document.createElement('video');
     v.preload = 'metadata'; v.muted = true; v.src = url;
     let done = false;
-    const finish = (thumb: string) => { if (done) return; done = true; resolve({ duration: v.duration && isFinite(v.duration) ? v.duration : 0, thumb, vertical: v.videoWidth < v.videoHeight, w: v.videoWidth || 0, h: v.videoHeight || 0 }); };
-    const timer = setTimeout(() => finish(FALLBACK_THUMB), 8000);
+    const finish = (thumb: string) => { if (done) return; done = true; const meta = { duration: v.duration && isFinite(v.duration) ? v.duration : 0, vertical: v.videoWidth < v.videoHeight, w: v.videoWidth || 0, h: v.videoHeight || 0 };
+      try { v.onloadedmetadata = null; v.onseeked = null; v.onerror = null; v.pause(); v.removeAttribute('src'); v.load(); } catch { /* free the decoder so many clips do not pile up */ }
+      resolve({ ...meta, thumb }); };
+    const timer = setTimeout(() => finish(FALLBACK_THUMB), 6000);
     v.onloadedmetadata = () => { v.currentTime = Math.min(1.0, (v.duration || 2) * 0.2); };
     v.onseeked = () => {
       let thumb = FALLBACK_THUMB;
@@ -90,6 +92,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
   const handleShortFiles = async (list: FileList | null) => {
     if (!list || !list.length) return;
     setShortBusy(true);
+    try {
     const warns: string[] = [];
     const room = MAX_SHORTS - shortFiles.length;
     const files = Array.from(list).filter(f => f.type.startsWith('video/') || /\.(mp4|mov|mkv|webm|avi|m4v)$/i.test(f.name));
@@ -101,7 +104,8 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       if (realPath && (shortFiles.some(x => x.path === realPath) || added.some(x => x.path === realPath))) { dup++; continue; }
       if (added.length >= room) { over++; continue; }
       const url = URL.createObjectURL(file);
-      const meta = await readVideoMeta(url);
+      let meta: Awaited<ReturnType<typeof readVideoMeta>>;
+      try { meta = await readVideoMeta(url); } catch { URL.revokeObjectURL(url); warns.push(`“${file.name}” could not be read.`); continue; }
       if (meta.duration > MAX_SHORT_SEC + 0.5) {
         tooLong++; warns.push(`“${file.name}” is ${fmtClock(meta.duration)} long. Only clips of 60 seconds or less are allowed.`);
         URL.revokeObjectURL(url); continue;
@@ -113,8 +117,12 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
     if (!window.electronAPI && added.length) warns.push('Real processing needs the desktop app.');
     setShortFiles(prev => [...prev, ...added]);
     setShortWarn(warns);
-    setShortBusy(false);
-    if (shortsInputRef.current) shortsInputRef.current.value = '';
+    } catch (e: any) {
+      setShortWarn([`Could not read some clips (${String(e?.message || e).slice(0, 80)}). Please try adding them again.`]);
+    } finally {
+      setShortBusy(false);                                      // never leave the page stuck in the "adding" state
+      if (shortsInputRef.current) shortsInputRef.current.value = '';
+    }
   };
   const removeShort = (id: string) => { setShortFiles(prev => prev.filter(x => x.id !== id)); setShortWarn([]); };
 
