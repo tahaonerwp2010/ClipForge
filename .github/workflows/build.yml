@@ -99,9 +99,21 @@ jobs:
           set -e
           JNI=android/app/src/main/jniLibs/arm64-v8a
           mkdir -p $JNI tmp && cd tmp
-          curl -fL --retry 4 https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz | tar -xJ
-          cp ffmpeg-*-static/ffmpeg ../$JNI/libffmpeg.so
-          cp ffmpeg-*-static/ffprobe ../$JNI/libffprobe.so
+          # static arm64 ffmpeg: try GitHub (BtbN) first, then johnvansickle; each download is checked to be a real archive
+          got=0
+          for U in https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linuxarm64-gpl.tar.xz \
+                   https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz \
+                   https://www.johnvansickle.com/ffmpeg/builds/ffmpeg-git-arm64-static.tar.xz; do
+            echo "Downloading $U"
+            rm -f ff.tar.xz
+            if curl -fL --retry 3 -A "Mozilla/5.0" -o ff.tar.xz "$U" && xz -t ff.tar.xz 2>/dev/null; then got=1; break; fi
+            echo "Download failed or is not an archive, trying the next source"
+          done
+          [ "$got" = 1 ] || { echo "Could not download a static ffmpeg for arm64"; exit 1; }
+          mkdir ffx && tar -xJf ff.tar.xz -C ffx
+          FF=$(find ffx -type f -name ffmpeg | head -1); FP=$(find ffx -type f -name ffprobe | head -1)
+          cp "$FF" ../$JNI/libffmpeg.so
+          cp "$FP" ../$JNI/libffprobe.so
           git clone --depth 1 https://github.com/ggml-org/whisper.cpp
           NDK="${ANDROID_NDK_LATEST_HOME:-$ANDROID_NDK_ROOT}"
           cmake -S whisper.cpp -B wb -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-28 \
