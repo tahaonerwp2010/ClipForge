@@ -434,6 +434,7 @@ ipcMain.handle('update-check', async (e, { repo } = {}) => {
   const U = require('./engine/update.cjs');
   if (repo != null && String(repo).trim()) Settings.save({ updateRepo: U.cleanRepo(repo) });
   const r = await U.check(updateRepo(), pkgInfo.version || app.getVersion());
+  try { const iv = Settings.load().installedVersion; if (r.ok && iv && !U.newer(r.latest, iv)) r.available = false; } catch {}   // already installed this one (or older)
   return { ...r, current: pkgInfo.version || app.getVersion(), repo: U.cleanRepo(updateRepo()) };
 });
 ipcMain.handle('update-download', async (e, { url, name }) => {
@@ -446,8 +447,9 @@ ipcMain.handle('update-download', async (e, { url, name }) => {
   } catch (err) { return { ok: false, error: String(err.message || err) }; }
 });
 // Installs the downloaded update by itself: silent installer for an installed app (it keeps the install folder, then reopens ClipForge).
-ipcMain.handle('update-install', async (e, { filePath }) => {
+ipcMain.handle('update-install', async (e, { filePath, version }) => {
   try {
+    if (version) Settings.save({ installedVersion: String(version).replace(/^v/i, '') });   // remembered so the same update is not offered again after it was installed
     const f = String(filePath || ''); if (!f || !fs.existsSync(f)) return { ok: false, error: 'The update file was not found.' };
     if (process.platform === 'win32' && /\.exe$/i.test(f)) {
       const installed = fs.existsSync(path.join(path.dirname(process.execPath), 'Uninstall ClipForge.exe')) && !process.env.PORTABLE_EXECUTABLE_FILE;

@@ -9,7 +9,7 @@ type Api = {
   isElectron?: boolean;
   updateCheck?: (repo?: string) => Promise<UpdateInfo>;
   updateDownload?: (url: string, name: string) => Promise<{ ok: boolean; path?: string; error?: string }>;
-  updateInstall?: (filePath: string) => Promise<{ ok: boolean; mode?: string; error?: string }>;
+  updateInstall?: (filePath: string, version?: string) => Promise<{ ok: boolean; mode?: string; error?: string }>;
   openExternal?: (url: string) => Promise<boolean>;
   onUpdateProgress?: (cb: (d: { done: number; total: number; percent: number }) => void) => () => void;
 };
@@ -60,7 +60,7 @@ export const UpdateChecker: React.FC<{ children: (open: () => void, checking: bo
         setDlPath(r.path);
         if (api.updateInstall) {                                   // install by itself, ClipForge closes and reopens
           setInstalling(true);
-          const i = await api.updateInstall(r.path);
+          const i = await api.updateInstall(r.path, info.latest);
           if (!i.ok) { setInstalling(false); setDlError(i.error || 'Could not start the update.'); }
           else if (i.mode === 'manual') setInstalling(false);
         }
