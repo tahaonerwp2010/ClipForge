@@ -338,5 +338,15 @@
 "family": "Moderno",
 "file": "Moderno.ttf",
 "category": "Fun"
+},
+{
+"family": "Noto Sans Arabic ExtraBold",
+"file": "NotoSansArabic.ttf",
+"category": "Clean"
+},
+{
+"family": "Noto Sans Devanagari ExtraBold",
+"file": "NotoSansDevanagari.ttf",
+"category": "Clean"
 }
 ]

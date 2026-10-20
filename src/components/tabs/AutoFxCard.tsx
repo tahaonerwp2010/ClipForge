@@ -34,7 +34,7 @@ export const AutoFxCard: React.FC<{ fx: FxState; setFx: (patch: Partial<FxState>
               <input type="range" min={-18} max={0} value={fx.sfxDb} onChange={e => setFx({ sfxDb: parseInt(e.target.value) })} className="w-full h-1.5 bg-[#1d3228] rounded-lg appearance-none accent-[#bef264] cursor-pointer" />
             </div>
           )}
-          <p className="text-[10px] text-neutral-500">ClipForge picks from 76 built-in sound effects (whooshes, hits, risers, reward sounds, camera clicks, glitches, memes). Effects are applied while rendering (a little extra time) and show up in the finished clip, not in the preview.</p>
+          <p className="text-[10px] text-neutral-500">ClipForge picks from 57 built-in sound effects, all balanced to a similar, comfortable loudness (soft whooshes, hits, risers, pops, chimes, camera clicks, glitches; a few funny ones only in Wild mode). Effects are applied while rendering (a little extra time) and show up in the finished clip, not in the preview.</p>
         </>)}
     </section>
 );

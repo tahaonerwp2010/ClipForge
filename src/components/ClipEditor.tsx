@@ -128,6 +128,14 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
     return out;
   })();
 
+  const [copied, setCopied] = useState('');
+  const copyTx = async (withTimes: boolean) => {
+    const text = withTimes ? lines.map(l => `[${clock(l.t)}] ${l.text}`).join('\n') : lines.map(l => l.text).join(' ');
+    try { await navigator.clipboard.writeText(text); }
+    catch { const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch {} document.body.removeChild(ta); }
+    setCopied(withTimes ? 'times' : 'text'); setTimeout(() => setCopied(''), 1800);
+  };
+
   return (
     <div className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-0 md:p-4">
       <div className="w-full max-w-5xl h-full md:h-[92vh] bg-[#060b09] border border-[#172820] md:rounded-2xl flex flex-col overflow-hidden">
@@ -214,6 +222,12 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
                 <span className="text-xs font-black uppercase tracking-wider text-white">Transcript</span>
                 <button onClick={() => setShowTx(false)} className="text-neutral-400 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
               </div>
+              {lines.length > 0 && (
+                <div className="flex gap-2 px-4 py-2 border-b border-[#13211a]">
+                  <button type="button" onClick={() => copyTx(true)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold bg-[#bef264] text-black cursor-pointer">{copied === 'times' ? 'Copied!' : 'Copy with timestamps'}</button>
+                  <button type="button" onClick={() => copyTx(false)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold bg-[#12201a] border border-[#20322a] text-neutral-200 cursor-pointer">{copied === 'text' ? 'Copied!' : 'Copy as paragraph'}</button>
+                </div>
+              )}
               <div className="overflow-y-auto p-2">
                 {lines.length === 0 && <p className="p-4 text-xs text-neutral-400">No transcript for this clip.</p>}
                 {lines.map((l, i) => (

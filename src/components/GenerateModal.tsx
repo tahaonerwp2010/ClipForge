@@ -17,6 +17,8 @@ interface GenerateModalProps {
   canvasRatio: OuterCanvasRatio;
   filePath?: string;
   shortsPath?: string;
+  shortsPaths?: string[];
+  extraPaths?: string[];
   mainDims?: [number, number];
 }
 
@@ -35,31 +37,48 @@ export const GenerateModal: React.FC<GenerateModalProps> = ({
   canvasRatio,
   filePath,
   shortsPath,
+  shortsPaths,
+  extraPaths,
   mainDims
 }) => {
   const [selected, setSelected] = useState<number>(0);   // 0 = Auto
   const [src, setSrc] = useState<[number, number] | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [failed, setFailed] = useState(false);
 
+  // Look at every video that will be used (long video, all short clips, split-screen partner) and offer only sizes ALL of them can really provide.
+  const pathKey = JSON.stringify([filePath, shortsPath, shortsPaths, extraPaths]);
   useEffect(() => {
     if (!isOpen) return;
-    setSelected(0);
-    if (mainDims) { setSrc(mainDims); return; }
-    const p = filePath || shortsPath;
-    setSrc(null);
-    if (p && window.electronAPI?.probeVideo) window.electronAPI.probeVideo(p).then(i => setSrc([i.width, i.height])).catch(() => setSrc(null));
-  }, [isOpen, filePath, shortsPath, mainDims]);
+    let dead = false;
+    setSelected(0); setSrc(null); setFailed(false);
+    const paths = Array.from(new Set([filePath, shortsPath, ...(shortsPaths || []), ...(extraPaths || [])].filter(Boolean) as string[])).slice(0, 40);
+    const dims: [number, number][] = mainDims ? [mainDims] : [];
+    if (!paths.length || !window.electronAPI?.probeVideo) { if (dims.length) setSrc(dims[0]); else setFailed(true); return; }
+    setChecking(true);
+    (async () => {
+      const q = paths.slice();
+      const worker = async () => { while (q.length) { const p = q.shift()!; try { const i = await window.electronAPI!.probeVideo!(p); if (i?.width && i?.height) dims.push([i.width, i.height]); } catch { /* skip this file */ } } };
+      await Promise.all([worker(), worker(), worker()]);
+      if (dead) return;
+      if (dims.length) { dims.sort((a, b) => Math.min(a[0], a[1]) - Math.min(b[0], b[1])); setSrc(dims[0]); setFailed(false); }   // the smallest video decides, so nothing gets upscaled
+      else setFailed(true);
+      setChecking(false);
+    })();
+    return () => { dead = true; };
+  }, [isOpen, pathKey, mainDims]);
 
   if (!isOpen) return null;
 
   // Quality = the source's shorter side (1080 for a 1920×1080 video, 2160 for 4K). Only sizes up to the source are offered, so nothing is upscaled.
-  const srcShort = src ? Math.min(src[0], src[1]) : 1080;
+  const srcShort = src ? Math.min(src[0], src[1]) : 1080;   // unknown size (could not be read): offer the safe sizes up to 1080p
   let avail = CLASSES.filter(c => srcShort >= c.q * 0.93);
   if (!avail.length) avail = [{ q: Math.max(240, Math.round(srcShort / 2) * 2), label: `${srcShort}p`, dims: src ? `${Math.max(src[0], src[1])}×${srcShort}` : '' }];
   const autoQ = (avail.find(c => c.q <= 1080) || avail[avail.length - 1]).q;
   const options = [{ q: 0, label: 'Auto', dims: (avail.find(c => c.q === autoQ) || avail[0]).dims, badge: true }, ...avail.map(c => ({ ...c, badge: false }))];
   const effective = selected === 0 ? autoQ : selected;
   const effLabel = (avail.find(c => c.q === effective) || avail[0]).label;
-  const srcText = src ? `${Math.max(src[0], src[1])}×${Math.min(src[0], src[1])}` : '…';
+  const srcText = src ? `${Math.max(src[0], src[1])}×${Math.min(src[0], src[1])}` : checking ? 'being checked…' : 'unknown size';
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
@@ -82,7 +101,8 @@ export const GenerateModal: React.FC<GenerateModalProps> = ({
 
         {/* Resolution Options */}
         <div className="p-6 space-y-4">
-          <div className="grid grid-cols-3 gap-2.5">
+          {failed && !checking && <p className="text-[11px] text-amber-300">ClipForge could not read the video size, so the safe sizes are shown.</p>}
+          <div className={`grid grid-cols-3 gap-2.5 ${checking ? 'opacity-50 pointer-events-none' : ''}`}>
             {options.map((opt) => {
               const isSelected = selected === opt.q;
               return (
@@ -136,10 +156,11 @@ export const GenerateModal: React.FC<GenerateModalProps> = ({
           </button>
 
           <button
+            disabled={checking}
             onClick={() => onStartGeneration(effective)}
             className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-95"
           >
-            <span>Generate at {effLabel}</span>
+            <span>{checking ? 'Checking your video…' : `Generate at ${effLabel}`}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

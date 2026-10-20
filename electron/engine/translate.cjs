@@ -80,7 +80,14 @@ function segments(words) {
   if (cur.length) segs.push(cur);
   return segs;
 }
+const SCRIPT_RE = /[\u0600-\u06FF\u0900-\u097F]/;
+const isHinglish = l => /^hinglish$/i.test(String(l || '').trim());
+// Hinglish = Hindi / Urdu written in English letters. Spoken Hindi/Urdu is simply transliterated (works offline too);
+// speech in another language is translated by AI into chat-style Hinglish.
+const needsAI = (words, language) => !(isHinglish(language) && words.some(w => SCRIPT_RE.test(String(w.word))));
 async function translate(words, language, g, onProgress) {
+  if (isHinglish(language) && words.some(w => SCRIPT_RE.test(String(w.word)))) return toRoman(words, g, onProgress);
+  if (isHinglish(language)) language = 'Hinglish (Hindi/Urdu written in English letters, the way people type in chat, e.g. "kaise ho, ye bohot important hai")';
   const segs = segments(words), res = [], B = 25;
   for (let i = 0; i < segs.length; i += B) {
     const part = segs.slice(i, i + B).map(s => s.map(k => words[k].word).join(' '));
@@ -102,4 +109,4 @@ ${JSON.stringify(part)}`;
   });
   return out;
 }
-module.exports = { localRoman, toRoman, translate };
+module.exports = { localRoman, toRoman, translate, needsAI };

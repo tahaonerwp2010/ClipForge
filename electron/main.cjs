@@ -411,11 +411,13 @@ ipcMain.handle('delete-project-files', async (e, { name, outputDir, files }) => 
   let removed = 0;
   for (const d of dirs) {
     if (!fs.existsSync(d)) continue;
+    if (path.resolve(d) === path.resolve(Settings.clipsDir())) continue;       // never touch the main clips folder itself
     for (const f of fs.readdirSync(d)) {
-      if (/^clip_\d+\.mp4$/i.test(f)) { try { fs.unlinkSync(path.join(d, f)); removed++; } catch {} }   // only files ClipForge created
+      if (/^clip_\d+(\.edit)?\.(mp4|srt|jpg|png|txt)$/i.test(f) || /^clips_title_description\.xlsx$/i.test(f) || /^~\$clips_title_description\.xlsx$/i.test(f)) { try { fs.unlinkSync(path.join(d, f)); removed++; } catch {} }   // only files ClipForge created (clips + the title/description sheet)
     }
     try { fs.rmSync(path.join(d, '.edit'), { recursive: true, force: true }); for (const h of ['.clipforge-edit.json', '.clipforge.json']) fs.rmSync(path.join(d, h), { force: true }); } catch {}
-    try { fs.rmdirSync(d); } catch {}    // removes the folder only if it is now empty
+    try { for (const f of ['work', 'tmp']) { const w = path.join(d, f); if (fs.existsSync(w) && fs.statSync(w).isDirectory() && fs.readdirSync(w).length === 0) fs.rmdirSync(w); } } catch {}
+    try { fs.rmdirSync(d); } catch {}    // removes the folder only if it is now empty (anything of yours that is still inside is left alone)
   }
   return { removed };
 });

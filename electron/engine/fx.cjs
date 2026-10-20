@@ -41,7 +41,7 @@ const WEIGHTS = {
 const SOUND = {
   punch: ['pop', 'hit'], push: ['whoosh'], pull: ['whoosh'], pulse: ['pop', 'hit'], shake: ['hit'], tilt: ['whoosh', 'hit'], pan: ['whoosh'],
   flash: ['camera'], dip: ['hit', 'whoosh'], strobe: ['camera', 'tech'], negate: ['glitch'], glitch: ['glitch'], vhs: ['glitch', 'tech'], chroma: ['glitch', 'pop'],
-  mono: ['fail', 'tech'], colorpop: ['reward', 'pop'], glow: ['reward', 'pop'], blur: ['whoosh'],
+  mono: ['tech', 'whoosh'], colorpop: ['reward', 'pop'], glow: ['reward', 'pop'], blur: ['whoosh'],
 };
 const CAP = { whoosh: 0.9, hit: 1.0, funny: 1.3, fail: 1.3, reward: 1.1, pop: 0.8, tech: 1.0, glitch: 0.9, camera: 0.6, riser: 1.8 };
 const norm = w => String(w).toLowerCase().replace(/[^a-z0-9']/g, '');
@@ -210,7 +210,7 @@ function plan(words, clipStart, clipEnd, opt = {}, seed = 1) {
     for (const c of extra) {
       const t = +c.t.toFixed(2);
       if (out.sfx.some(x => Math.abs(x.t - t) < sp)) continue;
-      const roles = c.cls === 'num' ? ['pop', 'reward'] : c.cls === 'win' ? ['reward', 'pop'] : c.cls === 'neg' ? ['fail', 'funny'] : c.gapBefore >= 0.5 ? ['whoosh'] : ['pop', 'hit', 'tech'];
+      const roles = c.cls === 'num' ? ['pop', 'reward'] : c.cls === 'win' ? ['reward', 'pop'] : c.cls === 'neg' ? ['hit', 'pop'] : c.gapBefore >= 0.5 ? ['whoosh'] : ['pop', 'hit', 'tech'];
       const f = pick(roles); if (f && addSfx(f, t, -2, f.useRole === 'whoosh' ? 'peak' : 'start')) out.events++;
     }
   }

@@ -53,7 +53,7 @@ function layout(ws, tpl, W, base, H, kw, allowEmph = true, allowSoft = false) {
     let fit = Math.min(1, (W * 0.9) / Math.max(1, est));
     if (tpl.behind && l[0].cls === 'emph') {                       // the word behind the person is made as wide as the screen, so it shows on both sides of the speaker
       const sz = base * l[0].st.scale;
-      fit = Math.max(0.5, Math.min((W * 0.96) / Math.max(1, est), (0.27 * H) / sz));
+      fit = Math.max(0.5, Math.min((W * 1.0) / Math.max(1, est), (0.36 * H) / sz));
     }
     return { items: l, fit, size: Math.max(...l.map(it => it.st.scale)) * base * fit };
   });
@@ -80,13 +80,13 @@ function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', k
     const isEm = lines.map(l => !!(tpl.behind && l.items[0].cls === 'emph'));          // behind-the-person: the big word is drawn on its own layer, higher up
     const hs = lines.map((l, i) => isEm[i] ? 0 : l.size * 1.02 * tpl.lh), total = hs.reduce((a, b) => a + b, 0);
     let y0 = Math.max(total / 2 + 20 * k, Math.min(H - total / 2 - 20 * k, cy)) - total / 2;
-    const emY = Math.round(behindBox && behindBox.bottom > behindBox.top ? Math.max(0.18 * H, Math.min(0.55 * H, H * (behindBox.top + 0.28 * (behindBox.bottom - behindBox.top)))) : 0.35 * H);   // inside the speaker: upper chest / head area
+    const emY = Math.round(behindBox && behindBox.bottom > behindBox.top ? Math.max(0.16 * H, Math.min(0.55 * H, H * (behindBox.top + 0.2 * (behindBox.bottom - behindBox.top)))) : 0.35 * H);   // inside the speaker: upper chest / head area
     const ecol = (() => { const pal = tpl.emph.colors; return pal[emphN++ % pal.length]; })();
     lines.forEach((ln, li) => {
       const yc = isEm[li] ? emY : Math.round(y0 + hs[li] / 2); y0 += hs[li];
       if (part === 'behind' && !isEm[li]) return;
       if (part === 'front' && isEm[li]) return;
-      const fsOf = it => Math.round(base * it.st.scale * ln.fit);
+      const fsOf = it => Math.round(base * it.st.scale * ln.fit * ({ 'Noto Sans Arabic ExtraBold': 1.3, 'Noto Sans Devanagari ExtraBold': 1.7 }[FONTS.scriptFont(it.text || '')] || 1));   // Arabic / Hindi letters are smaller than Latin capitals
       const lineIdx = ln.items.map(it => idxs[it.j]);
       lineIdx.forEach((gi, q) => {
         const s = tS[gi], e = q + 1 < lineIdx.length ? tS[lineIdx[q + 1]] : pEnd;
@@ -95,7 +95,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', k
           const st = it.st, vis = t <= q, cur = t === q, act = tpl.active;
           let col = it.cls === 'emph' ? ecol : st.colors;
           const metal = tpl.metal && col[0] !== col[1];
-          let tags = `\\fn${st.font}\\fs${fsOf(it)}\\b${FONTS.boldFlag(st.font)}\\i${st.italic ? 1 : 0}\\alpha&H${vis ? '00' : 'FF'}&`;
+          const sf = FONTS.scriptFont(it.text != null ? it.text : it.word || ''); let tags = `\\fn${sf || st.font}\\fs${fsOf(it)}\\b${sf ? 0 : FONTS.boldFlag(st.font)}\\i${st.italic ? 1 : 0}\\alpha&H${vis ? '00' : 'FF'}&`;
           const boxed = act && act.mode === 'box' && cur, tinted = act && act.mode === 'color' && cur;
           if (layer === 'outline') {
             const ow = Math.round((boxed ? act.pad : st.ow) * k * ln.fit);

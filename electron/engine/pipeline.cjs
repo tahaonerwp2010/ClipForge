@@ -182,7 +182,7 @@ async function runInner(job, emit, deps = {}) {
     if (meta.steps[i] && cached) { restore(i); capWords = cached; continue; }
     startWork(); begin(i);
     try {
-      if (label === 'translate' && !gOk) throw new Error('needs AI Boost (add an API key in Settings)');
+      if (label === 'translate' && !gOk && TR.needsAI(capWords, job.captions.translateTo)) throw new Error('needs AI Boost (add an API key in Settings)');
       if (label === 'translate') capWords = await TR.translate(capWords, job.captions.translateTo, job.gemini, p => setPct(i, p));
       else capWords = await TR.toRoman(capWords, job.gemini, p => setPct(i, p));
       writeJson('capwords.json', capWords);
@@ -423,7 +423,7 @@ async function runShortsInner(job, emit, deps = {}) {
     if (meta.steps[i] && cachedCap) { restore(i); capFlat = cachedCap; continue; }
     startWork(); begin(i);
     try {
-      if (label === 'translate' && !gOk) throw new Error('needs AI Boost (add an API key in Settings)');
+      if (label === 'translate' && !gOk && TR.needsAI(capFlat, job.captions.translateTo)) throw new Error('needs AI Boost (add an API key in Settings)');
       if (label === 'translate') capFlat = await TR.translate(capFlat, job.captions.translateTo, job.gemini, p => setPct(i, p));
       else capFlat = await TR.toRoman(capFlat, job.gemini, p => setPct(i, p));
       writeJson('capwords_s.json', capFlat);

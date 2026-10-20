@@ -59,6 +59,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
     `Style: Mark,${markFont},${Math.round((branding.watermarkFontSize || 40) * k)},&HCC${bgr(branding.watermarkColor || '#FFFFFF').slice(2)},&H000000&,&H000000&,&H64000000,${FONTS.boldFlag(markFont)},0,0,0,100,100,0,0,1,${Math.round(3 * k)},1,5,40,40,40,1`,
     '', '[Events]', 'Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text',
   ];
+  const sw = t => { const f = FONTS.scriptFont(t); return f ? `{\\fn${f}\\b0\\fs${Math.round(size * 1.25)}}${t}{\\fn${capFont}\\b${FONTS.boldFlag(capFont)}\\fs${size}}` : t; };   // script font for Urdu / Arabic / Hindi words
   const dur = clipEnd - clipStart;
   const pos = (x, y) => `{\\pos(${Math.round(x / 100 * W)},${Math.round(y / 100 * H)})}`;
   const tShow = (at.showSeconds > 0) ? Math.min(dur, at.showSeconds) : dur;
@@ -101,12 +102,12 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
         const s = tS[i + j], e = tE[i + j];
         const col = bgr(actives[ci++ % actives.length]);
         const txt = g.map((x, q) => {
-          const t = esc(captions.uppercase ? x.word.toUpperCase() : x.word);
+          const t = sw(esc(captions.uppercase ? x.word.toUpperCase() : x.word));
           return q === j ? (preset.single ? `{\\c${col}}${t}` : `{\\c${col}\\fscx82\\fscy82\\t(0,110,\\fscx114\\fscy114)}${t}{\\c${bgr(preset.base)}\\fscx100\\fscy100}`) : t;
         }).join(' ');
         if (preset.glow && captions.glow !== false) {          // neon glow under the active word (2 blurred layers)
           const ghost = (bord, blur, alpha) => g.map((x, q) => {
-            const t = esc(captions.uppercase ? x.word.toUpperCase() : x.word);
+            const t = sw(esc(captions.uppercase ? x.word.toUpperCase() : x.word));
             return q === j ? `{\\alpha&H${alpha}&\\1c${col}\\3c${col}\\bord${Math.round(bord * k)}\\blur${Math.round(blur * k)}\\fscx82\\fscy82\\t(0,110,\\fscx114\\fscy114)}${t}{\\alpha&HFF&\\fscx100\\fscy100}` : `{\\alpha&HFF&}${t}`;
           }).join(' ');
           L.push(`Dialogue: 0,${ts(s)},${ts(e)},Cap,,0,0,0,,${pos(captions.positionX, captions.positionY)}${ghost(22, 26, '70')}`);

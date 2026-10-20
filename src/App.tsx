@@ -707,6 +707,8 @@ export default function App() {
         canvasRatio={canvasRatio}
         filePath={selectedVideo?.filePath}
         shortsPath={selectedVideo?.shorts?.[0]?.path}
+        shortsPaths={selectedVideo?.shorts?.map(x => x.path).filter(Boolean) as string[] | undefined}
+        extraPaths={selectedVideo?.split?.secondPath ? [selectedVideo.split.secondPath] : undefined}
         mainDims={selectedVideo?.split?.mainDims}
       />
 

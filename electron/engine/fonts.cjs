@@ -46,11 +46,14 @@ const boldFlag = fam => (isBundled(fam) ? 0 : -1);          // bundled / user fo
 function stageFonts(dst, families = []) {
   fs.mkdirSync(dst, { recursive: true });
   const put = (src) => { try { const t = path.join(dst, path.basename(src)); if (!fs.existsSync(t)) fs.copyFileSync(src, t); } catch {} };
-  const wanted = new Set(families.filter(Boolean));
+  const wanted = new Set([...families.filter(Boolean), 'Noto Sans Arabic ExtraBold', 'Noto Sans Devanagari ExtraBold']);   // the two script fonts are always staged so Urdu / Arabic / Hindi captions never show empty boxes
   const add = (dir, list) => { for (const f of list) if (wanted.has(f.family)) put(path.join(dir, f.file)); };
   if (bundledDir()) add(bundledDir(), bundled());
   add(userDir(), userFonts());
   const win = process.env.WINDIR ? path.join(process.env.WINDIR, 'Fonts') : null;
   if (win) for (const fam of wanted) for (const file of SYSTEM[fam] || []) put(path.join(win, file));
 }
-module.exports = { bundled, userFonts, userDir, readFamily, boldFlag, stageFonts, SYSTEM };
+// Arabic / Urdu and Hindi (Devanagari) need a font that has those letters; libass cannot always find one by itself, so the word is set in a bundled Noto font.
+const ARABIC = 'Noto Sans Arabic ExtraBold', DEVA = 'Noto Sans Devanagari ExtraBold';
+const scriptFont = t => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(String(t)) ? ARABIC : /[\u0900-\u097F]/.test(String(t)) ? DEVA : null;
+module.exports = { scriptFont, bundled, userFonts, userDir, readFamily, boldFlag, stageFonts, SYSTEM };

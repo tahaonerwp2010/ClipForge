@@ -1,1 +1,3 @@
 All bundled fonts are from Google Fonts and licensed under the SIL Open Font License 1.1 (https://openfontlicense.org). Each font belongs to its respective authors; see https://github.com/google/fonts/tree/main/ofl for the individual copyright notices.
+
+Noto Sans Arabic, Noto Sans Devanagari - SIL Open Font License 1.1 (Google / Noto Project). Used for Urdu, Arabic and Hindi captions.

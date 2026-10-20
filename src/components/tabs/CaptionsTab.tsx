@@ -29,6 +29,7 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
   // Independent collapsible category states
   const [openTemplates, setOpenTemplates] = useState(false);
   const [openDyn, setOpenDyn] = useState(true);
+  const [dynCat, setDynCat] = useState<'all' | 'style' | 'behind'>('all');
   const [openPosition, setOpenPosition] = useState(false);
   const [openLang, setOpenLang] = useState(false);
 
@@ -317,8 +318,16 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
               {openDyn ? <ChevronUp className="w-4 h-4 text-neutral-400" /> : <ChevronDown className="w-4 h-4 text-neutral-400" />}
             </div>
             {openDyn && (
-              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                {DYN_TEMPLATES.map(t => {
+              <div className="p-4 space-y-3">
+              <div className="flex flex-wrap gap-1.5">
+                {([['all', 'All'], ['style', 'Metallic & styled'], ['behind', 'Behind the person']] as const).map(([id, label]) => (
+                  <button key={id} type="button" onClick={() => setDynCat(id)}
+                    className={`px-2.5 py-1 rounded-full text-[10px] cursor-pointer ${dynCat === id ? 'bg-[#bef264] text-black font-bold' : 'bg-[#0f1c16] text-neutral-400 hover:text-white border border-[#1d3228]'}`}>{label}</button>
+                ))}
+              </div>
+              {dynCat === 'behind' && <p className="text-[10px] text-neutral-400">The big word is drawn behind the speaker. ClipForge sizes it to fit the picture, so it stays visible beside the head and shoulders.</p>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {DYN_TEMPLATES.filter(t => dynCat === 'all' || (dynCat === 'behind' ? !!(t as any).behind : !(t as any).behind)).map(t => {
                   const sel = captions.style === t.id;
                   return (
                     <div key={t.id} onClick={() => onCaptionsChange({ ...captions, style: t.id as any, fontFamily: undefined })}
@@ -334,6 +343,7 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
                     </div>
                   );
                 })}
+              </div>
               </div>
             )}
           </section>
@@ -363,16 +373,13 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
               <div className="px-4 pb-4 space-y-3">
                 <div>
                   <label className="text-[11px] font-semibold text-neutral-300">Translate captions to</label>
-                  <select value={captions.translateTo || ''} onChange={e => onCaptionsChange({ ...captions, translateTo: e.target.value })}
+                  <select value={captions.translateTo || (captions.romanScript ? 'Hinglish' : '')} onChange={e => onCaptionsChange({ ...captions, translateTo: e.target.value, romanScript: false })}
                     className="mt-1 w-full bg-[#09100d] border border-[#20322a] rounded-lg px-3 py-2 text-xs text-white outline-none">
                     <option value="">Off (keep spoken language)</option>
+                    <option value="Hinglish">Hinglish (Hindi / Urdu in English letters)</option>
                     {['English', 'Urdu', 'Hindi', 'Arabic', 'Spanish', 'French', 'German', 'Turkish', 'Indonesian'].map(l => <option key={l} value={l}>{l}</option>)}
                   </select>
                 </div>
-                <label className="flex items-center justify-between text-[11px] font-semibold text-neutral-300">
-                  Roman script (Urdu / Hindi in English letters)
-                  <input type="checkbox" checked={!!captions.romanScript} onChange={e => onCaptionsChange({ ...captions, romanScript: e.target.checked })} className="w-4 h-4 accent-[#bef264]" />
-                </label>
                 <p className="text-[10px] text-neutral-500">Uses AI Boost (Gemini). Without a working API key these are skipped and captions stay as spoken.</p>
               </div>
             )}

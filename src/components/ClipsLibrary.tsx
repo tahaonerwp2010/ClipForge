@@ -61,7 +61,8 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
   const saveSheet = async () => {
     if (!clipsFolder || !window.electronAPI?.saveClipSheet) return;
     const rows: string[][] = [['Name', 'Title', 'Description', 'Hook']];
-    for (const c of clips) {
+    const num = (c: any) => parseInt(((c.outputPath || '').split(/[\\/]/).pop() || '').replace(/\D+/g, ''), 10) || 0;
+    for (const c of [...clips].sort((a, b) => num(a) - num(b))) {                      // rows in file order: clip_01, clip_02, ...
       const name = (c.outputPath || '').split(/[\\/]/).pop() || c.title;
       const tags = (c.hashtags || []).join(' ');
       rows.push([name, c.title, [c.description || c.reason || '', tags].filter(Boolean).join('\n\n'), String(c.hookText || c.title || '').replace(/\n/g, ' / ')]);

@@ -187,7 +187,7 @@ const META_BASE = `You are a professional YouTube Shorts metadata writer for a c
 const hookRules = (n) => `
 HOOK (field "hookText") is the text shown on screen in the first seconds. Its only job is to make a scrolling viewer stop and keep watching. Length: ${HOOK_LEN[n] || HOOK_LEN[2]}. Write it as EITHER (a) a curiosity question that this exact clip answers, or (b) a bold, specific statement that creates an open loop (a surprising claim, a number, a warning, a contradiction, "nobody tells you…" style). Never a plain summary or a topic label. It must be true to what is said in the clip and make the viewer need the payoff. Use the clip's own strongest words/numbers. Good examples: "Why do 90% of startups die in year one?", "This one habit made him a millionaire", "Stop doing this before it costs you everything", "She lost everything. Then this happened.". Bad examples: "A talk about startups", "Interesting thoughts on money", "Watch this video". Add one fitting emoji at the end. Do not use hashtags in the hook.`;
 const metaSystem = (n) => META_BASE + hookRules(n) + `
-Output format: a JSON array with one object per clip, in the same order: {"title":"...","hookText":"...","description":"...","hashtags":["#a","#b","#c"],"keywords":["..."]}.` + (n === 1 ? '' : ` Separate the hook lines with a \\n character.`);
+Output format: a JSON array with one object per clip, in the same order, each with "n" = the clip number given as #n in the input: {"n":0,"title":"...","hookText":"...","description":"...","hashtags":["#a","#b","#c"],"keywords":["..."]}.` + (n === 1 ? '' : ` Separate the hook lines with a \\n character.`);
 
 async function geminiTitles(clips, words, g, log, n = 2) {
   const items = clips.map((c, i) => `#${i} (${Math.round(c.end - c.start)}s): ${clipText(c, words).slice(0, 700)}`).join('\n\n');
@@ -196,7 +196,13 @@ async function geminiTitles(clips, words, g, log, n = 2) {
   const out = G.parseJson(r.text);
   const arr = Array.isArray(out) ? out : (out.titles || out.clips || []);
   if (arr.length < clips.length) throw new Error('Gemini returned too few titles');
-  return arr;
+  // match each answer to ITS clip by the number it carries (a model that reorders or skips an item must not shift every title by one)
+  const byN = new Array(clips.length).fill(null);
+  if (arr.every(o => o && Number.isInteger(Number(o.n)) && o.n !== null && o.n !== '')) {
+    for (const o of arr) { const k = Number(o.n); if (k >= 0 && k < clips.length && !byN[k]) byN[k] = o; }
+    if (byN.every(Boolean)) return byN;
+  }
+  return arr.slice(0, clips.length);
 }
 async function localTitles(clips, words, log, n = 2) {
   const model = await ollamaModel();

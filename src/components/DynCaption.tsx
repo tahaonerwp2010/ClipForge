@@ -59,7 +59,7 @@ export function DynCaption({ tpl, words, currentTime, base, sample, part = 'all'
     <div className="flex flex-col items-center text-center" style={{ gap: base * 0.02 * tpl.lh }}>
       {shown.map((ln, li) => (
         <div key={li} className="flex items-center justify-center flex-nowrap" style={isEm(ln) ? { opacity: 0.92 } : undefined}>
-          {ln.map(it => <Word key={it.j} it={it} tpl={tpl} base={isEm(ln) ? (fitW ? Math.min(fitW * 0.96 / (Math.max(1, ln.reduce((a, x) => a + x.text.length, 0)) * tpl.cw), fitW * 16 / 9 * 0.27) / tpl.emph.scale : base * 0.62) : base} cur={it.j === curJ} vis={it.j <= curJ} ecol={ecol} />)}
+          {ln.map(it => <Word key={it.j} it={it} tpl={tpl} base={isEm(ln) ? (fitW ? Math.min(fitW * 1.0 / (Math.max(1, ln.reduce((a, x) => a + x.text.length, 0)) * tpl.cw), fitW * 16 / 9 * 0.36) / tpl.emph.scale : base * 0.62) : base} cur={it.j === curJ} vis={it.j <= curJ} ecol={ecol} />)}
         </div>
       ))}
     </div>
