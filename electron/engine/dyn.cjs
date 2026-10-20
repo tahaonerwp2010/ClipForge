@@ -33,7 +33,7 @@ function layout(ws, tpl, W, base, H, kw, allowEmph = true, allowSoft = false) {
   let emph = -1, best = 2.9;
   if (allowEmph) ws.forEach((w, j) => { const s = score(w, kw); if (s > best) { best = s; emph = j; } });
   // second tier (only when the clip has gone a while without a big word): a real content word of 6+ letters
-  if (emph < 0 && allowEmph && allowSoft) { let L = 5; ws.forEach((w, j) => { const n = clean(w); if (n.length > L && !STOP.has(n) && !SOFTSTOP.has(n) && !n.includes("'") && !/(ing|ly)$/.test(n)) { L = n.length; emph = j; } }); }
+  if (emph < 0 && allowEmph && allowSoft) { let L = 4; ws.forEach((w, j) => { const n = clean(w); if (n.length > L && !STOP.has(n) && !SOFTSTOP.has(n) && !n.includes("'") && !/(ing|ly)$/.test(n)) { L = n.length; emph = j; } }); }
   const items = ws.map((w, j) => {
     const cls = j === emph ? 'emph' : (STOP.has(clean(w)) && clean(w).length <= 4 ? 'fill' : 'plain');
     const st = tpl[cls], t = st.upper ? String(w).toUpperCase() : String(w);
@@ -75,7 +75,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', k
     if (nxt) pEnd = Math.min(pEnd, tS[nxt[0]]);
     pEnd = Math.max(pEnd, tS[last] + 0.12);
     const pStart = tS[first], gapNeeded = tpl.behind ? 1.7 : 1.6;
-    const lines = layout(idxs.map(i => cw[i].word), tpl, W, base, H, kw, pStart - lastEmphT >= gapNeeded, pStart - lastEmphT >= (tpl.behind ? 2.8 : 3.5));
+    const lines = layout(idxs.map(i => cw[i].word), tpl, W, base, H, kw, pStart - lastEmphT >= gapNeeded, pStart - lastEmphT >= (tpl.behind ? 2.4 : 3.5));
     if (lines.some(l => l.items[0].cls === 'emph')) lastEmphT = pStart;
     const isEm = lines.map(l => !!(tpl.behind && l.items[0].cls === 'emph'));          // behind-the-person: the big word is drawn on its own layer, higher up
     const hs = lines.map((l, i) => isEm[i] ? 0 : l.size * 1.02 * tpl.lh), total = hs.reduce((a, b) => a + b, 0);
@@ -89,7 +89,8 @@ function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', k
       const fsOf = it => Math.round(base * it.st.scale * ln.fit * ({ 'Noto Sans Arabic ExtraBold': 1.3, 'Noto Sans Devanagari ExtraBold': 1.7 }[FONTS.scriptFont(it.text || '')] || 1));   // Arabic / Hindi letters are smaller than Latin capitals
       const lineIdx = ln.items.map(it => idxs[it.j]);
       lineIdx.forEach((gi, q) => {
-        const s = tS[gi], e = q + 1 < lineIdx.length ? tS[lineIdx[q + 1]] : pEnd;
+        const s = tS[gi]; let e = q + 1 < lineIdx.length ? tS[lineIdx[q + 1]] : pEnd;
+        if (tpl.behind && isEm[li]) e = Math.min(clipEnd - clipStart, Math.max(e, s + 1.3));   // the big word stays long enough to be read
         if (e - s < 0.03) return;
         const runs = (layer) => ln.items.map((it, t) => {
           const st = it.st, vis = t <= q, cur = t === q, act = tpl.active;

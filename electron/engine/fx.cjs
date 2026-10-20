@@ -113,7 +113,7 @@ function plan(words, clipStart, clipEnd, opt = {}, seed = 1) {
     if (align === 'end') at = t - d;
     at = Math.max(0, +at.toFixed(2));
     if (Math.abs(at - lastSfxT) < 0.45 && at >= lastSfxT - 0.45) return false;
-    out.sfx.push({ file: f.path, t: at, db: +((opt.sfxDb ?? -6) + (f.gainDb || 0) + extra).toFixed(1), dur: d, role, name: f.name });
+    out.sfx.push({ file: f.path, t: at, db: +((opt.sfxDb ?? -6) + (f.gainDb || 0) + extra).toFixed(1), dur: d, role, name: f.name, t0: t, align, baseDb: (opt.sfxDb ?? -6), extra });
     lastSfxT = Math.max(lastSfxT, at); return true;
   };
 

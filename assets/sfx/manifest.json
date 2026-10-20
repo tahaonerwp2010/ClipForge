@@ -8,7 +8,8 @@
   "dur": 1.6,
   "gainDb": -9.3,
   "natural": 1.6,
-  "tier": "core"
+  "tier": "core",
+  "desc": "huge cinematic boom, for the biggest reveal or shocking fact"
  },
  {
   "file": "impact.mp3",
@@ -19,7 +20,8 @@
   "dur": 1.1,
   "gainDb": -9.4,
   "natural": 1.1,
-  "tier": "core"
+  "tier": "core",
+  "desc": "solid heavy hit, for strong claims and key statements"
  },
  {
   "file": "soft_thud.mp3",
@@ -30,7 +32,8 @@
   "dur": 0.5,
   "gainDb": -8.6,
   "natural": 0.5,
-  "tier": "core"
+  "tier": "core",
+  "desc": "gentle low thud, for calm emphasis"
  },
  {
   "file": "punch_hit.mp3",
@@ -41,7 +44,8 @@
   "dur": 0.6,
   "gainDb": -9.2,
   "natural": 0.6,
-  "tier": "core"
+  "tier": "core",
+  "desc": "short punchy hit, for a quick sharp emphasis"
  },
  {
   "file": "sub_drop.mp3",
@@ -52,96 +56,93 @@
   "dur": 1.2,
   "gainDb": -8.7,
   "natural": 1.2,
-  "tier": "core"
+  "tier": "core",
+  "desc": "deep low drop, for dramatic or serious moments"
  },
  {
-  "file": "whoosh_impact.mp3",
-  "name": "whoosh_impact",
-  "roles": [
-   "hit",
-   "whoosh"
-  ],
-  "dur": 1.2,
-  "gainDb": -4.3,
-  "natural": 1.2,
-  "tier": "core"
- },
- {
-  "file": "fast_whoosh.mp3",
-  "name": "fast_whoosh",
+  "file": "swoop_up.mp3",
+  "name": "swoop_up",
   "roles": [
    "whoosh"
   ],
-  "dur": 0.35,
-  "gainDb": -1.5,
-  "natural": 0.35,
-  "tier": "core"
+  "dur": 0.38,
+  "gainDb": -8.4,
+  "natural": 0.38,
+  "tier": "core",
+  "desc": "smooth rising swoop, for zoom-ins and moving forward"
  },
  {
-  "file": "soft_whoosh.mp3",
-  "name": "soft_whoosh",
+  "file": "swoop_up_fast.mp3",
+  "name": "swoop_up_fast",
   "roles": [
    "whoosh"
   ],
-  "dur": 0.6,
-  "gainDb": -1.4,
-  "natural": 0.6,
-  "tier": "core"
+  "dur": 0.24,
+  "gainDb": -8.5,
+  "natural": 0.24,
+  "tier": "core",
+  "desc": "quick rising swoop, for fast transitions"
  },
  {
-  "file": "deep_whoosh.mp3",
-  "name": "deep_whoosh",
-  "roles": [
-   "whoosh"
-  ],
-  "dur": 0.75,
-  "gainDb": -0.9,
-  "natural": 0.75,
-  "tier": "core"
- },
- {
-  "file": "air_swish.mp3",
-  "name": "air_swish",
+  "file": "swoop_down.mp3",
+  "name": "swoop_down",
   "roles": [
    "whoosh"
   ],
   "dur": 0.4,
-  "gainDb": 1.6,
+  "gainDb": -8.3,
   "natural": 0.4,
-  "tier": "core"
+  "tier": "core",
+  "desc": "falling swoop, for pull-backs and calming down"
  },
  {
-  "file": "slide_whoosh.mp3",
-  "name": "slide_whoosh",
+  "file": "swoop_deep.mp3",
+  "name": "swoop_deep",
   "roles": [
    "whoosh"
   ],
   "dur": 0.55,
-  "gainDb": -1.1,
+  "gainDb": -8.5,
   "natural": 0.55,
-  "tier": "core"
+  "tier": "core",
+  "desc": "deep slow swoop, for dramatic transitions"
  },
  {
-  "file": "reverse_whoosh.mp3",
-  "name": "reverse_whoosh",
+  "file": "zip_quick.mp3",
+  "name": "zip_quick",
   "roles": [
    "whoosh"
   ],
-  "dur": 0.7,
-  "gainDb": 0.8,
-  "natural": 0.7,
-  "tier": "core"
+  "dur": 0.16,
+  "gainDb": -8.2,
+  "natural": 0.16,
+  "tier": "core",
+  "desc": "tiny quick zip, for the lightest transition"
  },
  {
-  "file": "riser.mp3",
-  "name": "riser",
+  "file": "swoop_hit.mp3",
+  "name": "swoop_hit",
+  "roles": [
+   "whoosh",
+   "hit"
+  ],
+  "dur": 1.1,
+  "gainDb": -7.6,
+  "natural": 1.1,
+  "tier": "core",
+  "desc": "swoop that lands on a hit, for a transition into a big moment"
+ },
+ {
+  "file": "riser_tone.mp3",
+  "name": "riser_tone",
   "roles": [
    "riser"
   ],
-  "dur": 1.9,
-  "gainDb": 0.1,
-  "natural": 1.9,
-  "tier": "core"
+  "dur": 1.8,
+  "gainDb": -4.9,
+  "natural": 1.8,
+  "tier": "core",
+  "desc": "tonal riser that builds up, ends on the key word"
  },
  {
   "file": "riser_short.mp3",
@@ -149,10 +150,11 @@
   "roles": [
    "riser"
   ],
-  "dur": 1.1,
-  "gainDb": -0.4,
-  "natural": 1.1,
-  "tier": "core"
+  "dur": 1.0,
+  "gainDb": -4.9,
+  "natural": 1.0,
+  "tier": "core",
+  "desc": "short build-up before a punchline"
  },
  {
   "file": "riser_deep.mp3",
@@ -161,32 +163,22 @@
    "riser"
   ],
   "dur": 2.2,
-  "gainDb": -0.7,
+  "gainDb": -3.7,
   "natural": 2.2,
-  "tier": "core"
+  "tier": "core",
+  "desc": "deep long build-up for suspense"
  },
  {
-  "file": "digital_zoom.mp3",
-  "name": "digital_zoom",
-  "roles": [
-   "riser",
-   "glitch"
-  ],
-  "dur": 1.7,
-  "gainDb": 1.6,
-  "natural": 1.7,
-  "tier": "core"
- },
- {
-  "file": "tension_rise.mp3",
-  "name": "tension_rise",
+  "file": "riser_pulse.mp3",
+  "name": "riser_pulse",
   "roles": [
    "riser"
   ],
-  "dur": 2.4,
-  "gainDb": -1.2,
-  "natural": 2.4,
-  "tier": "core"
+  "dur": 1.6,
+  "gainDb": -2.3,
+  "natural": 1.6,
+  "tier": "core",
+  "desc": "pulsing build-up for tension"
  },
  {
   "file": "pop_bubble.mp3",
@@ -197,7 +189,8 @@
   "dur": 0.12,
   "gainDb": -8.0,
   "natural": 0.12,
-  "tier": "core"
+  "tier": "core",
+  "desc": "soft bubble pop, for light neutral emphasis"
  },
  {
   "file": "pop_soft.mp3",
@@ -208,7 +201,8 @@
   "dur": 0.14,
   "gainDb": -7.3,
   "natural": 0.14,
-  "tier": "core"
+  "tier": "core",
+  "desc": "very soft pop, for gentle emphasis"
  },
  {
   "file": "pop_high.mp3",
@@ -219,7 +213,8 @@
   "dur": 0.1,
   "gainDb": -7.6,
   "natural": 0.1,
-  "tier": "core"
+  "tier": "core",
+  "desc": "small high pop, for small details and numbers"
  },
  {
   "file": "tick.mp3",
@@ -230,7 +225,8 @@
   "dur": 0.06,
   "gainDb": -4.6,
   "natural": 0.06,
-  "tier": "core"
+  "tier": "core",
+  "desc": "tiny tick, for the lightest touch"
  },
  {
   "file": "click_soft.mp3",
@@ -240,9 +236,10 @@
    "tech"
   ],
   "dur": 0.05,
-  "gainDb": -5.1,
+  "gainDb": -5.4,
   "natural": 0.05,
-  "tier": "core"
+  "tier": "core",
+  "desc": "soft click, for UI-like or technical words"
  },
  {
   "file": "ui_menu.mp3",
@@ -253,7 +250,8 @@
   "dur": 0.3,
   "gainDb": -5.9,
   "natural": 0.3,
-  "tier": "core"
+  "tier": "core",
+  "desc": "smooth UI blip, for tech and app words"
  },
  {
   "file": "toggle.mp3",
@@ -263,9 +261,10 @@
    "tech"
   ],
   "dur": 0.2,
-  "gainDb": -1.3,
+  "gainDb": -2.0,
   "natural": 0.2,
-  "tier": "core"
+  "tier": "core",
+  "desc": "double click toggle, for switching or choosing"
  },
  {
   "file": "finger_snap.mp3",
@@ -276,7 +275,8 @@
   "dur": 0.2,
   "gainDb": 1.7,
   "natural": 0.2,
-  "tier": "core"
+  "tier": "core",
+  "desc": "finger snap, for a quick cool emphasis"
  },
  {
   "file": "notification.mp3",
@@ -288,7 +288,8 @@
   "dur": 0.81,
   "gainDb": -3.7,
   "natural": 0.81,
-  "tier": "core"
+  "tier": "core",
+  "desc": "friendly two-note notification, for news or a good point"
  },
  {
   "file": "notification_2.mp3",
@@ -300,7 +301,8 @@
   "dur": 1.12,
   "gainDb": -2.8,
   "natural": 1.12,
-  "tier": "core"
+  "tier": "core",
+  "desc": "three-note notification, for good news"
  },
  {
   "file": "coin_collect.mp3",
@@ -311,7 +313,8 @@
   "dur": 0.77,
   "gainDb": -4.2,
   "natural": 0.77,
-  "tier": "core"
+  "tier": "core",
+  "desc": "coin pick-up, for money, wins and rewards"
  },
  {
   "file": "level_up.mp3",
@@ -322,7 +325,8 @@
   "dur": 1.57,
   "gainDb": -2.1,
   "natural": 1.57,
-  "tier": "core"
+  "tier": "core",
+  "desc": "rising four-note chime, for success and growth"
  },
  {
   "file": "level_complete.mp3",
@@ -333,7 +337,8 @@
   "dur": 2.24,
   "gainDb": -1.6,
   "natural": 2.24,
-  "tier": "core"
+  "tier": "core",
+  "desc": "longer victory chime, for big achievements"
  },
  {
   "file": "power_up.mp3",
@@ -344,7 +349,8 @@
   "dur": 0.7,
   "gainDb": -7.8,
   "natural": 0.7,
-  "tier": "core"
+  "tier": "core",
+  "desc": "power-up sweep, for gaining strength or speed"
  },
  {
   "file": "right_answer.mp3",
@@ -355,7 +361,8 @@
   "dur": 0.79,
   "gainDb": -3.4,
   "natural": 0.79,
-  "tier": "core"
+  "tier": "core",
+  "desc": "correct-answer chime, for confirmations and facts"
  },
  {
   "file": "sparkle.mp3",
@@ -366,7 +373,8 @@
   "dur": 0.82,
   "gainDb": -2.5,
   "natural": 0.82,
-  "tier": "core"
+  "tier": "core",
+  "desc": "sparkly chime, for magic, beauty or great results"
  },
  {
   "file": "camera_shutter.mp3",
@@ -375,9 +383,10 @@
    "camera"
   ],
   "dur": 0.35,
-  "gainDb": 3.6,
+  "gainDb": 2.5,
   "natural": 0.35,
-  "tier": "core"
+  "tier": "core",
+  "desc": "camera shutter click, for flash or photo moments"
  },
  {
   "file": "camera_flash.mp3",
@@ -386,9 +395,10 @@
    "camera"
   ],
   "dur": 0.6,
-  "gainDb": 0.2,
+  "gainDb": -1.4,
   "natural": 0.6,
-  "tier": "core"
+  "tier": "core",
+  "desc": "flash burst, for a white flash effect"
  },
  {
   "file": "shot_click.mp3",
@@ -397,9 +407,10 @@
    "camera"
   ],
   "dur": 0.07,
-  "gainDb": -3.0,
+  "gainDb": -4.2,
   "natural": 0.07,
-  "tier": "core"
+  "tier": "core",
+  "desc": "tiny camera click, for a light flash"
  },
  {
   "file": "camera_charge.mp3",
@@ -408,10 +419,11 @@
    "camera",
    "riser"
   ],
-  "dur": 1.3,
-  "gainDb": -3.7,
-  "natural": 1.3,
-  "tier": "core"
+  "dur": 1.2,
+  "gainDb": -4.3,
+  "natural": 1.2,
+  "tier": "core",
+  "desc": "flash charging up then shutter, for a build-up into a flash"
  },
  {
   "file": "glitch_short.mp3",
@@ -420,9 +432,10 @@
    "glitch"
   ],
   "dur": 0.5,
-  "gainDb": -6.5,
+  "gainDb": -6.4,
   "natural": 0.5,
-  "tier": "core"
+  "tier": "core",
+  "desc": "short digital glitch, for glitch effects"
  },
  {
   "file": "glitch_long.mp3",
@@ -431,9 +444,10 @@
    "glitch"
   ],
   "dur": 0.9,
-  "gainDb": -6.9,
+  "gainDb": -6.2,
   "natural": 0.9,
-  "tier": "core"
+  "tier": "core",
+  "desc": "longer digital glitch, for glitch effects"
  },
  {
   "file": "digital_burst.mp3",
@@ -443,31 +457,10 @@
    "hit"
   ],
   "dur": 0.8,
-  "gainDb": -6.5,
+  "gainDb": -7.1,
   "natural": 0.8,
-  "tier": "core"
- },
- {
-  "file": "vhs_rewind.mp3",
-  "name": "vhs_rewind",
-  "roles": [
-   "glitch"
-  ],
-  "dur": 0.8,
-  "gainDb": -4.1,
-  "natural": 0.8,
-  "tier": "core"
- },
- {
-  "file": "ui_dissolve.mp3",
-  "name": "ui_dissolve",
-  "roles": [
-   "glitch"
-  ],
-  "dur": 0.6,
-  "gainDb": 1.5,
-  "natural": 0.6,
-  "tier": "core"
+  "tier": "core",
+  "desc": "digital burst with a hit, for hacked, data or error moments"
  },
  {
   "file": "data_load.mp3",
@@ -479,7 +472,8 @@
   "dur": 0.9,
   "gainDb": -7.9,
   "natural": 0.9,
-  "tier": "core"
+  "tier": "core",
+  "desc": "data loading blips, for numbers, data and tech"
  },
  {
   "file": "system_beeps.mp3",
@@ -490,18 +484,8 @@
   "dur": 0.46,
   "gainDb": -5.4,
   "natural": 0.46,
-  "tier": "core"
- },
- {
-  "file": "scan.mp3",
-  "name": "scan",
-  "roles": [
-   "tech"
-  ],
-  "dur": 1.0,
-  "gainDb": -10,
-  "natural": 1.0,
-  "tier": "core"
+  "tier": "core",
+  "desc": "three soft system beeps, for tech and AI"
  },
  {
   "file": "typing.mp3",
@@ -510,9 +494,10 @@
    "tech"
   ],
   "dur": 1.1,
-  "gainDb": 1.9,
+  "gainDb": 2.3,
   "natural": 1.1,
-  "tier": "core"
+  "tier": "core",
+  "desc": "keyboard typing, for writing and work"
  },
  {
   "file": "counter.mp3",
@@ -523,7 +508,8 @@
   "dur": 0.9,
   "gainDb": -6.2,
   "natural": 0.9,
-  "tier": "core"
+  "tier": "core",
+  "desc": "rising counter ticks, for counting numbers and growth"
  },
  {
   "file": "reload.mp3",
@@ -532,9 +518,10 @@
    "tech"
   ],
   "dur": 0.7,
-  "gainDb": 2.3,
+  "gainDb": 3.9,
   "natural": 0.7,
-  "tier": "core"
+  "tier": "core",
+  "desc": "mechanical reload, for restarting or preparing"
  },
  {
   "file": "alert.mp3",
@@ -546,7 +533,8 @@
   "dur": 0.8,
   "gainDb": -8.5,
   "natural": 0.8,
-  "tier": "core"
+  "tier": "core",
+  "desc": "soft alert pulse, for warnings"
  },
  {
   "file": "womp.mp3",
@@ -557,7 +545,8 @@
   "dur": 0.9,
   "gainDb": -8.4,
   "natural": 0.9,
-  "tier": "fun"
+  "tier": "fun",
+  "desc": "sad womp, ONLY for a funny failure"
  },
  {
   "file": "sad_trombone.mp3",
@@ -568,7 +557,8 @@
   "dur": 1.5,
   "gainDb": -9.0,
   "natural": 1.5,
-  "tier": "fun"
+  "tier": "fun",
+  "desc": "sad trombone, ONLY for a joke about failing"
  },
  {
   "file": "heartbeat.mp3",
@@ -580,7 +570,8 @@
   "dur": 1.1,
   "gainDb": -1.6,
   "natural": 1.1,
-  "tier": "fun"
+  "tier": "fun",
+  "desc": "heartbeat, for fear or tension"
  },
  {
   "file": "slide_whistle_down.mp3",
@@ -592,7 +583,8 @@
   "dur": 0.6,
   "gainDb": -10,
   "natural": 0.6,
-  "tier": "fun"
+  "tier": "fun",
+  "desc": "falling slide whistle, ONLY for a funny drop"
  },
  {
   "file": "boing.mp3",
@@ -603,7 +595,8 @@
   "dur": 0.8,
   "gainDb": -7.4,
   "natural": 0.8,
-  "tier": "fun"
+  "tier": "fun",
+  "desc": "boing, ONLY for a funny surprise"
  },
  {
   "file": "bloop.mp3",
@@ -614,7 +607,8 @@
   "dur": 0.5,
   "gainDb": -5.8,
   "natural": 0.5,
-  "tier": "fun"
+  "tier": "fun",
+  "desc": "cartoon bloop, ONLY for a light joke"
  },
  {
   "file": "bonk.mp3",
@@ -624,9 +618,10 @@
    "hit"
   ],
   "dur": 0.35,
-  "gainDb": -5.4,
+  "gainDb": -6.3,
   "natural": 0.35,
-  "tier": "fun"
+  "tier": "fun",
+  "desc": "cartoon bonk, ONLY for a funny hit"
  },
  {
   "file": "wow_chime.mp3",
@@ -638,6 +633,7 @@
   "dur": 1.34,
   "gainDb": -2.4,
   "natural": 1.34,
-  "tier": "fun"
+  "tier": "fun",
+  "desc": "amazed chime, for surprise and wow"
  }
 ]

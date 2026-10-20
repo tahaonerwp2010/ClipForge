@@ -34,6 +34,7 @@ async function planFx(job, words, s, e, seed, log) {
   if (!o || !o.enabled) return undefined;
   try {
     const f = FX.plan(words, s, e, o, seed);
+    if (f && f.sfx && f.sfx.length && o.sfx !== false && o.aiSound !== false) await require('./sfxai.cjs').refine(f, words, job.gemini, log);
     if (f && f.events) log('FFmpeg', `Auto effects: ${f.events} moment${f.events === 1 ? '' : 's'} (${Object.entries(f.kinds || {}).map(([k, v]) => k + (v > 1 ? '×' + v : '')).join(', ')}), ${f.sfx.length} sound effect${f.sfx.length === 1 ? '' : 's'}`);
     if (o.sfx !== false && (!f || !f.sfx.length)) log('FFmpeg', 'No sound effects were added (' + (require('./sfxlib.cjs').list().length ? 'no suitable moments' : 'the sound library was not found') + ')', 'warn');
     return f;
@@ -286,6 +287,7 @@ async function runInner(job, emit, deps = {}) {
     const bh = (BH.wants(job.captions) && (deps.segment || deps.detectFaces)) ? await BH.masks({ R, segment: deps.segment, detectFaces: deps.detectFaces, cacheDir: path.join(outDir, '.edit', `mask_${n}`), workDir: path.join(work, `c${n}`), input: job.filePath, start: c.start, end: c.end, ratio, framing: job.framing, grading: job.grading, track: tracks[i], srcAspect: info.width / info.height, split, log: m => log('Captions', m) }) : null;
     const assArgs = { words: capWords, clipStart: c.start, clipEnd: c.end, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText, keywords: c.keywords, behindBox: bh && bh.box };
     const ass = ASS.build({ ...assArgs, part: bh ? 'front' : 'all' }), assBehind = bh ? ASS.build({ ...assArgs, part: 'behind' }) : '';
+    if (BH.wants(job.captions)) { const nb = bh ? (assBehind.match(/^Dialogue:/gm) || []).length : 0; log('Captions', bh ? (nb ? `Behind-the-person: ${nb} big word moment${nb === 1 ? '' : 's'}` : 'Behind-the-person: no word in this clip was special enough for the big style') : 'Behind-the-person cut-out was not available for this clip', nb ? 'info' : 'warn'); }
     const emojis = [...(useEmoji ? EMOJI.plan(capWords === words ? words : words, c.start, c.end, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
       ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur: c.end - c.start })];
     const fx = await planFx(job, capWords, c.start, c.end, i + 1, log);
@@ -523,6 +525,7 @@ async function runShortsInner(job, emit, deps = {}) {
     const bh = (BH.wants(job.captions) && (deps.segment || deps.detectFaces)) ? await BH.masks({ R, segment: deps.segment, detectFaces: deps.detectFaces, cacheDir: path.join(outDir, '.edit', `mask_${n}`), workDir: path.join(work, `c${n}`), input: files[i].path, start: 0, end: dur, ratio, framing: job.framing, grading: job.grading, track: tracks[i], srcAspect: infos[i].width / infos[i].height, log: m => log('Captions', m) }) : null;
     const assArgs = { words: cw, clipStart: 0, clipEnd: dur, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText, keywords: c.keywords, behindBox: bh && bh.box };
     const ass = ASS.build({ ...assArgs, part: bh ? 'front' : 'all' }), assBehind = bh ? ASS.build({ ...assArgs, part: 'behind' }) : '';
+    if (BH.wants(job.captions)) { const nb = bh ? (assBehind.match(/^Dialogue:/gm) || []).length : 0; log('Captions', bh ? (nb ? `Behind-the-person: ${nb} big word moment${nb === 1 ? '' : 's'}` : 'Behind-the-person: no word in this clip was special enough for the big style') : 'Behind-the-person cut-out was not available for this clip', nb ? 'info' : 'warn'); }
     const emojis = [...(useEmoji ? EMOJI.plan(words[i], 0, dur, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
       ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur })];
     const fx = await planFx(job, cw, 0, dur, i + 1, log);
