@@ -80,7 +80,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', k
     const isEm = lines.map(l => !!(tpl.behind && l.items[0].cls === 'emph'));          // behind-the-person: the big word is drawn on its own layer, higher up
     const hs = lines.map((l, i) => isEm[i] ? 0 : l.size * 1.02 * tpl.lh), total = hs.reduce((a, b) => a + b, 0);
     let y0 = Math.max(total / 2 + 20 * k, Math.min(H - total / 2 - 20 * k, cy)) - total / 2;
-    const emY = Math.round(behindBox && behindBox.bottom > behindBox.top ? Math.max(0.16 * H, Math.min(0.55 * H, H * (behindBox.top + 0.2 * (behindBox.bottom - behindBox.top)))) : 0.35 * H);   // inside the speaker: upper chest / head area
+    const emY = Math.round(behindBox && behindBox.bottom > behindBox.top ? Math.max(0.14 * H, Math.min(0.55 * H, H * behindBox.top)) : 0.35 * H);   // at the top of the head: the lower half of the word is covered by the person, the upper half stays visible
     const ecol = (() => { const pal = tpl.emph.colors; return pal[emphN++ % pal.length]; })();
     lines.forEach((ln, li) => {
       const yc = isEm[li] ? emY : Math.round(y0 + hs[li] / 2); y0 += hs[li];
