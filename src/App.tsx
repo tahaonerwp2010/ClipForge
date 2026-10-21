@@ -37,10 +37,11 @@ import { ClipEditor } from './components/ClipEditor';
 import { SettingsView } from './components/SettingsModal';
 import { Check } from 'lucide-react';
 import { ConfirmDialog, ModelRequiredDialog } from './components/Dialogs';
-import { BuyProModal, OwnerLogin, OwnerPanel } from './components/ProOwner';
+import { BuyProModal, OwnerLogin, OwnerPanel, ProBlockedModal } from './components/ProOwner';
 import { LicenseService, useLicense } from './services/licenseService';
-import { X } from 'lucide-react';
-import { PRO_ENFORCED } from './config/proConfig';
+import { X, Crown } from 'lucide-react';
+import { PRO_ENFORCED, TRIAL_ENABLED } from './config/proConfig';
+import { isDynStyle } from './utils/dynCaptions';
 import { SoftwareManager } from './services/softwareManager';
 import { PipelineRunner } from './services/pipelineRunner';
 
@@ -343,8 +344,11 @@ export default function App() {
     const models = await SoftwareManager.syncModelStatus();
     return models.some(m => (m as any).kind !== 'aligner' && (m.status === 'downloaded' || m.status === 'active'));
   };
+  // Pro features this project uses right now (used to stop a render when the trial is over and there is no Pro)
+  const proUsage = () => ({ dynamicCaptions: isDynStyle(captions.style), split: !!selectedVideo?.split, customFormat: framing.mode === 'custom-scale', autoHook: !!branding.autoTitle?.enabled, fx: !!(grading as any).fx?.enabled });
   const requestGenerate = async () => {
     if (!(await hasModel())) { setModelDialogOpen(true); return; }
+    if (LicenseService.blockIfLocked(proUsage())) return;
     setIsGenerateModalOpen(true);
   };
   useEffect(() => { AiService.refreshAll().catch(() => {}); const t = setInterval(() => AiService.refreshAll().catch(() => {}), 180000); return () => clearInterval(t); }, []);
@@ -368,6 +372,7 @@ export default function App() {
 
   const handleStartGeneration = (quality: number = 1080) => {
     setIsGenerateModalOpen(false);
+    if (LicenseService.blockIfLocked(proUsage())) return;
 
     const projTitle = selectedVideo ? selectedVideo.title : 'Untitled project';
     const existing = projects.find(p => p.id === activeProjectId);
@@ -422,12 +427,19 @@ export default function App() {
           projectsCount={projects.length}
           busy={queue.length > 0 || projects.some(p => p.status === 'Processing')}
           pro={lic.pro}
+          proLabel={lic.forever ? 'Pro · forever' : lic.proDaysLeft != null ? `Pro · ${lic.proDaysLeft} day${lic.proDaysLeft === 1 ? '' : 's'} left` : 'Pro unlocked'}
           showBuy={PRO_ENFORCED}
           owner={!!lic.ownerPw}
           onBuyPro={() => LicenseService.openBuy()}
           onVersionTap={onVersionTap}
           onOpenCms={() => setCmsOpen(true)}
         />
+        {PRO_ENFORCED && TRIAL_ENABLED && lic.loaded && !lic.pro && !lic.ownerPw && (
+          <button type="button" onClick={() => LicenseService.openBuy()} title="Get Pro"
+            className={`fixed top-1.5 right-5 z-[70] flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border text-[10px] font-bold cursor-pointer ${lic.trial ? 'bg-[#bef264]/15 hover:bg-[#bef264]/25 border-[#bef264]/50 text-[#bef264]' : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-amber-200'}`}>
+            <Crown className="w-3 h-3" />{lic.trial ? `${lic.trialDaysLeft} day${lic.trialDaysLeft === 1 ? '' : 's'} left` : 'Trial ended · Get Pro'}
+          </button>
+        )}
         {lic.ownerPw && (
           <button type="button" onClick={() => { LicenseService.setOwner(null); setCmsOpen(false); }} title="Leave owner access"
             className="fixed top-1.5 right-5 z-[70] flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/15 hover:bg-red-500/25 border border-red-500/40 text-[10px] font-bold text-red-300 cursor-pointer">
@@ -713,6 +725,7 @@ export default function App() {
       />
 
       {lic.buyOpen && !lic.pro && <BuyProModal onClose={() => LicenseService.closeBuy()} />}
+      {lic.blocked && <ProBlockedModal features={lic.blocked} onClose={() => LicenseService.closeBlocked()} />}
       {ownerLoginOpen && <OwnerLogin onClose={() => setOwnerLoginOpen(false)} onOk={() => { setOwnerLoginOpen(false); showToast('Owner access on'); }} />}
       {cmsOpen && lic.ownerPw && <OwnerPanel onClose={() => setCmsOpen(false)} />}
       <ConfirmDialog

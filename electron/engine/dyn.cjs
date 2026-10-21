@@ -30,6 +30,9 @@ function phrases(cw, tpl) {
 // one phrase -> lines of {idx, cls, text}; cls: emph | plain | fill
 const SOFTSTOP = new Set('around about really actually because before through should would could little people something anything another between during against without within whether though rather having getting being doing going coming making taking looking thinking saying maybe also again always never often since until while where which their there these those other every might still'.split(' '));
 function layout(ws, tpl, W, base, H, kw, allowEmph = true, allowSoft = false) {
+  // the big word behind the person ignores the caption font size: its size comes only from the video width/height
+  const baseE = Math.round((W / 1080) * 110 * 3.4 * tpl.sizeMul * 1.15);
+  const bOf = it => (tpl.behind && it.cls === 'emph') ? baseE : base;
   let emph = -1, best = 2.9;
   if (allowEmph) ws.forEach((w, j) => { const s = score(w, kw); if (s > best) { best = s; emph = j; } });
   // second tier (only when the clip has gone a while without a big word): a real content word of 6+ letters
@@ -39,23 +42,23 @@ function layout(ws, tpl, W, base, H, kw, allowEmph = true, allowSoft = false) {
     const st = tpl[cls], t = st.upper ? String(w).toUpperCase() : String(w);
     return { j, cls, text: esc(t), st };
   });
-  const widthOf = it => it.text.length * base * it.st.scale * tpl.cw;
+  const widthOf = it => it.text.length * bOf(it) * it.st.scale * tpl.cw;
   const lines = []; let line = [], lw = 0;
   for (const it of items) {
-    const w = widthOf(it) + base * 0.3;
+    const w = widthOf(it) + bOf(it) * 0.3;
     const split = line.length && (it.cls === 'emph' || line[line.length - 1].cls === 'emph' || lw + w > W * 0.88 || line.length >= tpl.maxPerLine);
     if (split) { lines.push(line); line = []; lw = 0; }
     line.push(it); lw += w;
   }
   if (line.length) lines.push(line);
   return lines.map(l => {
-    const est = l.reduce((a, it) => a + widthOf(it) + base * 0.3, 0);
+    const est = l.reduce((a, it) => a + widthOf(it) + bOf(it) * 0.3, 0), bs = bOf(l[0]);
     let fit = Math.min(1, (W * 0.9) / Math.max(1, est));
     if (tpl.behind && l[0].cls === 'emph') {                       // the word behind the person is made as wide as the screen, so it shows on both sides of the speaker
-      const sz = base * l[0].st.scale;
-      fit = Math.max(0.5, Math.min((W * 1.0) / Math.max(1, est), (0.36 * H) / sz));
+      const sz = bs * l[0].st.scale;
+      fit = Math.max(0.25, Math.min((W * 1.0) / Math.max(1, est), (0.36 * H) / sz));
     }
-    return { items: l, fit, size: Math.max(...l.map(it => it.st.scale)) * base * fit };
+    return { items: l, fit, bs, size: Math.max(...l.map(it => it.st.scale)) * bs * fit };
   });
 }
 
@@ -86,7 +89,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', k
       const yc = isEm[li] ? emY : Math.round(y0 + hs[li] / 2); y0 += hs[li];
       if (part === 'behind' && !isEm[li]) return;
       if (part === 'front' && isEm[li]) return;
-      const fsOf = it => Math.round(base * it.st.scale * ln.fit * ({ 'Noto Sans Arabic ExtraBold': 1.3, 'Noto Sans Devanagari ExtraBold': 1.7 }[FONTS.scriptFont(it.text || '')] || 1));   // Arabic / Hindi letters are smaller than Latin capitals
+      const fsOf = it => Math.round(ln.bs * it.st.scale * ln.fit * ({ 'Noto Sans Arabic ExtraBold': 1.3, 'Noto Sans Devanagari ExtraBold': 1.7 }[FONTS.scriptFont(it.text || '')] || 1));   // Arabic / Hindi letters are smaller than Latin capitals
       const lineIdx = ln.items.map(it => idxs[it.j]);
       lineIdx.forEach((gi, q) => {
         const s = tS[gi]; let e = q + 1 < lineIdx.length ? tS[lineIdx[q + 1]] : pEnd;
@@ -115,7 +118,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', k
           else if (cur) tags += '\\fscx100\\fscy100';
           return `{${tags}}${it.text}{\\fscx100\\fscy100}`;
         }).join(`{\\fscx100\\fscy100} `);
-        const pos = `\\an5\\pos(${cx},${yc})`;
+        const pos = `\\an5\\pos(${isEm[li] ? Math.round(W / 2) : cx},${yc})`;
         const S = ln.size;
         L.push(`Dialogue: 0,${ts(s)},${ts(e)},Cap,,0,0,0,,{${pos}}${runs('outline')}`);
         L.push(`Dialogue: 1,${ts(s)},${ts(e)},Cap,,0,0,0,,{${pos}}${runs('fill')}`);

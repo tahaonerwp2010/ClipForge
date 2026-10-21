@@ -1,4 +1,4 @@
-import { LicenseService } from '../../services/licenseService';
+import { ProTag } from '../common/ProTag';
 import React, { useState } from 'react';
 import { CaptionConfig } from '../../types/clipper';
 import { 
@@ -147,7 +147,7 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
                     return (
                       <div
                         key={preset.id}
-                        onClick={() => { if (preset.id === 'capcut-emoji' && !LicenseService.guard()) return; onCaptionsChange({
+                        onClick={() => { onCaptionsChange({
                           ...captions,
                           style: preset.id,
                           highlightColor: preset.highlight
@@ -310,7 +310,7 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
             <div onClick={() => setOpenDyn(!openDyn)} className="p-3.5 px-4 flex items-center justify-between cursor-pointer hover:bg-[#111e18] transition-colors border-b border-[#172820]">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-extrabold text-white text-xs uppercase tracking-wider">Dynamic Captions</h3>
+                  <h3 className="font-extrabold text-white text-xs uppercase tracking-wider">Dynamic Captions</h3><ProTag />
                   <span className="text-[10px] text-[#facc15] font-mono font-bold bg-[#facc15]/10 px-1.5 py-0.5 rounded border border-[#facc15]/20">{DYN_TEMPLATES.length} Templates</span>
                 </div>
                 <p className="text-[10px] text-neutral-400">Mixed fonts and sizes, shiny metallic important words. Each template has its own fonts (locked).</p>
@@ -319,6 +319,9 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
             </div>
             {openDyn && (
               <div className="p-4 space-y-3">
+              <div className="rounded-lg border border-amber-400/50 bg-amber-400/10 px-3 py-2 text-[11px] font-semibold text-amber-200 flex items-start gap-2">
+                <span className="text-sm leading-none">ⓘ</span><span><b>No live preview for Dynamic Captions.</b> The phone preview shows only a simple sample. The real animation, fonts and the big word behind the person appear only after the clip is rendered (Generate clips).</span>
+              </div>
               <div className="flex flex-wrap gap-1.5">
                 {([['all', 'All'], ['style', 'Metallic & styled'], ['behind', 'Behind the person']] as const).map(([id, label]) => (
                   <button key={id} type="button" onClick={() => setDynCat(id)}

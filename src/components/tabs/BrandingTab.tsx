@@ -1,4 +1,4 @@
-import { LicenseService } from '../../services/licenseService';
+import { ProTag } from '../common/ProTag';
 import { hookLines } from '../../utils/captionHelpers';
 import React, { useEffect, useRef, useState } from 'react';
 import { BrandingConfig } from '../../types/clipper';
@@ -196,7 +196,6 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
   };
 
   const handleToggleAutoTitle = () => {
-    if (!isAutoTitleOn && !LicenseService.guard()) return;
     onBrandingChange({
       ...branding,
       autoTitle: {
@@ -246,7 +245,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                 <Sparkles className="w-3.5 h-3.5" />
               </div>
               <h3 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
-                <span>Auto Hook (AI text on the video)</span>
+                <span>Auto Hook (AI text on the video)</span><ProTag />
               </h3>
               <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
                 isAutoTitleOn

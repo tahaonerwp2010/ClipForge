@@ -36,12 +36,13 @@ declare global {
       updateInstall?: (filePath: string) => Promise<{ ok: boolean; mode?: string; error?: string }>;
       projectsLoad?: () => Promise<any[]>;
       projectsSave?: (list: any[]) => Promise<boolean>;
-      licenseStatus?: () => Promise<{ id: string; pro: boolean; configured: boolean; online: boolean }>;
+      licenseStatus?: (o?: { trial?: boolean }) => Promise<{ id: string; pro: boolean; forever: boolean; proDaysLeft: number | null; trial: boolean; trialDaysLeft: number; configured: boolean; online: boolean }>;
       licenseRegister?: () => Promise<{ id: string; configured: boolean }>;
       ownerCheck?: (pw: string) => Promise<{ ok: boolean; error?: string }>;
-      ownerLookup?: (pw: string, id: string) => Promise<{ ok: boolean; exists?: boolean; pro?: boolean; error?: string }>;
+      ownerLookup?: (pw: string, id: string) => Promise<{ ok: boolean; exists?: boolean; pro?: boolean; forever?: boolean; proUntil?: string | null; proDaysLeft?: number | null; trialActive?: boolean; trialDaysLeft?: number; trialStart?: string | null; error?: string }>;
       ownerSuggest?: (pw: string, q: string) => Promise<{ ok: boolean; list: { id: string; pro: boolean }[]; error?: string }>;
-      ownerSet?: (pw: string, id: string, pro: boolean) => Promise<{ ok: boolean; error?: string }>;
+      ownerGrant?: (pw: string, id: string, plan: 'month' | 'year' | 'forever') => Promise<{ ok: boolean; error?: string }>;
+      ownerRemove?: (pw: string, id: string) => Promise<{ ok: boolean; error?: string }>;
       openExternal?: (url: string) => Promise<boolean>;
       editLoad?: (outDir: string) => Promise<{ ok: boolean; captions?: any; branding?: any; framing?: any; grading?: any; ratio?: string; clips?: { hookText: string; title: string }[] }>;
       editPrepare?: (outDir: string, index: number) => Promise<{ ok: boolean; url?: string; dims?: [number, number]; error?: string }>;

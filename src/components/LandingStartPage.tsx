@@ -1,4 +1,4 @@
-import { LicenseService } from '../services/licenseService';
+import { ProTag } from './common/ProTag';
 import { fileUrl as toFileUrl } from '../utils/fileUrl';
 import React, { useState, useRef, useEffect } from 'react';
 import { VideoSource, SplitConfig, Rect01 } from '../types/clipper';
@@ -313,13 +313,13 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
         ]).map(c => {
           const on = activeCard === c.id;
           return (
-            <button key={c.id} type="button" onClick={() => { if (c.id === 'split' && !LicenseService.guard()) return; setActiveCard(c.id); }}
+            <button key={c.id} type="button" onClick={() => setActiveCard(c.id)}
               className={`relative text-left p-4 rounded-2xl border transition-all cursor-pointer flex flex-col ${on ? 'bg-[#0f1f17] border-[#3f9a5a] shadow-[0_0_0_1px_rgba(63,154,90,0.35),0_8px_30px_-12px_rgba(190,242,100,0.25)]' : 'bg-[#0b1611] border-[#17291f] hover:border-[#2a4a38] hover:bg-[#0d1a14]'}`}>
               {c.badge && <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#bef264] text-black">{c.badge}</span>}
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 border ${on ? 'bg-[#bef264] text-black border-transparent' : 'bg-[#13241b] text-[#8fd0a4] border-[#1d3228]'}`}>
                 <c.Icon className="w-[18px] h-[18px]" />
               </div>
-              <h3 className="text-[13px] font-bold text-white leading-snug">{c.title}</h3>
+              <h3 className="text-[13px] font-bold text-white leading-snug flex items-center gap-1.5 flex-wrap">{c.title}{c.id === 'split' && <ProTag />}</h3>
               <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">{c.text}</p>
               <ul className="mt-3 space-y-1">
                 {c.points.map(pt => (

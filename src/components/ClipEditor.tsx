@@ -8,6 +8,8 @@ import { FontPicker } from './common/FontPicker';
 import { ColorPicker } from './common/ColorPicker';
 import { hookLines } from '../utils/captionHelpers';
 import { fileUrl } from '../utils/fileUrl';
+import { LicenseService } from '../services/licenseService';
+import { isDynStyle } from '../utils/dynCaptions';
 import { BrandingConfig, CaptionConfig, GeneratedClip, InnerFramingConfig, VideoGradingConfig } from '../types/clipper';
 
 interface Props {
@@ -88,6 +90,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
     return b;
   };
   const save = async (all: boolean) => {
+    if (LicenseService.blockIfLocked({ dynamicCaptions: isDynStyle(captions.style), fx: !!fx.enabled })) return;
     setSaving(true); setPct(0); setErr('');
     const idx = all ? allIdx : [index];
     span.current = idx.length;

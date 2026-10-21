@@ -7,3 +7,9 @@ ClipForge Pro - Supabase setup (5 minutes)
    (The anon key is meant to be public. The tables cannot be read or changed with it; only the functions in setup.sql work.)
 6. Fill your payment details and contacts in src/config/proConfig.ts.
 7. Build/push as usual. In the app: tap the version number 5 times -> enter the password -> CMS button appears.
+
+=== v2 (Pro / Trial system) ===
+Run the NEW supabase/setup.sql once in Supabase SQL Editor. It is safe on an existing database
+(migration-safe, your owner password and existing Pro users are kept; old pro=true = forever).
+To activate in the app: src/config/proConfig.ts -> PRO_ENFORCED=true and TRIAL_ENABLED=true.
+Fill the payment placeholders (PAY_METHODS, CONTACTS) there too.

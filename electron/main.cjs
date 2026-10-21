@@ -313,12 +313,13 @@ ipcMain.handle('edit-prepare', async (e, a) => { try { const r = await EDIT.prep
 ipcMain.handle('edit-render', async (e, a) => { try { const r = await EDIT.rerender(a.outDir, a.index, a.overrides || {}, p => send('edit-progress', { index: a.index, p }), { segment: (frames) => require('./engine/facetrack.cjs').segmentFrames(frames, { BrowserWindow }), detectFaces: (frames) => require('./engine/facetrack.cjs').detectFaces(frames, { BrowserWindow }) }); return { ok: true, ...r }; } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 300) }; } });
 // ---- Pro licence (Supabase) ----
 const LIC = require('./engine/license.cjs');
-ipcMain.handle('license-status', async () => LIC.status());
+ipcMain.handle('license-status', async (e, o) => LIC.status(o));
 ipcMain.handle('license-register', async () => LIC.register());
 ipcMain.handle('owner-check', async (e, pw) => LIC.owner.check(pw));
 ipcMain.handle('owner-lookup', async (e, a) => LIC.owner.lookup(a.pw, a.id));
 ipcMain.handle('owner-suggest', async (e, a) => LIC.owner.suggest(a.pw, a.q));
-ipcMain.handle('owner-set', async (e, a) => LIC.owner.set(a.pw, a.id, a.pro));
+ipcMain.handle('owner-grant', async (e, a) => LIC.owner.grant(a.pw, a.id, a.plan));
+ipcMain.handle('owner-remove', async (e, a) => LIC.owner.remove(a.pw, a.id));
 // ---- Fonts & images chosen by the user ----
 const Fonts = require('./engine/fonts.cjs');
 ipcMain.handle('list-user-fonts', async () => Fonts.userFonts().map(f => ({ ...f, url: require('url').pathToFileURL(path.join(Fonts.userDir(), f.file)).toString() })));

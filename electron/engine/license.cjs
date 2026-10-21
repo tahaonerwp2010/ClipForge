@@ -50,19 +50,39 @@ async function rpc(name, body) {
   return t ? JSON.parse(t) : null;
 }
 
-// Is this PC pro? Asks Supabase; when offline, a recent "pro" answer is still trusted for a while.
+// What does this PC get? Asks Supabase (server time decides trial / pro days); when offline, the last answer is used with the saved clock offset.
+const DAY = 86400e3, TRIAL_DAYS = 7;
 let registered = false;
-async function status() {
-  const id = deviceId(), c = readCache();
-  if (!configured()) return { id, pro: false, configured: false, online: false };
+function shape(id, raw, online, wantTrial) {
+  // raw = { forever, proUntil(ms|null), trialEnd(ms|null), offset(ms: serverNow - localNow) }
+  let now = Date.now() + (raw.offset || 0);
+  const c = readCache();
+  if (c.lastSeen && now < c.lastSeen - 600e3) now = c.lastSeen;               // the clock was turned back: do not go back in time
+  writeCache({ lastSeen: Math.max(now, c.lastSeen || 0) });
+  const proActive = !!raw.forever || (raw.proUntil != null && raw.proUntil > now);
+  const trialActive = !proActive && wantTrial && raw.trialEnd != null && raw.trialEnd > now;
+  const left = (t) => Math.max(0, Math.ceil((t - now) / DAY));
+  return { id, pro: proActive, forever: !!raw.forever, proDaysLeft: proActive && !raw.forever ? left(raw.proUntil) : null,
+    trial: trialActive, trialDaysLeft: trialActive ? left(raw.trialEnd) : 0, configured: configured(), online };
+}
+async function status(opt) {
+  const id = deviceId(), c = readCache(), wantTrial = !!(opt && opt.trial);
+  if (!configured()) {
+    const t0 = c.localTrialStart || Date.now(); if (wantTrial && !c.localTrialStart) writeCache({ localTrialStart: t0 });
+    return shape(id, { forever: false, proUntil: null, trialEnd: wantTrial ? t0 + TRIAL_DAYS * DAY : null }, false, wantTrial);
+  }
   try {
-    if (!registered) { await rpc('cf_register', { p_id: id }); registered = true; }   // every PC that opens ClipForge is stored (starts as free)
-    const pro = (await rpc('cf_get_pro', { p_id: id })) === true;
-    writeCache({ pro, checkedAt: Date.now(), id });
-    return { id, pro, configured: true, online: true };
+    if (!registered) { await rpc('cf_register', { p_id: id }); registered = true; }
+    const r = await rpc('cf_status', { p_id: id, p_trial: wantTrial });
+    const raw = { forever: !!r.forever, proUntil: r.proUntil ? Date.parse(r.proUntil) : null, trialEnd: r.trialEnd ? Date.parse(r.trialEnd) : null, offset: Date.parse(r.now) - Date.now() };
+    writeCache({ raw, checkedAt: Date.now(), id });
+    return shape(id, raw, true, wantTrial);
   } catch (e) {
-    const fresh = c.id === id && c.pro && c.checkedAt && Date.now() - c.checkedAt < CACHE_DAYS * 86400e3;
-    return { id, pro: !!fresh, configured: true, online: false };
+    const old = c.id === id && c.raw && c.checkedAt && Date.now() - c.checkedAt < 30 * DAY ? c.raw : null;
+    if (old) return shape(id, old, false, wantTrial);
+    // never reached the server yet: a local 7-day trial, replaced by the server's answer as soon as it is reachable
+    const t0 = c.localTrialStart || Date.now(); if (wantTrial && !c.localTrialStart) writeCache({ localTrialStart: t0 });
+    return shape(id, { forever: false, proUntil: null, trialEnd: wantTrial ? t0 + TRIAL_DAYS * DAY : null }, false, wantTrial);
   }
 }
 async function register() { const id = deviceId(); if (configured()) { try { await rpc('cf_register', { p_id: id }); } catch {} } return { id, configured: configured() }; }
@@ -71,6 +91,7 @@ const owner = {
   check: async (pw) => { try { return { ok: (await rpc('cf_owner_check', { p_pw: pw })) === true }; } catch (e) { return { ok: false, error: e.message }; } },
   lookup: async (pw, id) => { try { return { ok: true, ...(await rpc('cf_owner_lookup', { p_pw: pw, p_id: id })) }; } catch (e) { return { ok: false, error: e.message }; } },
   suggest: async (pw, q) => { try { return { ok: true, list: (await rpc('cf_owner_suggest', { p_pw: pw, p_q: q })) || [] }; } catch (e) { return { ok: false, error: e.message, list: [] }; } },
-  set: async (pw, id, pro) => { try { await rpc('cf_owner_set', { p_pw: pw, p_id: id, p_pro: !!pro }); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; } },
+  grant: async (pw, id, plan) => { try { return { ok: true, ...(await rpc('cf_owner_grant', { p_pw: pw, p_id: id, p_plan: plan })) }; } catch (e) { return { ok: false, error: e.message }; } },
+  remove: async (pw, id) => { try { return { ok: true, ...(await rpc('cf_owner_remove', { p_pw: pw, p_id: id })) }; } catch (e) { return { ok: false, error: e.message }; } },
 };
 module.exports = { deviceId, status, register, owner, configured };

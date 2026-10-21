@@ -1,3 +1,4 @@
+import { ProTag } from '../common/ProTag';
 import React from 'react';
 
 export const DEFAULT_FX = { enabled: false, intensity: 'subtle' as 'subtle' | 'balanced' | 'wild', zoom: true, flash: true, shake: true, glitch: true, color: true, sfx: true, sfxDb: -6 };
@@ -7,7 +8,7 @@ export const AutoFxCard: React.FC<{ fx: FxState; setFx: (patch: Partial<FxState>
     <section className="space-y-3 p-4 rounded-xl bg-[#0b1410] border border-[#172820]">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-300">Auto Effects (VFX + SFX)</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-2">Auto Effects (VFX + SFX)<ProTag /></h3>
             <p className="text-[11px] text-neutral-400 mt-0.5">Adds punch-in zoom, flash and sound effects on the strongest moments of each clip.</p>
           </div>
           <button type="button" onClick={() => setFx({ enabled: !fx.enabled })}

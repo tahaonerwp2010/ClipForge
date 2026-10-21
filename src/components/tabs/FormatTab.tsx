@@ -1,4 +1,4 @@
-import { LicenseService } from '../../services/licenseService';
+import { ProTag } from '../common/ProTag';
 import React, { useState } from 'react';
 import { 
   OuterCanvasRatio, 
@@ -376,7 +376,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
 
             {/* Mode D: Custom */}
             <div
-              onClick={() => { if (framing.mode !== 'custom-scale' && !LicenseService.guard()) return; onFramingChange({ ...framing, mode: 'custom-scale' }); }}
+              onClick={() => onFramingChange({ ...framing, mode: 'custom-scale' })}
               className={`p-3 rounded-xl border cursor-pointer transition-all ${
                 framing.mode === 'custom-scale'
                   ? 'bg-[#0e1b15] border-[#3f9a5a] ring-1 ring-[#3f9a5a]/40'
@@ -386,7 +386,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
               <div className="flex items-center justify-between">
                 <span className="font-bold text-white flex items-center gap-2">
                   <SlidersHorizontal className="w-3.5 h-3.5 text-[#8fd0a4]" />
-                  <span>Custom</span>
+                  <span>Custom</span><ProTag />
                 </span>
               </div>
               <p className="text-[11px] text-neutral-400 mt-1">

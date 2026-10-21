@@ -10,6 +10,7 @@ interface SidebarProps {
   projectsCount?: number;
   busy?: boolean;
   pro?: boolean;
+  proLabel?: string;
   showBuy?: boolean;
   owner?: boolean;
   onBuyPro?: () => void;
@@ -17,7 +18,7 @@ interface SidebarProps {
   onOpenCms?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, projectsCount = 0, busy = false, pro = false, showBuy = false, owner = false, onBuyPro, onVersionTap, onOpenCms }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, projectsCount = 0, busy = false, pro = false, proLabel = 'Pro unlocked', showBuy = false, owner = false, onBuyPro, onVersionTap, onOpenCms }) => {
   const [logoOk, setLogoOk] = useState(true);
   useEffect(() => { setLogoOk(true); }, []);
   const items: { id: 'home' | 'my_projects' | 'settings'; label: string; Icon: React.ElementType; active: boolean; count?: number }[] = [
@@ -55,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, proj
 
       <div className="px-3 pb-4 space-y-2">
         {!showBuy ? null : pro ? (
-          <div className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-[#bef264] bg-[#12201a] border border-[#2a4a35]"><Crown className="w-4 h-4" /><span>Pro unlocked</span></div>
+          <div className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-[#bef264] bg-[#12201a] border border-[#2a4a35]"><Crown className="w-4 h-4" /><span>{proLabel}</span></div>
         ) : (
           <button type="button" onClick={onBuyPro}
             className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-extrabold text-black bg-[#bef264] hover:bg-[#a3e635] transition-colors cursor-pointer">
