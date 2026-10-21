@@ -78,7 +78,11 @@ jobs:
       - name: macOS tools
         if: startsWith(matrix.name, 'mac')
         run: |
-          brew install cmake
+          export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1
+          if ! command -v cmake >/dev/null 2>&1; then
+            for i in 1 2 3 4; do brew install cmake && break || { echo "brew failed ($i), retrying"; sleep $((i*10)); }; done
+          fi
+          cmake --version
           mkdir -p binaries tmp && cd tmp
           for t in ffmpeg ffprobe; do
             curl -fL --retry 4 -o $t.zip "https://ffmpeg.martin-riedl.de/redirect/latest/macos/${{ matrix.farch }}/release/$t.zip" \
