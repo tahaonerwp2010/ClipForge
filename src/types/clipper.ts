@@ -46,6 +46,13 @@ export interface VideoGradingConfig {
   vignette: boolean;
   speedBoost: number; // 1.0 or 1.05
   fx?: AutoFxConfig;
+  broll?: BRollConfig;
+}
+
+export interface BRollConfig {
+  enabled: boolean;
+  files: Array<{ path: string; name: string }>;   // the user's own videos
+  pct?: number;                                    // share of each clip, 10-25 (default 20)
 }
 
 export interface AutoFxConfig {

@@ -121,7 +121,7 @@ function layoutInfo(f, W, H, srcAspect) {
   return { fgW, fgH, radius };
 }
 
-function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], emojiBox, srcAspect, maskIdx, watermark, splitArgs, fxZoom = [], fxFlash = [], fxShake = [], fxGlitch = [], fxMore = {}, behind = null, hasAssBehind = false }) {
+function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], emojiBox, srcAspect, maskIdx, watermark, splitArgs, fxZoom = [], fxFlash = [], fxShake = [], fxGlitch = [], fxMore = {}, behind = null, hasAssBehind = false, broll = [] }) {
   const f = framing || {}, g = grading || {};
   const mode = f.mode || 'fit-blur';
   let base, note = null;
@@ -160,7 +160,17 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
     if (c) post.push(`eq=saturation=2.1:contrast=1.12:enable='${c}'`);
     if (gl) post.push(`eq=brightness=0.1:saturation=1.4:gamma=1.12:enable='${gl}'`);
     if (ch) post.push(`rgbashift=rh=-16:bh=16:rv=3:bv=-3:enable='${ch}'`); }
-  if (hasAss && !(behind && !splitArgs)) post.push('ass=captions.ass:fontsdir=fonts');
+  const brollOn = broll.length > 0 && !splitArgs;
+  if (hasAss && !(behind && !splitArgs) && !brollOn) post.push('ass=captions.ass:fontsdir=fonts');
+  // B-roll sits above the video but under the captions / hook: overlay each cut-away, then burn the captions
+  const bro = (inL, outL) => {
+    let g = '', cur = inL;
+    broll.forEach((b, k) => {
+      g += `[${b.idx}:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,fps=${b.fps || 30},setpts=PTS-STARTPTS+${b.t}/TB[bk${k}];[${cur}][bk${k}]overlay=eof_action=pass:enable='between(t,${b.t},${(b.t + b.dur).toFixed(2)})'[bo${k}];`;
+      cur = `bo${k}`;
+    });
+    return g + `[${cur}]${hasAss ? 'ass=captions.ass:fontsdir=fonts' : 'null'}[${outL}]`;
+  };
   let graph;
   const pushL = mo.push || [], pullL = mo.pull || [], pulseL = mo.pulse || [], panL = mo.pan || [], tiltL = mo.tilt || [];
   let geo = null;   // zoom / push / pull / pulse / shake / whip-pan / tilt as one chain: (in, out) => filter text
@@ -187,9 +197,10 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
     const pj = post.join(',');
     graph = `${base};[v0]split[v0a][v0b];[${behind.idx}:v]scale=${W}:${H}:flags=bicubic,gblur=sigma=2.5,format=gray,framerate=fps=${behind.outFps}[mk];[v0b]format=yuv420p[v0c];[v0c][mk]alphamerge[v0p];` +
       `${g('v0a', 'vz')};${g('v0p', 'vpz')};[vz]${pj}[vcb];[vpz]${pj}[vpc];` +
-      `[vcb]${hasAssBehind ? 'ass=captions_behind.ass:fontsdir=fonts' : 'null'}[vt];[vt][vpc]overlay=format=auto[vp];[vp]${hasAss ? 'ass=captions.ass:fontsdir=fonts' : 'null'}[vc]`;
-  } else if (geo) graph = `${base};${geo('v0', 'vz')};[vz]${post.join(',')}[vc]`;
-  else graph = `${base};[v0]${post.join(',')}[vc]`;
+      `[vcb]${hasAssBehind ? 'ass=captions_behind.ass:fontsdir=fonts' : 'null'}[vt];[vt][vpc]overlay=format=auto[vp];${brollOn ? 'XBRO' : `[vp]${hasAss ? 'ass=captions.ass:fontsdir=fonts' : 'null'}[vc]`}`;
+  } else if (geo) graph = `${base};${geo('v0', 'vz')};[vz]${post.join(',')}[${brollOn ? 'vcx' : 'vc'}]`;
+  else graph = `${base};[v0]${post.join(',')}[${brollOn ? 'vcx' : 'vc'}]`;
+  if (brollOn) graph = graph.includes('XBRO') ? graph.replace('XBRO', bro('vp', 'vc')) : `${graph};${bro('vcx', 'vc')}`;
   let last = 'vc';
   emojiGroups.forEach((g, i) => {
     const en = g.windows.map(([a, b]) => `between(t,${a},${b})`).join('+');
@@ -220,7 +231,7 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
   return { graph, note };
 }
 
-async function renderClip({ quality = 1080, input, start, end, out, assText, ratio, framing, grading, workDir, hasAudio = true, track, emojis = [], emojiBox, onProgress, srcAspect, fontFamilies = [], watermark, music, split, fx, fps = 30, behind = null, assBehind = '' }) {
+async function renderClip({ quality = 1080, input, start, end, out, assText, ratio, framing, grading, workDir, hasAudio = true, track, emojis = [], emojiBox, onProgress, srcAspect, fontFamilies = [], watermark, music, split, fx, fps = 30, behind = null, assBehind = '', broll = [] }) {
   const [W, H] = dimsFor(ratio, quality);
   fs.mkdirSync(workDir, { recursive: true });
   if (assText) fs.writeFileSync(path.join(workDir, 'captions.ass'), assText, 'utf8');
@@ -287,7 +298,10 @@ async function renderClip({ quality = 1080, input, start, end, out, assText, rat
   sfxList.forEach(e => { e.idx = nextIdx++; sfxInputs.push('-i', e.file); });          // one input per event (an ffmpeg input can feed only one filter)
   let behindIdx = null, behindInputs = [];
   if (behind && behind.dir && fs.existsSync(path.join(behind.dir, 'm_0001.png'))) { behindIdx = nextIdx++; behindInputs = ['-framerate', String(behind.fps), '-i', path.join(behind.dir, 'm_%04d.png')]; }
-  const { graph: vGraph, note } = filterGraph({ behind: behindIdx != null ? { idx: behindIdx, outFps: fps } : null, hasAssBehind: !!assBehind, W, H, framing, grading, hasAss: !!assText, track, emojiGroups, emojiBox, srcAspect, maskIdx, watermark: wmIdx != null ? { ...watermark, idx: wmIdx } : null, splitArgs, fxZoom: (fx && fx.zoom) || [], fxFlash: (fx && fx.flashes) || [], fxShake: (fx && fx.shake) || [], fxGlitch: (fx && fx.glitch) || [], fxMore: fx || {} });
+  const brollList = (!split && Array.isArray(broll) ? broll : []).filter(b => b.file && fs.existsSync(b.file)).slice(0, 8);
+  const brollInputs = [];
+  brollList.forEach(b => { b.idx = nextIdx++; b.fps = fps; brollInputs.push('-ss', String(b.ss || 0), '-t', String(b.dur), '-i', path.resolve(b.file)); });   // muted: only the picture is used
+  const { graph: vGraph, note } = filterGraph({ broll: brollList, behind: behindIdx != null ? { idx: behindIdx, outFps: fps } : null, hasAssBehind: !!assBehind, W, H, framing, grading, hasAss: !!assText, track, emojiGroups, emojiBox, srcAspect, maskIdx, watermark: wmIdx != null ? { ...watermark, idx: wmIdx } : null, splitArgs, fxZoom: (fx && fx.zoom) || [], fxFlash: (fx && fx.flashes) || [], fxShake: (fx && fx.shake) || [], fxGlitch: (fx && fx.glitch) || [], fxMore: fx || {} });
   let graph = vGraph;
   // audio source for split screen: facecam audio (default), game audio, or both
   let aSrc = '0:a', aMap = '0:a:0';
@@ -307,7 +321,7 @@ async function renderClip({ quality = 1080, input, start, end, out, assText, rat
   }
   if (musicIdx != null) graph += ';' + musicChain(musicIdx, music, end - start, aSrc);
   const args = ['-y', '-ss', String(start), '-t', String(end - start), '-i', path.resolve(input),
-    ...emojiGroups.flatMap(g => ['-i', g.png]), ...maskArgs, ...splitInputs, ...sfxInputs, ...behindInputs,
+    ...emojiGroups.flatMap(g => ['-i', g.png]), ...maskArgs, ...splitInputs, ...sfxInputs, ...behindInputs, ...brollInputs,
     '-filter_complex', graph, '-map', '[v]', ...(hasAudio ? ['-map', musicIdx != null ? '[aout]' : aMap, '-c:a', 'aac', '-b:a', '160k'] : []),
     ...(await encoderArgs()), '-movflags', '+faststart', path.resolve(out)];
   const total = end - start;

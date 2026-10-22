@@ -86,7 +86,8 @@ async function rerender(outDir, i, ov, onProgress, deps) {
   if (ov.fx) st.grading = { ...(st.grading || {}), fx: { ...((st.grading || {}).fx || {}), ...ov.fx } };
   let fx; const o = st.grading && st.grading.fx;
   if (o && o.enabled) { try { fx = FX.plan(x.cw, x.start, x.end, o, i + 1); } catch {} }
-  await R.renderClip({ behind: x.behind, assBehind: x.assBehind, quality: x.quality, fx, input: x.input, start: x.start, end: x.end, out: tmp, assText: x.ass, ratio: st.ratio || '9:16', framing: st.framing, grading: st.grading,
+  let broll; try { if (st.grading && st.grading.broll && st.grading.broll.enabled && !st.split) broll = JSON.parse(fs.readFileSync(path.join(outDir, '.edit', `broll_${nn(i)}.json`), 'utf8')); } catch {}
+  await R.renderClip({ broll, behind: x.behind, assBehind: x.assBehind, quality: x.quality, fx, input: x.input, start: x.start, end: x.end, out: tmp, assText: x.ass, ratio: st.ratio || '9:16', framing: st.framing, grading: st.grading,
     workDir: w, track: (st.tracks || [])[i] || null, emojis: x.emojis, emojiBox: x.emojiBox, srcAspect: x.info.width / x.info.height, hasAudio: x.info.hasAudio !== false, fontFamilies: x.fontFamilies,
     watermark: x.watermark, music: x.music, split: st.split || undefined, fps: Math.round(x.info.fps || 30) || 30, onProgress });
   try { fs.unlinkSync(out); } catch {}

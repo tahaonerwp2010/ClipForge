@@ -1,4 +1,5 @@
 import { AutoFxCard } from './AutoFxCard';
+import { BRollCard } from './BRollCard';
 import React from 'react';
 import { VideoGradingConfig, InnerFramingConfig } from '../../types/clipper';
 import { 
@@ -59,8 +60,9 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
       grain: false,
       vignette: false,
       speedBoost: 1.0,
-      fx: grading.fx
-    });
+      fx: grading.fx,
+      broll: (grading as any).broll
+    } as any);
   };
 
   return (
@@ -290,6 +292,9 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
 
       {/* AUTO EFFECTS */}
       <AutoFxCard fx={fx} setFx={setFx} />
+
+      {/* B-ROLL (user's own videos) */}
+      <BRollCard broll={(grading as any).broll} setBroll={(b) => onGradingChange({ ...grading, broll: b } as any)} />
     </div>
   );
 };

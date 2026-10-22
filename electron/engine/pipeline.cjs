@@ -40,6 +40,21 @@ async function planFx(job, words, s, e, seed, log) {
     return f;
   } catch (err) { log('FFmpeg', 'Auto effects skipped: ' + (err && err.message), 'warn'); return undefined; }
 }
+
+// B-roll (user's own videos): plan once per clip, remember the plan so the clip editor can re-render the same cut-aways
+let _brPrep = null;
+async function planBroll(job, words, s, e, seed, log, work, outDir, idx) {
+  const o = job.grading && job.grading.broll;
+  if (!o || !o.enabled || !(o.files || []).length) return undefined;
+  if (job.split && job.split.mode && job.split.mode !== 'single') { if (idx === 0) log('B-roll', 'B-roll is not used together with split screen', 'warn'); return undefined; }
+  try {
+    const BR = require('./broll.cjs');
+    if (!_brPrep || _brPrep.job !== job) _brPrep = { job, list: await BR.prepare(o.files, job.gemini, work, (src, m, k) => log(src, m, k)) };
+    const plan = await BR.plan(words, s, e, o, seed, job.gemini, (src, m, k) => log(src, m, k), _brPrep.list);
+    try { const d = path.join(outDir, '.edit'); fs.mkdirSync(d, { recursive: true }); const f = path.join(d, `broll_${String(idx + 1).padStart(2, '0')}.json`); if (plan) fs.writeFileSync(f, JSON.stringify(plan)); else fs.rmSync(f, { force: true }); } catch {}
+    return plan;
+  } catch (err) { if (String(err.message) === 'CANCELLED') throw err; log('B-roll', 'B-roll skipped: ' + (err && err.message), 'warn'); return undefined; }
+}
 const { checkCancel } = require('./proc.cjs');
 // Each project gets its own folder; a different project with the same name gets _2, _3 ...
 function uniqueDir(base, id) {
@@ -291,7 +306,8 @@ async function runInner(job, emit, deps = {}) {
     const emojis = [...(useEmoji ? EMOJI.plan(capWords === words ? words : words, c.start, c.end, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
       ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur: c.end - c.start })];
     const fx = await planFx(job, capWords, c.start, c.end, i + 1, log);
-    const { note } = await R.renderClip({ behind: bh, assBehind, quality, fx, input: job.filePath, start: c.start, end: c.end, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
+    const broll = await planBroll(job, capWords, c.start, c.end, i + 1, log, path.join(work, 'broll'), outDir, i);
+    const { note } = await R.renderClip({ broll, behind: bh, assBehind, quality, fx, input: job.filePath, start: c.start, end: c.end, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
       workDir: path.join(work, `c${n}`), track: tracks[i], emojis, emojiBox, srcAspect: info.width / info.height, fontFamilies, watermark, music, split, fps: Math.round(info.fps || 30) || 30, onProgress: p => setPct(8, (i + p * 0.97) / clips.length) });
     if (note && i === 0) log('FFmpeg', note, 'warn');
     let thumb; try { thumb = await R.thumbnail(out, path.join(work, `t${n}.jpg`)); } catch {}
@@ -529,7 +545,8 @@ async function runShortsInner(job, emit, deps = {}) {
     const emojis = [...(useEmoji ? EMOJI.plan(words[i], 0, dur, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
       ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur })];
     const fx = await planFx(job, cw, 0, dur, i + 1, log);
-    const { note } = await R.renderClip({ behind: bh, assBehind, quality, fx, input: files[i].path, start: 0, end: dur, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
+    const broll = await planBroll(job, cw, 0, dur, i + 1, log, path.join(work, 'broll'), outDir, i);
+    const { note } = await R.renderClip({ broll, behind: bh, assBehind, quality, fx, input: files[i].path, start: 0, end: dur, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
       workDir: path.join(work, `c${n}`), track: tracks[i], emojis, emojiBox, srcAspect: infos[i].width / infos[i].height, hasAudio: infos[i].hasAudio, fontFamilies, watermark, music, onProgress: p => setPct(8, (i + p * 0.97) / N) });
     if (note && i === 0) log('FFmpeg', note, 'warn');
     let thumb; try { thumb = await R.thumbnail(out, path.join(work, `t${n}.jpg`)); } catch {}
