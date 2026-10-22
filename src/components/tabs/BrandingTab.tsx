@@ -354,6 +354,16 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
               <p className="text-[10px] text-neutral-500">Out animation plays at the end of the time the hook is shown.</p>
             </div>
 
+            {/* Hook emoji on/off */}
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <span className="text-[11px] font-semibold text-neutral-300">Emoji above the hook <span className="text-neutral-500 font-normal">(from the AI hook)</span></span>
+              <button type="button" onClick={() => onBrandingChange({ ...branding, autoTitle: { ...branding.autoTitle, showEmoji: branding.autoTitle?.showEmoji === false } })}
+                className={`w-12 h-6 rounded-full p-0.5 cursor-pointer transition-colors flex items-center ${branding.autoTitle?.showEmoji !== false ? 'bg-[#bef264]' : 'bg-[#1d3228]'}`}
+                title={branding.autoTitle?.showEmoji !== false ? 'Hook emoji: ON' : 'Hook emoji: OFF'}>
+                <span className={`block w-5 h-5 rounded-full bg-black/80 transition-transform ${branding.autoTitle?.showEmoji !== false ? 'translate-x-6' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
             {/* Font Size & Positions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
               <div className="space-y-2 md:col-span-3">

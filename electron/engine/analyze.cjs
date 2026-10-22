@@ -190,7 +190,7 @@ const metaSystem = (n) => META_BASE + hookRules(n) + `
 Output format: a JSON array with one object per clip, in the same order, each with "n" = the clip number given as #n in the input: {"n":0,"title":"...","hookText":"...","description":"...","hashtags":["#a","#b","#c"],"keywords":["..."]}.` + (n === 1 ? '' : ` Separate the hook lines with a \\n character.`);
 
 async function geminiTitles(clips, words, g, log, n = 2) {
-  const items = clips.map((c, i) => `#${i} (${Math.round(c.end - c.start)}s): ${clipText(c, words).slice(0, 700)}`).join('\n\n');
+  const items = clips.map((c, i) => `#${i} (${Math.round(c.end - c.start)}s): ${clipText(c, words).slice(0, 1100)}`).join('\n\n');
   const prompt = `Clip analysis and context for each clip (write metadata for EACH one, same order):\n\n${items}`;
   const r = await G.generate(g, { system: metaSystem(n), prompt, json: true });
   const out = G.parseJson(r.text);
@@ -237,6 +237,35 @@ function localDescription(text) {
   let d = (sents.slice(0, 2).join(' ') || text).slice(0, 180).replace(/[,;:\s]+$/, '');
   return d + (/[.!?]$/.test(d) ? '' : '.');
 }
+
+// ---- make sure every answer belongs to ITS clip ----
+// A model sometimes shifts or swaps answers inside a batch. Each answer is compared with the real transcript of every clip in the batch;
+// if another arrangement clearly fits the transcripts better, the answers are put back where they belong.
+const MSTOP = new Set('about above after again also because been before being below between both could does doing down during each from further have having here into just like more most much only other over same should some such than that their them then there these they this those through under until very want were what when where which while will with would your you and the for are but not was can get got his her its our out has had how why who yes say said one two'.split(' '));
+const bag = t => { const m = new Map(); for (const w of String(t || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)) if (w.length > 3 && !MSTOP.has(w)) m.set(w, (m.get(w) || 0) + 1); return m; };
+function fitScore(ans, txtBag, df) {
+  const aw = bag([ans.title, ans.hookText, ans.description, Array.isArray(ans.keywords) ? ans.keywords.join(' ') : ''].join(' '));
+  let sc = 0; for (const w of aw.keys()) if (txtBag.has(w)) sc += 1 / (df.get(w) || 1);       // a word that appears in only one clip counts more
+  return sc;
+}
+function permutations(n) { const out = []; const a = [...Array(n).keys()]; (function rec(k) { if (k === n) { out.push(a.slice()); return; } for (let i = k; i < n; i++) { [a[k], a[i]] = [a[i], a[k]]; rec(k + 1); [a[k], a[i]] = [a[i], a[k]]; } })(0); return out; }
+function alignAnswers(part, arr, words, log) {
+  const n = part.length;
+  if (!arr || n < 2 || n > 6) return arr;
+  const bags = part.map(c => bag(clipText(c, words)));
+  const df = new Map(); bags.forEach(b => { for (const w of b.keys()) df.set(w, (df.get(w) || 0) + 1); });
+  const S = part.map((_, i) => arr.map(a => (a ? fitScore(a, bags[i], df) : 0)));        // S[i][j] = how well answer j fits clip i
+  const total = perm => perm.reduce((t, j, i) => t + S[i][j], 0);
+  const ident = [...Array(n).keys()];
+  let best = ident, bestScore = total(ident);
+  for (const p of permutations(n)) { const t = total(p); if (t > bestScore + 1e-9) { best = p; bestScore = t; } }
+  const gain = bestScore - total(ident);
+  if (best !== ident && gain >= 0.9 && gain > total(ident) * 0.35) {
+    log(`Fixed the order of ${best.filter((j, i) => j !== i).length} title(s) so each belongs to its own clip`, 'info');
+    return best.map(j => arr[j]);
+  }
+  return arr;
+}
 async function writeTitles(clips, words, g, log, hookLines = 2) {
   const HN = hookLines === 1 || hookLines === 3 ? hookLines : 2;
   let engine = 'local';
@@ -248,7 +277,7 @@ async function writeTitles(clips, words, g, log, hookLines = 2) {
       const part = clips.slice(o, o + CH);
       let arr = null;
       for (let attempt = 0; attempt < 2 && !arr; attempt++) {
-        try { arr = await geminiTitles(part, words, g, log, HN); }
+        try { arr = alignAnswers(part, await geminiTitles(part, words, g, log, HN), words, log); }
         catch (e) { lastErr = String(e.message).slice(0, 100); if (attempt === 0) await new Promise(r => setTimeout(r, 1500)); }
       }
       part.forEach((c, i) => {

@@ -122,7 +122,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
 // Where the title's emoji go (Twemoji PNG overlays, centred just above the title text)
 function titleEmojis({ title, branding = {}, W, H, dur = 9999 }) {
   const at = branding.autoTitle || {};
-  if (!at.enabled || !title) return [];
+  if (!at.enabled || !title || at.showEmoji === false) return [];
   const hk = HK.hookTwoLines(title), { emojis } = EM.splitTitle(String(title));
   const list = emojis.map(EM.pngForChar).filter(Boolean).slice(0, 3);
   if (!list.length) return [];
