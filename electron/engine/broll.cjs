@@ -5,7 +5,7 @@ const path = require('path');
 const AI = require('./ai.cjs');
 const R = require('./render.cjs');
 
-const MAX_SHARE = 25, MIN_T = 2.0, TAIL = 1.5, GAP = 3.5;
+const MAX_SHARE = 25, MIN_T = 2.0, TAIL = 1.5, GAP = 2.5;
 const info = new Map();          // path|size|mtime -> { duration, desc }
 const keyOf = (p) => { try { const s = fs.statSync(p); return `${p}|${s.size}|${s.mtimeMs}`; } catch { return null; } };
 const tokens = (t) => String(t || '').toLowerCase().replace(/\.[a-z0-9]{2,4}$/, '').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 3);
@@ -63,7 +63,7 @@ async function plan(words, s, e, cfg, seed, gemini, log, prepared) {
   if (!cfg || !cfg.enabled || !prepared || !prepared.length || dur < 8) return undefined;
   const share = Math.max(5, Math.min(MAX_SHARE, +cfg.pct || 20));
   const budget = Math.min(dur * share / 100, dur * MAX_SHARE / 100);
-  const n = Math.max(dur >= 10 ? 1 : 0, Math.floor(budget / 2.5));
+  const n = Math.min(8, Math.max(dur >= 16 ? 2 : dur >= 10 ? 1 : 0, Math.floor(budget / 2.6)));   // several cut-aways per clip, at different moments
   if (!n) return undefined;
   const segs = segmentsOf(words, s, e).filter(g => g.t >= MIN_T && g.t <= dur - TAIL - 1.5);
   if (!segs.length) return undefined;
@@ -76,7 +76,7 @@ async function plan(words, s, e, cfg, seed, gemini, log, prepared) {
     try {
       const vids = prepared.map((x, i) => `${i}. ${x.rec.desc || x.name}`).join('\n');
       const lines = segs.slice(0, 60).map(g => `${g.i}. [${g.t.toFixed(0)}s] ${g.text}`).join('\n');
-      const prompt = `You are a video editor adding B-roll cut-aways (muted, 2-3 seconds) over a speaker in a short vertical clip.\n\nB-ROLL VIDEOS:\n${vids}\n\nSPOKEN SENTENCES (index, time, text):\n${lines}\n\nPick at most ${n} moments where one of the B-roll videos clearly illustrates what is being said at that moment. Only use a video that really fits the words. Better fewer than a poor match. Spread the moments across the clip and use different videos when possible.\nReply with JSON only: {"picks":[{"seg":0,"video":0}]}`;
+      const prompt = `You are a video editor adding B-roll cut-aways (muted, 2-3 seconds) over a speaker in a short vertical clip.\n\nB-ROLL VIDEOS:\n${vids}\n\nSPOKEN SENTENCES (index, time, text):\n${lines}\n\nPick ${n} DIFFERENT moments (aim for exactly ${n} when possible, at least ${Math.max(1, n - 1)}) where one of the B-roll videos clearly illustrates what is being said at that moment. Only use a video that really fits the words. Spread the moments across the WHOLE clip (beginning, middle and end), never two close together, and use different videos when possible.\nReply with JSON only: {"picks":[{"seg":0,"video":0}]}`;
       const r = await AI.generate(gemini, { prompt, json: true, timeoutMs: 40000 });
       const j = AI.parseJson(r.text !== undefined ? r.text : r);
       picks = ((j && j.picks) || []).map(p => ({ seg: segs[+p.seg], v: prepared[+p.video] })).filter(p => p.seg && p.v);
@@ -100,7 +100,7 @@ async function plan(words, s, e, cfg, seed, gemini, log, prepared) {
   for (const p of picks) {
     if (out.length >= n) break;
     const k = out.length;
-    let L = 2 + (((seed || 1) * 7 + k * 3) % 11) / 10;           // 2.0 - 3.0 s
+    let L = 2 + (((seed || 1) * 7 + k * 5) % 15) / 10;           // 2.0 - 3.4 s
     L = Math.min(L, p.v.rec.duration - 0.2);
     if (L < 1.2) continue;
     const t = Math.min(p.seg.t, dur - TAIL - L);
@@ -112,6 +112,23 @@ async function plan(words, s, e, cfg, seed, gemini, log, prepared) {
     const ss = room > 0 ? +((u * (L + 0.6)) % (room + 0.01)).toFixed(2) : 0;
     out.push({ file: p.v.path, name: p.v.name, t: +t.toFixed(2), dur: +L.toFixed(2), ss });
     total += L;
+  }
+  // not enough matches? fill the empty parts of the clip (one cut-away per zone) with the least-used video, so a clip gets several b-roll moments
+  if (out.length < n) {
+    const zones = Array.from({ length: n }, (_, z) => MIN_T + (dur - TAIL - MIN_T) * (z + 0.5) / n);
+    for (const zc of zones) {
+      if (out.length >= n) break;
+      const g = segs.slice().sort((a, b) => Math.abs(a.t - zc) - Math.abs(b.t - zc)).find(sg => !out.some(o => sg.t < o.t + o.dur + GAP && o.t < sg.t + 3.4 + GAP));
+      if (!g) continue;
+      const v = prepared.slice().sort((a, b) => (used.get(a.key) || 0) - (used.get(b.key) || 0))[0];
+      const L = Math.min(2 + (((seed || 1) * 3 + out.length * 5) % 12) / 10, v.rec.duration - 0.2);
+      const t = Math.min(g.t, dur - TAIL - L);
+      if (L < 1.2 || t < MIN_T || out.some(o => t < o.t + o.dur + GAP && o.t < t + L + GAP) || total + L > dur * MAX_SHARE / 100) continue;
+      const u = used.get(v.key) || 0; used.set(v.key, u + 1);
+      const room = Math.max(0, v.rec.duration - L - 0.1);
+      out.push({ file: v.path, name: v.name, t: +t.toFixed(2), dur: +L.toFixed(2), ss: room > 0 ? +((u * (L + 0.6)) % (room + 0.01)).toFixed(2) : 0 });
+      total += L;
+    }
   }
   out.sort((a, b) => a.t - b.t);
   if (out.length) log('B-roll', `${out.length} b-roll cut-away${out.length === 1 ? '' : 's'} (${total.toFixed(1)} s of ${dur.toFixed(0)} s = ${Math.round(total / dur * 100)}%)`, 'info');
