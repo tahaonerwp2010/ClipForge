@@ -84,10 +84,20 @@ jobs:
           fi
           cmake --version
           mkdir -p binaries tmp && cd tmp
+          NARCH=$( [ "${{ matrix.farch }}" = arm64 ] && echo arm64 || echo x64 )
           for t in ffmpeg ffprobe; do
-            curl -fL --retry 4 -o $t.zip "https://ffmpeg.martin-riedl.de/redirect/latest/macos/${{ matrix.farch }}/release/$t.zip" \
-              || curl -fL --retry 4 -o $t.zip "https://evermeet.cx/ffmpeg/getrelease/$( [ $t = ffprobe ] && echo ffprobe/ )zip"
-            unzip -o $t.zip -d ../binaries
+            ok=0
+            # 1) npm registry (most reliable on CI)
+            for i in 1 2 3; do
+              rm -rf pk && mkdir pk && (cd pk && npm pack @$t-installer/darwin-$NARCH >/dev/null 2>&1 && tar xzf *.tgz && cp package/$t ../../binaries/$t) && { ok=1; break; }
+              sleep $((i*5))
+            done
+            # 2) fallback download sites
+            if [ $ok = 0 ]; then
+              curl -fL --retry 3 -o $t.zip "https://ffmpeg.martin-riedl.de/redirect/latest/macos/${{ matrix.farch }}/release/$t.zip" \
+                || curl -fL --retry 3 -o $t.zip "https://evermeet.cx/ffmpeg/getrelease/$( [ $t = ffprobe ] && echo ffprobe/ )zip"
+              unzip -o $t.zip -d ../binaries
+            fi
           done
           git clone --depth 1 https://github.com/ggml-org/whisper.cpp
           cd whisper.cpp && cmake -B build -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release && cmake --build build -j --config Release --target whisper-cli
