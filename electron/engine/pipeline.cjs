@@ -43,6 +43,18 @@ async function planFx(job, words, s, e, seed, log) {
 
 // B-roll (user's own videos): plan once per clip, remember the plan so the clip editor can re-render the same cut-aways
 let _brPrep = null;
+
+// Which workers render the clips: 'cpu' (processor), 'gpu' (graphics-card encoder) or both side by side (each takes the next clip whenever it is free)
+async function renderWorkers(job, log) {
+  const HW = require('./hardware.cjs'), mode = HW.normMode(job.hardware);
+  if (mode === 'cpu') return ['cpu'];
+  const enc = await HW.gpuEncoder();
+  if (!enc) { log('FFmpeg', 'No usable graphics-card video encoder was found, so the processor renders', 'warn'); return ['cpu']; }
+  log('FFmpeg', mode === 'gpu' ? `Rendering on the graphics card (${enc.label})` : `Rendering on the graphics card (${enc.label}) and the processor together`, 'info');
+  return mode === 'gpu' ? ['gpu'] : ['gpu', 'cpu'];
+}
+let _maskLock = Promise.resolve();                  // the cut-out (behind-the-person) models are used by one clip at a time
+const withMaskLock = (fn) => { const r = _maskLock.then(fn, fn); _maskLock = r.then(() => {}, () => {}); return r; };
 // camera-cut click + light flash (always on); the cut times are remembered for the clip editor
 async function cutFx(fx, R2, input, s, dur, broll, hasAudio, outDir, idx, log) {
   try {
@@ -59,8 +71,9 @@ async function planBroll(job, words, s, e, seed, log, work, outDir, idx) {
   if (job.split && job.split.mode && job.split.mode !== 'single') { if (idx === 0) log('B-roll', 'B-roll is not used together with split screen', 'warn'); return undefined; }
   try {
     const BR = require('./broll.cjs');
-    if (!_brPrep || _brPrep.job !== job) _brPrep = { job, list: await BR.prepare(o.files, job.gemini, work, (src, m, k) => log(src, m, k)) };
-    const plan = await BR.plan(words, s, e, o, seed, job.gemini, (src, m, k) => log(src, m, k), _brPrep.list);
+    if (!_brPrep || _brPrep.job !== job) _brPrep = { job, p: BR.prepare(o.files, job.gemini, work, (src, m, k) => log(src, m, k)) };
+    const list = await _brPrep.p;
+    const plan = await BR.plan(words, s, e, o, seed, job.gemini, (src, m, k) => log(src, m, k), list);
     try { const d = path.join(outDir, '.edit'); fs.mkdirSync(d, { recursive: true }); const f = path.join(d, `broll_${String(idx + 1).padStart(2, '0')}.json`); if (plan) fs.writeFileSync(f, JSON.stringify(plan)); else fs.rmSync(f, { force: true }); } catch {}
     return plan;
   } catch (err) { if (String(err.message) === 'CANCELLED') throw err; log('B-roll', 'B-roll skipped: ' + (err && err.message), 'warn'); return undefined; }
@@ -188,7 +201,7 @@ async function runInner(job, emit, deps = {}) {
   else {
     startWork(); begin(2);
     log('Whisper', `Transcribing with model "${job.modelId}" on CPU. This is the slowest step.`);
-    words = await W.transcribe(wav, { prompt: job.hinglish ? HINGLISH_PROMPT : '', modelId: job.modelId, language: job.language || 'auto', workDir: work,
+    words = await W.transcribe(wav, { hardware: job.hardware, log, prompt: job.hinglish ? HINGLISH_PROMPT : '', modelId: job.modelId, language: job.language || 'auto', workDir: work,
       duration: info.duration, chunkSec: +process.env.CF_CHUNK_SEC || 300, slice: R.sliceAudio, onProgress: p => setPct(2, p) });
     if (!words.length) throw new Error('No speech detected in this video.');
     try { words = SYNC.refineWords(words, wav); log('Whisper', 'Word timings aligned to the audio', 'success'); } catch {}
@@ -303,14 +316,15 @@ async function runInner(job, emit, deps = {}) {
   }
   const fontFamilies = ASS.fontsUsed({ captions: job.captions, branding: job.branding });
   const useEmoji = cap.enabled && cap.showEmoji && cap.style === 'capcut-emoji';
-  for (let i = 0; i < clips.length; i++) {
+  const slots = []; let doneN = 0;
+  await require('./hardware.cjs').pool(clips.length, await renderWorkers(job, log), async (i, hw) => {
     checkCancel();
     const c = clips[i], n = String(i + 1).padStart(2, '0');
     const out = path.join(outDir, `clip_${n}.mp4`);
     const done = readJson(`res_${n}.json`);
-    if (done && fs.existsSync(out)) { result.push(done); setPct(8, (i + 1) / clips.length); continue; }
+    if (done && fs.existsSync(out)) { slots[i] = done; setPct(8, ++doneN / clips.length); return; }
     log('FFmpeg', `Rendering clip ${i + 1}/${clips.length} (${(c.end - c.start).toFixed(0)}s)…`);
-    const bh = (BH.wants(job.captions) && (deps.segment || deps.detectFaces)) ? await BH.masks({ R, segment: deps.segment, detectFaces: deps.detectFaces, cacheDir: path.join(outDir, '.edit', `mask_${n}`), workDir: path.join(work, `c${n}`), input: job.filePath, start: c.start, end: c.end, ratio, framing: job.framing, grading: job.grading, track: tracks[i], srcAspect: info.width / info.height, split, log: m => log('Captions', m) }) : null;
+    const bh = (BH.wants(job.captions) && (deps.segment || deps.detectFaces)) ? await withMaskLock(() => BH.masks({ R, segment: deps.segment, detectFaces: deps.detectFaces, cacheDir: path.join(outDir, '.edit', `mask_${n}`), workDir: path.join(work, `c${n}`), input: job.filePath, start: c.start, end: c.end, ratio, framing: job.framing, grading: job.grading, track: tracks[i], srcAspect: info.width / info.height, split, log: m => log('Captions', m) })) : null;
     const assArgs = { words: capWords, clipStart: c.start, clipEnd: c.end, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText, keywords: c.keywords, behindBox: bh && bh.box };
     const ass = ASS.build({ ...assArgs, part: bh ? 'front' : 'all' }), assBehind = bh ? ASS.build({ ...assArgs, part: 'behind' }) : '';
     if (BH.wants(job.captions)) { const nb = bh ? (assBehind.match(/^Dialogue:/gm) || []).length : 0; log('Captions', bh ? (nb ? `Behind-the-person: ${nb} big word moment${nb === 1 ? '' : 's'}` : 'Behind-the-person: no word in this clip was special enough for the big style') : 'Behind-the-person cut-out was not available for this clip', nb ? 'info' : 'warn'); }
@@ -319,15 +333,16 @@ async function runInner(job, emit, deps = {}) {
     const fx = await planFx(job, capWords, c.start, c.end, i + 1, log);
     const broll = await planBroll(job, capWords, c.start, c.end, i + 1, log, path.join(work, 'broll'), outDir, i);
     const fxC = await cutFx(fx, R, job.filePath, c.start, c.end - c.start, broll, info.hasAudio !== false, outDir, i, log);
-    const { note } = await R.renderClip({ broll, behind: bh, assBehind, quality, fx: fxC, input: job.filePath, start: c.start, end: c.end, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
-      workDir: path.join(work, `c${n}`), track: tracks[i], emojis, emojiBox, srcAspect: info.width / info.height, fontFamilies, watermark, music, split, fps: Math.round(info.fps || 30) || 30, onProgress: p => setPct(8, (i + p * 0.97) / clips.length) });
+    const { note } = await R.renderClip({ hw, broll, behind: bh, assBehind, quality, fx: fxC, input: job.filePath, start: c.start, end: c.end, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
+      workDir: path.join(work, `c${n}`), track: tracks[i], emojis, emojiBox, srcAspect: info.width / info.height, fontFamilies, watermark, music, split, fps: Math.round(info.fps || 30) || 30, onProgress: p => setPct(8, (doneN + p * 0.97) / clips.length) });
     if (note && i === 0) log('FFmpeg', note, 'warn');
     let thumb; try { thumb = await R.thumbnail(out, path.join(work, `t${n}.jpg`)); } catch {}
     const item = { ...c, outputPath: out, thumbnailUrl: thumb, words: capWords.filter(w => w.start >= c.start && w.start < c.end) };
     writeJson(`res_${n}.json`, item);
-    result.push(item);
-    setPct(8, (i + 1) / clips.length, true);
-  }
+    slots[i] = item;
+    setPct(8, ++doneN / clips.length, true);
+  });
+  slots.forEach(x => { if (x) result.push(x); });
   end(8, `${result.length} clips → ${outDir}`);
   pushProgress(true);
   log('System', `Done in ${((Date.now() - t0) / 1000 / 60).toFixed(1)} min. Saved to ${outDir}`, 'success');
@@ -431,7 +446,7 @@ async function runShortsInner(job, emit, deps = {}) {
       let w = [];
       try {
         const wd = f(`wk${i}`); fs.mkdirSync(wd, { recursive: true });
-        w = await W.transcribe(wavs[i], { prompt: job.hinglish ? HINGLISH_PROMPT : '', modelId: job.modelId, language: job.language || 'auto', workDir: wd, duration: infos[i].duration, chunkSec: 300, slice: R.sliceAudio, onProgress: p => setPct(2, (i + p) / N) });
+        w = await W.transcribe(wavs[i], { hardware: job.hardware, log, prompt: job.hinglish ? HINGLISH_PROMPT : '', modelId: job.modelId, language: job.language || 'auto', workDir: wd, duration: infos[i].duration, chunkSec: 300, slice: R.sliceAudio, onProgress: p => setPct(2, (i + p) / N) });
         try { w = SYNC.refineWords(w, wavs[i]); } catch {}
         w = await syncWords(w, wavs[i], log, checkCancel);
       } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('Whisper', `Clip ${i + 1}: ${String(e.message).slice(0, 120)}`, 'warn'); w = []; }
@@ -542,15 +557,16 @@ async function runShortsInner(job, emit, deps = {}) {
   }
   const fontFamilies = ASS.fontsUsed({ captions: job.captions, branding: job.branding });
   const useEmoji = cap.enabled && cap.showEmoji && cap.style === 'capcut-emoji';
-  for (let i = 0; i < N; i++) {
+  const slots = []; let doneN = 0;
+  await require('./hardware.cjs').pool(N, await renderWorkers(job, log), async (i, hw) => {
     checkCancel();
     const c = clips[i], n = String(i + 1).padStart(2, '0'), dur = infos[i].duration;
     const out = path.join(outDir, `clip_${n}.mp4`);
     const done = readJson(`res_${n}.json`);
-    if (done && fs.existsSync(out)) { result.push(done); setPct(8, (i + 1) / N); continue; }
+    if (done && fs.existsSync(out)) { slots[i] = done; setPct(8, ++doneN / N); return; }
     log('FFmpeg', `Rendering clip ${i + 1}/${N} (${dur.toFixed(0)}s)…`);
     const cw = capWords[i];
-    const bh = (BH.wants(job.captions) && (deps.segment || deps.detectFaces)) ? await BH.masks({ R, segment: deps.segment, detectFaces: deps.detectFaces, cacheDir: path.join(outDir, '.edit', `mask_${n}`), workDir: path.join(work, `c${n}`), input: files[i].path, start: 0, end: dur, ratio, framing: job.framing, grading: job.grading, track: tracks[i], srcAspect: infos[i].width / infos[i].height, log: m => log('Captions', m) }) : null;
+    const bh = (BH.wants(job.captions) && (deps.segment || deps.detectFaces)) ? await withMaskLock(() => BH.masks({ R, segment: deps.segment, detectFaces: deps.detectFaces, cacheDir: path.join(outDir, '.edit', `mask_${n}`), workDir: path.join(work, `c${n}`), input: files[i].path, start: 0, end: dur, ratio, framing: job.framing, grading: job.grading, track: tracks[i], srcAspect: infos[i].width / infos[i].height, log: m => log('Captions', m) })) : null;
     const assArgs = { words: cw, clipStart: 0, clipEnd: dur, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText, keywords: c.keywords, behindBox: bh && bh.box };
     const ass = ASS.build({ ...assArgs, part: bh ? 'front' : 'all' }), assBehind = bh ? ASS.build({ ...assArgs, part: 'behind' }) : '';
     if (BH.wants(job.captions)) { const nb = bh ? (assBehind.match(/^Dialogue:/gm) || []).length : 0; log('Captions', bh ? (nb ? `Behind-the-person: ${nb} big word moment${nb === 1 ? '' : 's'}` : 'Behind-the-person: no word in this clip was special enough for the big style') : 'Behind-the-person cut-out was not available for this clip', nb ? 'info' : 'warn'); }
@@ -559,15 +575,16 @@ async function runShortsInner(job, emit, deps = {}) {
     const fx = await planFx(job, cw, 0, dur, i + 1, log);
     const broll = await planBroll(job, cw, 0, dur, i + 1, log, path.join(work, 'broll'), outDir, i);
     const fxC = await cutFx(fx, R, files[i].path, 0, dur, broll, infos[i].hasAudio !== false, outDir, i, log);
-    const { note } = await R.renderClip({ broll, behind: bh, assBehind, quality, fx: fxC, input: files[i].path, start: 0, end: dur, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
-      workDir: path.join(work, `c${n}`), track: tracks[i], emojis, emojiBox, srcAspect: infos[i].width / infos[i].height, hasAudio: infos[i].hasAudio, fontFamilies, watermark, music, onProgress: p => setPct(8, (i + p * 0.97) / N) });
+    const { note } = await R.renderClip({ hw, broll, behind: bh, assBehind, quality, fx: fxC, input: files[i].path, start: 0, end: dur, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
+      workDir: path.join(work, `c${n}`), track: tracks[i], emojis, emojiBox, srcAspect: infos[i].width / infos[i].height, hasAudio: infos[i].hasAudio, fontFamilies, watermark, music, onProgress: p => setPct(8, (doneN + p * 0.97) / N) });
     if (note && i === 0) log('FFmpeg', note, 'warn');
     let thumb; try { thumb = await R.thumbnail(out, path.join(work, `t${n}.jpg`)); } catch {}
     const item = { ...c, start: 0, end: dur, outputPath: out, thumbnailUrl: thumb, words: cw };
     writeJson(`res_${n}.json`, item);
-    result.push(item);
-    setPct(8, (i + 1) / N, true);
-  }
+    slots[i] = item;
+    setPct(8, ++doneN / N, true);
+  });
+  slots.forEach(x => { if (x) result.push(x); });
   end(8, `${result.length} clips → ${outDir}`);
   pushProgress(true);
   log('System', `Done in ${((Date.now() - t0) / 1000 / 60).toFixed(1)} min. Saved to ${outDir}`, 'success');

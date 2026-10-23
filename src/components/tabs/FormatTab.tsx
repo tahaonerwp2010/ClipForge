@@ -1,4 +1,5 @@
 import { ProTag } from '../common/ProTag';
+import { getHardware, setHardware, HardwareMode } from '../../services/hardwareMode';
 import React, { useState } from 'react';
 import { 
   OuterCanvasRatio, 
@@ -121,7 +122,9 @@ export const FormatTab: React.FC<FormatTabProps> = ({
   onSplitChange
 }) => {
   const [fcEditor, setFcEditor] = useState(false);
-  const [useHardware, setUseHardware] = useState<'gpu' | 'cpu'>('cpu');
+  const [useHardware, setUseHardware] = useState<HardwareMode>(getHardware());
+  const [hw, setHw] = useState<{ encoder: string | null; speechGpu: boolean } | null>(null);
+  React.useEffect(() => { (window as any).electronAPI?.hwInfo?.().then((r: any) => setHw(r)).catch(() => {}); }, []);
   const [clipInputError, setClipInputError] = useState<string | null>(null);
 
   // All 5 Aspect Ratios are active & functional!
@@ -170,36 +173,27 @@ export const FormatTab: React.FC<FormatTabProps> = ({
           Processing
         </h3>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-neutral-400 text-xs mr-1">Use</span>
-          <button
-            type="button"
-            onClick={() => setUseHardware('gpu')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-              useHardware === 'gpu'
-                ? 'bg-[#bef264] text-black font-bold'
-                : 'bg-[#122019] text-neutral-400 hover:text-white border border-[#1d3228]'
-            }`}
-          >
-            Graphics card
-          </button>
-          <button
-            type="button"
-            onClick={() => setUseHardware('cpu')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-              useHardware === 'cpu'
-                ? 'bg-[#bef264] text-black font-bold shadow-sm'
-                : 'bg-[#122019] text-neutral-400 hover:text-white border border-[#1d3228]'
-            }`}
-          >
-            Processor only
-          </button>
+          {([['cpu', 'Processor (CPU)'], ['gpu', 'Graphics card (GPU)'], ['both', 'Both']] as const).map(([id, label]) => (
+            <button key={id} type="button" onClick={() => { setUseHardware(id); setHardware(id); }}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                useHardware === id ? 'bg-[#bef264] text-black font-bold shadow-sm' : 'bg-[#122019] text-neutral-400 hover:text-white border border-[#1d3228]'
+              }`}>{label}</button>
+          ))}
         </div>
 
         <div className="space-y-0.5 text-[11px] text-neutral-400 font-mono">
-          <div>Cutting and reframing: <span className="text-neutral-300">the processor, because you chose that</span></div>
-          <div>Transcribing speech: <span className="text-neutral-300">the processor, because you chose that</span></div>
+          {(() => {
+            const enc = hw?.encoder, sp = !!hw?.speechGpu;
+            const word = (gpuOk: boolean) => useHardware === 'cpu' ? 'the processor' : useHardware === 'gpu' ? (gpuOk ? 'the graphics card' : 'the processor (no graphics-card support found)') : (gpuOk ? 'the graphics card and the processor together' : 'the processor (no graphics-card support found)');
+            return (<>
+              <div>Cutting, effects and saving clips: <span className="text-neutral-300">{word(!!enc)}{enc && useHardware !== 'cpu' ? ` (${enc})` : ''}</span></div>
+              <div>Transcribing speech: <span className="text-neutral-300">{word(sp)}</span></div>
+            </>);
+          })()}
         </div>
+        <p className="text-[10px] text-neutral-500 leading-relaxed">Processor: everything runs on the CPU. Graphics card: video saving and speech recognition run on the GPU when your computer supports it. Both: the work is shared and whichever is free takes the next piece. If the graphics card cannot do a step, the processor does it automatically.</p>
       </section>
 
       {split && onSplitChange && (

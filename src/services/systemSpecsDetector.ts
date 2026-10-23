@@ -28,6 +28,7 @@ declare global {
       detectFacecam?: (filePath: string) => Promise<{ ok: boolean; found?: boolean; rect?: { x: number; y: number; w: number; h: number } | null; frame?: string; dims?: [number, number]; duration?: number; hasAudio?: boolean; error?: string }>;
       syncVideos?: (mainPath: string, secondPath: string) => Promise<{ ok: boolean; offset?: number; confidence?: number; error?: string }>;
       pickVideos?: () => Promise<string[]>;
+      hwInfo?: () => Promise<{ encoder: string | null; speechGpu: boolean; platform?: string }>;
       ytDownload?: (url: string) => Promise<{ ok: boolean; path?: string; title?: string; error?: string }>;
       ytCancel?: () => Promise<boolean>;
       onYtProgress?: (cb: (d: { phase: string; percent: number; done?: number; total?: number; speed?: number; eta?: number | null; text?: string }) => void) => () => void;

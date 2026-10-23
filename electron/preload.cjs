@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ytCancel: () => ipcRenderer.invoke('yt-cancel'),
   onYtProgress: (cb) => { const h = (e, d) => cb(d); ipcRenderer.on('yt-progress', h); return () => ipcRenderer.removeListener('yt-progress', h); },
   pickVideos: () => ipcRenderer.invoke('pick-videos'),
+  hwInfo: () => ipcRenderer.invoke('hw-info'),
   detectFacecam: (filePath) => ipcRenderer.invoke('detect-facecam', { filePath }),
   syncVideos: (mainPath, secondPath) => ipcRenderer.invoke('sync-videos', { mainPath, secondPath }),
   probeVideo: (p) => ipcRenderer.invoke('probe-video', p),

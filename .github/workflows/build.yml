@@ -53,6 +53,21 @@ jobs:
           Get-ChildItem tmp/whisper.cpp/build -Recurse -Filter whisper-cli.exe | Select-Object -First 1 | Copy-Item -Destination binaries -Force
           Get-ChildItem binaries
 
+      # optional graphics-card speech engine (Vulkan: NVIDIA, AMD and Intel). If anything here fails the app is still built, it simply uses the processor.
+      - name: Windows GPU speech engine (optional)
+        if: matrix.name == 'windows'
+        continue-on-error: true
+        uses: jakoch/install-vulkan-sdk-action@v1
+      - name: Build Windows GPU speech engine (optional)
+        if: matrix.name == 'windows'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          cmake -S tmp/whisper.cpp -B tmp/whisper.cpp/build-vk -DGGML_VULKAN=1 -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+          cmake --build tmp/whisper.cpp/build-vk --config Release --target whisper-cli -j 4
+          Get-ChildItem tmp/whisper.cpp/build-vk -Recurse -Filter whisper-cli.exe | Select-Object -First 1 | Copy-Item -Destination binaries/whisper-cli-gpu.exe -Force
+          Get-ChildItem binaries
+
       - name: Linux tools
         if: matrix.name == 'linux'
         run: |
@@ -74,6 +89,18 @@ jobs:
           cp build/bin/whisper-cli ../../binaries/
           chmod +x ../../binaries/*
           ls -la ../../binaries
+
+      - name: Linux GPU speech engine (optional)
+        if: matrix.name == 'linux'
+        continue-on-error: true
+        run: |
+          wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc >/dev/null
+          sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list http://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
+          sudo apt-get update && sudo apt-get install -y vulkan-sdk
+          cmake -S tmp/whisper.cpp -B tmp/whisper.cpp/build-vk -DGGML_VULKAN=1 -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build tmp/whisper.cpp/build-vk -j --config Release --target whisper-cli
+          cp tmp/whisper.cpp/build-vk/bin/whisper-cli binaries/whisper-cli-gpu && chmod +x binaries/whisper-cli-gpu
+          ls -la binaries
 
       - name: macOS tools
         if: startsWith(matrix.name, 'mac')

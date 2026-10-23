@@ -256,6 +256,7 @@ ipcMain.handle('open-folder', async (e, p) => { try { fs.mkdirSync(p, { recursiv
 ipcMain.handle('ai-test', async (e, a) => AI.test(a));
 ipcMain.handle('ai-ping', async (e, a) => AI.ping(a));
 ipcMain.handle('ai-list-models', async (e, a) => AI.listModels(a));
+ipcMain.handle('hw-info', async () => { try { return await require('./engine/hardware.cjs').info(); } catch { return { encoder: null, speechGpu: false }; } });
 ipcMain.handle('engine-status', async () => ({
   ffmpeg: !!Paths.resolveBin('ffmpeg'), whisper: !!(Paths.resolveBin('whisper-cli') || Paths.resolveBin('main')),
 }));

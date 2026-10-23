@@ -15,6 +15,7 @@ import { ViralDetectorEngine } from './viralDetectorEngine';
 import { SoftwareLogEvent, SoftwareManager } from './softwareManager';
 import { GeminiService } from './geminiService';
 import { AiService } from './aiService';
+import { getHardware } from './hardwareMode';
 
 export interface PipelineExecutionConfig {
   project: ProjectItem;
@@ -111,6 +112,7 @@ export class PipelineRunner {
         quality: config.quality || 1080,
         split: config.split ? { ...config.split, frame: undefined, secondUrl: undefined } : undefined,
         framing, captions, grading, branding,
+        hardware: getHardware(),
         gemini: AiService.forJob()
       });
 

@@ -20,7 +20,8 @@ const extractAudio = (video, wav) => run(ffmpeg(), ['-y', '-i', video, '-vn', '-
 const sliceAudio = (wav, start, dur, out) => run(ffmpeg(), ['-y', '-ss', String(start), '-t', String(dur), '-i', wav, '-c:a', 'pcm_s16le', out]);
 
 let _enc;
-async function encoderArgs() {
+async function encoderArgs(hw) {
+  if (hw === 'gpu') { try { const g = await require('./hardware.cjs').gpuEncoder(); if (g) return [...g.args, '-pix_fmt', 'yuv420p']; } catch {} }
   if (!_enc) {
     let list = '';
     try { list = (await run(ffmpeg(), ['-hide_banner', '-encoders'])).stdout; } catch {}
@@ -246,7 +247,7 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
   return { graph, note };
 }
 
-async function renderClip({ quality = 1080, input, start, end, out, assText, ratio, framing, grading, workDir, hasAudio = true, track, emojis = [], emojiBox, onProgress, srcAspect, fontFamilies = [], watermark, music, split, fx, fps = 30, behind = null, assBehind = '', broll = [] }) {
+async function renderClip({ quality = 1080, input, start, end, out, assText, ratio, framing, grading, workDir, hasAudio = true, track, emojis = [], emojiBox, onProgress, srcAspect, fontFamilies = [], watermark, music, split, fx, fps = 30, behind = null, assBehind = '', broll = [], hw = 'cpu' }) {
   const [W, H] = dimsFor(ratio, quality);
   fs.mkdirSync(workDir, { recursive: true });
   if (assText) fs.writeFileSync(path.join(workDir, 'captions.ass'), assText, 'utf8');
@@ -340,12 +341,19 @@ async function renderClip({ quality = 1080, input, start, end, out, assText, rat
   const args = ['-y', '-ss', String(start), '-t', String(end - start), '-i', path.resolve(input),
     ...emojiGroups.flatMap(g => ['-i', g.png]), ...maskArgs, ...splitInputs, ...sfxInputs, ...behindInputs, ...brollInputs,
     '-filter_complex', graph, '-map', '[v]', ...(hasAudio ? ['-map', musicIdx != null ? '[aout]' : aMap, '-c:a', 'aac', '-b:a', '160k'] : []),
-    ...(await encoderArgs()), '-movflags', '+faststart', path.resolve(out)];
+    ...(await encoderArgs(hw)), '-movflags', '+faststart', path.resolve(out)];
   const total = end - start;
-  await run(ffmpeg(), args, { cwd: workDir, onStderr: s => {
+  const runIt = (a) => run(ffmpeg(), a, { cwd: workDir, onStderr: s => {
     const m = [...s.matchAll(/time=(\d+):(\d+):(\d+(?:\.\d+)?)/g)].pop();
     if (m && onProgress) onProgress(Math.min(1, (+m[1] * 3600 + +m[2] * 60 + +m[3]) / total));
   } });
+  try { await runIt(args); }
+  catch (e) {                                                    // the graphics-card encoder failed (driver, too many sessions…): redo this clip on the processor
+    if (hw !== 'gpu' || String(e.message) === 'CANCELLED') throw e;
+    const a0 = args.indexOf('-c:v'), a1 = args.indexOf('-movflags');
+    if (a0 < 0 || a1 < a0) throw e;
+    await runIt([...args.slice(0, a0), ...(await encoderArgs('cpu')), ...args.slice(a1)]);
+  }
   return { note };
 }
 
