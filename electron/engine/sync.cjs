@@ -119,4 +119,44 @@ function refineWords(words, wavPath, { maxShift = 0.15 } = {}) {
   }
   return out;
 }
-module.exports = { refineWords, readWav };
+
+// Final cut points of every clip, placed in real silence (10 ms resolution) right before the first word and right after the last word,
+// so the clip never starts inside the previous word, never keeps a piece of the next word, and never clips the last syllable.
+function cutFit(words, wavPath, clips) {
+  let env;
+  try { env = envelope(readWav(wavPath)); } catch { return clips; }
+  if (env.length < 100 || !words.length) return clips;
+  const floor = pct(env, 0.2), top = pct(env, 0.9);
+  const hasContrast = top - floor >= 10;
+  const at = t => Math.max(0, Math.min(env.length - 1, Math.round(t * 100)));
+  const quiet = floor + 4;
+  const out = clips.map(c => {
+    let i0 = words.findIndex(w => w.end > c.start + 0.01); if (i0 < 0) return c;
+    let i1 = -1; for (let k = words.length - 1; k >= 0; k--) if (words[k].start < c.end - 0.01) { i1 = k; break; }
+    if (i1 < i0) return c;
+    const first = words[i0], last = words[i1], prev = words[i0 - 1], next = words[i1 + 1];
+    const pe = prev ? prev.end : Math.max(0, first.start - 0.6), nw = next ? next.start : last.end + 0.6;
+    // start: the quiet moment closest before the first word (never later than 40 ms before the word)
+    let start;
+    const hiS = first.start - 0.04, loS = Math.max(pe + 0.01, first.start - 0.35);
+    if (hiS > loS) {
+      start = hasContrast ? null : hiS;
+      if (start == null) { let best = -1; for (let i = at(hiS); i >= at(loS); i--) if (env[i] <= quiet) { best = i; break; } start = best >= 0 ? best / 100 : Math.max(loS, hiS - 0.02); }
+    } else start = Math.max(pe + 0.005, (pe + first.start) / 2 - 0.01);
+    // end: the first quiet moment after the last word, giving the final sound time to die out (at least 70 ms)
+    let end;
+    const loE = last.end + 0.07, hiE = Math.min(nw - 0.03, last.end + 0.5);
+    if (hiE > loE) {
+      end = null;
+      if (hasContrast) { for (let i = at(loE); i <= at(hiE); i++) if (env[i] <= quiet) { end = i / 100; break; } }
+      if (end == null) end = Math.min(hiE, loE + 0.05);
+    } else end = Math.max(last.end + 0.01, Math.min(nw - 0.01, (last.end + nw) / 2));
+    start = Math.max(0, +start.toFixed(2)); end = +Math.max(end, start + 1).toFixed(2);
+    return { ...c, start, end };
+  });
+  // two neighbouring clips never overlap
+  const order = out.map((c, i) => i).sort((a, b) => out[a].start - out[b].start);
+  for (let k = 1; k < order.length; k++) { const a = out[order[k - 1]], b = out[order[k]]; if (b.start < a.end) { const m = +((a.end + b.start) / 2).toFixed(2); a.end = Math.max(a.start + 1, Math.min(a.end, m)); b.start = Math.max(b.start, a.end); } }
+  return out;
+}
+module.exports = { refineWords, readWav, cutFit };

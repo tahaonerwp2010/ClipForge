@@ -19,7 +19,8 @@ const keywordsOf = p => [...new Set(String(p || '').toLowerCase().split(/[^a-z0-
 function offline(words, count, clipLen, keywords = []) {
   if (!words.length) return [];
   const sents = sentences(words);
-  const min = clipLen * 0.7, max = clipLen * 1.35, cands = [];
+  const auto = !clipLen; if (auto) clipLen = 35;
+  const min = auto ? 12 : clipLen * 0.6, max = auto ? 75 : clipLen * 1.5, cands = [];
   for (let a = 0; a < sents.length; a++) {
     const start = words[sents[a][0]].start;
     for (let b = a; b < sents.length; b++) {
@@ -31,7 +32,7 @@ function offline(words, count, clipLen, keywords = []) {
       const text = slice.map(w => w.word).join(' ');
       const density = slice.length / d;
       const lower = text.toLowerCase(), kw = keywords.filter(k => lower.includes(k)).length;
-      const score = kw * 7 + density * 10 + (text.match(/[?!]/g) || []).length * 3 + (HOOK.test(text) ? 8 : 0) + (HOOK.test(slice.slice(0, 8).map(w => w.word).join(' ')) ? 6 : 0);
+      const score = (auto ? 0 : -Math.abs(d - clipLen) / clipLen * 6) + kw * 7 + density * 10 + (text.match(/[?!]/g) || []).length * 3 + (HOOK.test(text) ? 8 : 0) + (HOOK.test(slice.slice(0, 8).map(w => w.word).join(' ')) ? 6 : 0);
       cands.push({ start, end, score, text });
     }
   }
@@ -79,7 +80,7 @@ async function gemini(words, count, clipLen, g, log = () => {}, userPrompt = '')
     const ch = chunks[ci];
     const where = chunks.length > 1 ? `This is part ${ci + 1} of ${chunks.length} of a longer video (${Math.round(ch[0].start / 60)}–${Math.round(ch[ch.length - 1].end / 60)} min). ` : '';
     const prompt = `You are a viral short-form video editor. ${where}Transcript with timestamps below.${req}
-Pick the ${per} most engaging, self-contained moments, each about ${clipLen} seconds (start at a sentence start, end at a sentence end, no overlaps).
+Pick the ${per} most engaging, self-contained moments. ${clipLen ? `Aim for about ${clipLen} seconds each, but a moment may be anywhere from ${Math.round(clipLen * 0.6)} to ${Math.round(clipLen * 1.5)} seconds when that is what it needs to be complete: finishing the thought properly matters more than hitting ${clipLen} seconds exactly.` : 'There is NO fixed length: every moment is exactly as long as it needs to be to make complete sense on its own (usually 15 to 90 seconds). Never cut a thought in half and never pad with filler.'} Each moment must make sense without the rest of the video: it starts at the beginning of a sentence or thought (never in the middle of one, never on a leftover word of the previous sentence) and ends right when the thought is finished, on the last word of a sentence. No overlaps.
 Score honestly and strictly on the same scale for every part of the video: 90+ only for exceptional moments, most moments are 55-80.
 Return ONLY a JSON array of objects: {${userPrompt ? '"fit":0-10,' : ''}"start":number,"end":number,"title":"punchy hook title max 8 words","hookText":"first-3-seconds hook line","viralityScore":1-99,"reason":"short","category":"High Energy|Deep Insight|Storytelling|Shocking Truth"}
 
@@ -134,13 +135,26 @@ Return ONLY JSON: {"hasVisualCondition":boolean,"subject":string,"candidates":[{
   return { cands, subject: String(out.subject || '').slice(0, 120), visual: true };
 }
 
+let LIM = { min: 5, max: 150 };                                  // allowed clip length (set per run in findClips)
+const isEnd = (w, nx) => !nx || /[.!?…]["'”’)\]]*$/.test(String(w.word || '').trim()) || nx.start - w.end > 0.7;
+// A clip always starts on the first word of a sentence and ends on the last word of a sentence (no leftover word of the next sentence, no cut-off thought)
+function snapSentences(c, words) {
+  const N = words.length;
+  let i0 = words.findIndex(w => w.end > c.start); if (i0 < 0) return null;
+  let i1 = N - 1; for (let k = N - 1; k >= 0; k--) if (words[k].start < c.end) { i1 = k; break; }
+  if (i1 < i0) return null;
+  let s = i0; while (s > 0 && !isEnd(words[s - 1], words[s]) && words[i0].start - words[s - 1].start < 5) s--;
+  if (s > 0 && !isEnd(words[s - 1], words[s])) { s = i0; while (s < i1 && !isEnd(words[s - 1], words[s]) && words[s].start - words[i0].start < 3) s++; }
+  let e = i1; while (e < N - 1 && !isEnd(words[e], words[e + 1]) && words[e].end - words[i1].end < 6) e++;
+  if (!isEnd(words[e], words[e + 1])) { e = i1; while (e > s && !isEnd(words[e], words[e + 1]) && words[i1].end - words[e].end < 4) e--; }
+  const d = words[e].end - words[s].start;
+  if (e <= s || d < LIM.min * 0.8 || d > LIM.max) { s = i0; e = i1; }          // snapping would break the length rules: keep the original words
+  return { ...c, start: words[s].start, end: words[e].end };
+}
 function sanitize(clips, words) {
-  const total = words[words.length - 1].end;
-  const snapStart = t => (words.find(w => w.end > t) || words[0]).start;
-  const snapEnd = t => ([...words].reverse().find(w => w.start < t) || words[words.length - 1]).end;
   const cats = ['High Energy', 'Deep Insight', 'Storytelling', 'Shocking Truth'];
-  return clips.map(c => ({ ...c, start: snapStart(Math.max(0, +c.start)), end: snapEnd(Math.min(total, +c.end)) }))
-    .filter(c => c.end - c.start >= 5 && c.end - c.start <= 150)
+  return clips.map(c => snapSentences({ ...c, start: Math.max(0, +c.start), end: Math.min(words[words.length - 1].end, +c.end) }, words)).filter(Boolean)
+    .filter(c => c.end - c.start >= LIM.min && c.end - c.start <= LIM.max)
     .map(c => ({ ...c, category: cats.includes(c.category) ? c.category : 'Deep Insight',
       viralityScore: Math.max(60, Math.min(99, Math.round(c.viralityScore || 85))), fit: c.fit == null ? undefined : Math.max(0, Math.min(10, +c.fit || 0)),
       title: String(c.title || c.hookText || 'Highlight').slice(0, 70), hookText: String(c.hookText || c.title || '') }));
@@ -310,6 +324,7 @@ async function writeTitles(clips, words, g, log, hookLines = 2) {
 
 async function findClips(words, { hookLines = 2, count = 4, clipLen = 30, gemini: g, log = () => {}, userPrompt = '', filePath = '', workDir = '' }) {
   if (!words.length) return { clips: [], engine: 'none' };
+  LIM = clipLen ? { min: Math.max(5, clipLen * 0.6), max: Math.min(150, clipLen * 1.5) } : { min: 8, max: 120 };
   const kws = keywordsOf(userPrompt);
   const topUp = (picked) => {                                  // fewer than asked (after removing duplicates)? fill from the offline finder, never overlapping
     if (picked.length >= count) return picked;
@@ -318,7 +333,9 @@ async function findClips(words, { hookLines = 2, count = 4, clipLen = 30, gemini
   };
   if (G.ready(g)) {
     try {
-      let cands = dedupe(sanitize(await gemini(words, count, clipLen, g, (m, k) => log('AI', m, k), userPrompt), words));
+      let cands = sanitize(await gemini(words, count, clipLen, g, (m, k) => log('AI', m, k), userPrompt), words);
+      if (clipLen) cands.forEach(c => { c.rank = (c.viralityScore || 60) - Math.abs((c.end - c.start) - clipLen) / clipLen * 12; });   // among equally good moments the one closer to the chosen length wins
+      cands = dedupe(cands);
       let subject = '';
       if (userPrompt && cands.some(c => c.fit != null)) {                       // the request comes first: fit decides, virality only breaks ties
         cands.forEach(c => { c.rank = (c.fit ?? 5) * 10 + (c.viralityScore || 60) * 0.2; });

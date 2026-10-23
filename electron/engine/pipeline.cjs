@@ -43,6 +43,16 @@ async function planFx(job, words, s, e, seed, log) {
 
 // B-roll (user's own videos): plan once per clip, remember the plan so the clip editor can re-render the same cut-aways
 let _brPrep = null;
+// camera-cut click + light flash (always on); the cut times are remembered for the clip editor
+async function cutFx(fx, R2, input, s, dur, broll, hasAudio, outDir, idx, log) {
+  try {
+    const CF = require('./cutfx.cjs');
+    const cuts = await CF.find(R2, input, s, dur);
+    try { const d = path.join(outDir, '.edit'); fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, `cuts_${String(idx + 1).padStart(2, '0')}.json`), JSON.stringify(cuts)); } catch {}
+    if (cuts.length) log('FFmpeg', `${cuts.length} camera change${cuts.length === 1 ? '' : 's'}: click sound + light flash added`, 'info');
+    return CF.apply(fx, cuts, broll, hasAudio);
+  } catch (err) { if (String(err.message) === 'CANCELLED') throw err; return fx; }
+}
 async function planBroll(job, words, s, e, seed, log, work, outDir, idx) {
   const o = job.grading && job.grading.broll;
   if (!o || !o.enabled || !(o.files || []).length) return undefined;
@@ -215,10 +225,11 @@ async function runInner(job, emit, deps = {}) {
   if (meta.steps[5] && clips) restore(5);
   else {
     startWork(); begin(5);
-    const clipLen = { '15s': 15, '30s': 30, '45s': 45, '60s': 60, '90s': 90 }[job.clipLength] || 35;
+    const clipLen = { '15s': 15, '30s': 30, '45s': 45, '60s': 60, '90s': 90 }[job.clipLength] || 0;      // 0 = Auto: the AI decides the length of every moment
     const r = await A.findClips(words, { hookLines: job.branding?.autoTitle?.lines, count: job.targetClipsCount || 4, clipLen, gemini: job.gemini, log, userPrompt: (job.aiPrompt || '').trim(), filePath: job.filePath, workDir: work });
     clips = r.clips;
     if (!clips.length) throw new Error('Could not find any suitable moments.');
+    try { clips = SYNC.cutFit(words, wav, clips); log('FFmpeg', 'Cut points placed in silence, accurate to 10 ms', 'info'); } catch {}
     writeJson('clips.json', clips);
     end(5, `${clips.length} clips · moments: ${r.engine === 'gemini' ? 'AI' : 'offline'} · titles: ${r.titleEngine === 'gemini' ? 'AI' : r.titleEngine === 'local' ? 'local' : 'AI + local'}`);
   }
@@ -307,7 +318,8 @@ async function runInner(job, emit, deps = {}) {
       ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur: c.end - c.start })];
     const fx = await planFx(job, capWords, c.start, c.end, i + 1, log);
     const broll = await planBroll(job, capWords, c.start, c.end, i + 1, log, path.join(work, 'broll'), outDir, i);
-    const { note } = await R.renderClip({ broll, behind: bh, assBehind, quality, fx, input: job.filePath, start: c.start, end: c.end, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
+    const fxC = await cutFx(fx, R, job.filePath, c.start, c.end - c.start, broll, info.hasAudio !== false, outDir, i, log);
+    const { note } = await R.renderClip({ broll, behind: bh, assBehind, quality, fx: fxC, input: job.filePath, start: c.start, end: c.end, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
       workDir: path.join(work, `c${n}`), track: tracks[i], emojis, emojiBox, srcAspect: info.width / info.height, fontFamilies, watermark, music, split, fps: Math.round(info.fps || 30) || 30, onProgress: p => setPct(8, (i + p * 0.97) / clips.length) });
     if (note && i === 0) log('FFmpeg', note, 'warn');
     let thumb; try { thumb = await R.thumbnail(out, path.join(work, `t${n}.jpg`)); } catch {}
@@ -546,7 +558,8 @@ async function runShortsInner(job, emit, deps = {}) {
       ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur })];
     const fx = await planFx(job, cw, 0, dur, i + 1, log);
     const broll = await planBroll(job, cw, 0, dur, i + 1, log, path.join(work, 'broll'), outDir, i);
-    const { note } = await R.renderClip({ broll, behind: bh, assBehind, quality, fx, input: files[i].path, start: 0, end: dur, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
+    const fxC = await cutFx(fx, R, files[i].path, 0, dur, broll, infos[i].hasAudio !== false, outDir, i, log);
+    const { note } = await R.renderClip({ broll, behind: bh, assBehind, quality, fx: fxC, input: files[i].path, start: 0, end: dur, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
       workDir: path.join(work, `c${n}`), track: tracks[i], emojis, emojiBox, srcAspect: infos[i].width / infos[i].height, hasAudio: infos[i].hasAudio, fontFamilies, watermark, music, onProgress: p => setPct(8, (i + p * 0.97) / N) });
     if (note && i === 0) log('FFmpeg', note, 'warn');
     let thumb; try { thumb = await R.thumbnail(out, path.join(work, `t${n}.jpg`)); } catch {}

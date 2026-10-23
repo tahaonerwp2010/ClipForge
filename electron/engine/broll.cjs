@@ -5,7 +5,7 @@ const path = require('path');
 const AI = require('./ai.cjs');
 const R = require('./render.cjs');
 
-const MAX_SHARE = 25, MIN_T = 2.0, TAIL = 1.5, GAP = 2.5;
+const MAX_SHARE = 32, MIN_T = 2.0, TAIL = 1.5, GAP = 2.5;
 const info = new Map();          // path|size|mtime -> { duration, desc }
 const keyOf = (p) => { try { const s = fs.statSync(p); return `${p}|${s.size}|${s.mtimeMs}`; } catch { return null; } };
 const tokens = (t) => String(t || '').toLowerCase().replace(/\.[a-z0-9]{2,4}$/, '').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 3);
@@ -63,7 +63,7 @@ async function plan(words, s, e, cfg, seed, gemini, log, prepared) {
   if (!cfg || !cfg.enabled || !prepared || !prepared.length || dur < 8) return undefined;
   const share = Math.max(5, Math.min(MAX_SHARE, +cfg.pct || 20));
   const budget = Math.min(dur * share / 100, dur * MAX_SHARE / 100);
-  const n = Math.min(8, Math.max(dur >= 16 ? 2 : dur >= 10 ? 1 : 0, Math.floor(budget / 2.6)));   // several cut-aways per clip, at different moments
+  const n = Math.min(9, Math.max(dur >= 16 ? 2 : dur >= 10 ? 1 : 0, Math.floor(budget / 2.6)) + 1);   // several cut-aways per clip, at different moments
   if (!n) return undefined;
   const segs = segmentsOf(words, s, e).filter(g => g.t >= MIN_T && g.t <= dur - TAIL - 1.5);
   if (!segs.length) return undefined;

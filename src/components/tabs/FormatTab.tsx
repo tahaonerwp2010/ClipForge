@@ -430,7 +430,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
       <section className="space-y-2 p-4 rounded-2xl bg-[#0b1611] border border-[#17291f]">
         <div className="flex items-center gap-2">
           <span className="font-bold uppercase tracking-wider text-neutral-300 text-[11px]">CLIP LENGTH</span>
-          <span className="text-[11px] text-neutral-500">a target, not a hard cut</span>
+          <span className="text-[11px] text-neutral-500">Auto: the AI decides. Otherwise a target: clips can be a bit shorter or longer so every moment makes complete sense</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">

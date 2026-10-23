@@ -121,7 +121,19 @@ function layoutInfo(f, W, H, srcAspect) {
   return { fgW, fgH, radius };
 }
 
-function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], emojiBox, srcAspect, maskIdx, watermark, splitArgs, fxZoom = [], fxFlash = [], fxShake = [], fxGlitch = [], fxMore = {}, behind = null, hasAssBehind = false, broll = [] }) {
+// Where the main video is shown on the canvas (b-roll covers exactly this area: full screen in Full Crop, the video band in Fit / Custom)
+function brollRect(framing, W, H, srcAspect) {
+  const f = framing || {}, mode = f.mode || 'fit-blur', ev = n => Math.max(2, Math.round(n / 2) * 2);
+  if (mode === 'fill-crop') return { x: 0, y: 0, w: W, h: H, round: false };
+  const { fgW, fgH, radius } = layoutInfo({ ...f, mode: mode === 'custom-scale' ? mode : 'fit-blur' }, W, H, srcAspect);
+  const x = Math.round((W - fgW) / 2 + Math.round(((f.offsetX || 0) / 100) * W)), y = Math.round((H - fgH) / 2 + Math.round(((f.offsetY || 0) / 100) * H));
+  const x0 = Math.max(0, x), y0 = Math.max(0, y), x1 = Math.min(W, x + fgW), y1 = Math.min(H, y + fgH);
+  const inside = x >= 0 && y >= 0 && x + fgW <= W && y + fgH <= H;
+  if (x1 - x0 < 8 || y1 - y0 < 8) return { x: 0, y: 0, w: W, h: H, round: false };
+  return inside ? { x: x0, y: y0, w: fgW, h: fgH, round: radius > 0 } : { x: x0, y: y0, w: ev(x1 - x0), h: ev(y1 - y0), round: false };
+}
+
+function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], emojiBox, srcAspect, maskIdx, watermark, splitArgs, fxZoom = [], fxFlash = [], fxShake = [], fxGlitch = [], fxMore = {}, behind = null, hasAssBehind = false, broll = [], brRect = null }) {
   const f = framing || {}, g = grading || {};
   const mode = f.mode || 'fit-blur';
   let base, note = null;
@@ -166,7 +178,9 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
   const bro = (inL, outL) => {
     let g = '', cur = inL;
     broll.forEach((b, k) => {
-      g += `[${b.idx}:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,fps=${b.fps || 30},setpts=PTS-STARTPTS+${b.t}/TB[bk${k}];[${cur}][bk${k}]overlay=eof_action=pass:enable='between(t,${b.t},${(b.t + b.dur).toFixed(2)})'[bo${k}];`;
+      const R0 = brRect || { x: 0, y: 0, w: W, h: H, round: false };
+      const mk = R0.round && b.mIdx != null;
+      g += `[${b.idx}:v]scale=${R0.w}:${R0.h}:force_original_aspect_ratio=increase,crop=${R0.w}:${R0.h},setsar=1,fps=${b.fps || 30}${mk ? `,format=yuva420p[bka${k}];[${b.mIdx}:v]format=gray[bm${k}];[bka${k}][bm${k}]alphamerge` : ''},setpts=PTS-STARTPTS+${b.t}/TB[bk${k}];[${cur}][bk${k}]overlay=x=${R0.x}:y=${R0.y}:eof_action=pass:enable='between(t,${b.t},${(b.t + b.dur).toFixed(2)})'[bo${k}];`;
       cur = `bo${k}`;
     });
     return g + `[${cur}]${hasAss ? 'ass=captions.ass:fontsdir=fonts' : 'null'}[${outL}]`;
@@ -226,6 +240,7 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
   if (ng) chain.push(`negate=enable='${ng}'`);
   if (dp) chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=black@0.8:t=fill:enable='${dp}'`);
   if (st) chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=white@0.55:t=fill:enable='${st}'`);
+  { const cf = (mo.cutFlash || []).map(t => `between(t,${t},${(t + 0.05).toFixed(2)})`).join('+'); if (cf) chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=white@0.2:t=fill:enable='${cf}'`); }   // very short, very light flash on every camera cut
   if (flashEn) chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=white@0.5:t=fill:enable='${flashEn}'`);
   graph += `;[${last}]${chain.length ? chain.join(',') : 'null'}[v]`;
   return { graph, note };
@@ -293,15 +308,17 @@ async function renderClip({ quality = 1080, input, start, end, out, assText, rat
     splitArgs = { W, H, split, secIdx, fcMaskIdx, fps, dur, lead };
   }
   // ---- auto effects: sound-effect inputs ----
-  const sfxList = (fx && hasAudio && Array.isArray(fx.sfx) ? fx.sfx : []).filter(e => e.file && fs.existsSync(e.file)).slice(0, 24);
+  const sfxList = (fx && hasAudio && Array.isArray(fx.sfx) ? fx.sfx : []).filter(e => e.file && fs.existsSync(e.file)).slice(0, 48);
   const sfxInputs = [];
   sfxList.forEach(e => { e.idx = nextIdx++; sfxInputs.push('-i', e.file); });          // one input per event (an ffmpeg input can feed only one filter)
   let behindIdx = null, behindInputs = [];
   if (behind && behind.dir && fs.existsSync(path.join(behind.dir, 'm_0001.png'))) { behindIdx = nextIdx++; behindInputs = ['-framerate', String(behind.fps), '-i', path.join(behind.dir, 'm_%04d.png')]; }
   const brollList = (!split && Array.isArray(broll) ? broll : []).filter(b => b.file && fs.existsSync(b.file)).slice(0, 8);
   const brollInputs = [];
-  brollList.forEach(b => { b.idx = nextIdx++; b.fps = fps; brollInputs.push('-ss', String(b.ss || 0), '-t', String(b.dur), '-i', path.resolve(b.file)); });   // muted: only the picture is used
-  const { graph: vGraph, note } = filterGraph({ broll: brollList, behind: behindIdx != null ? { idx: behindIdx, outFps: fps } : null, hasAssBehind: !!assBehind, W, H, framing, grading, hasAss: !!assText, track, emojiGroups, emojiBox, srcAspect, maskIdx, watermark: wmIdx != null ? { ...watermark, idx: wmIdx } : null, splitArgs, fxZoom: (fx && fx.zoom) || [], fxFlash: (fx && fx.flashes) || [], fxShake: (fx && fx.shake) || [], fxGlitch: (fx && fx.glitch) || [], fxMore: fx || {} });
+  const brRect = brollRect(framing, W, H, srcAspect);
+  const brMask = brRect.round && maskIdx != null ? path.join(workDir, 'mask.pgm') : null;
+  brollList.forEach(b => { b.idx = nextIdx++; b.fps = fps; brollInputs.push('-ss', String(b.ss || 0), '-t', String(b.dur), '-i', path.resolve(b.file)); if (brMask) { b.mIdx = nextIdx++; brollInputs.push('-loop', '1', '-framerate', String(fps), '-t', String(b.dur), '-i', brMask); } });   // muted: only the picture is used
+  const { graph: vGraph, note } = filterGraph({ broll: brollList, brRect, behind: behindIdx != null ? { idx: behindIdx, outFps: fps } : null, hasAssBehind: !!assBehind, W, H, framing, grading, hasAss: !!assText, track, emojiGroups, emojiBox, srcAspect, maskIdx, watermark: wmIdx != null ? { ...watermark, idx: wmIdx } : null, splitArgs, fxZoom: (fx && fx.zoom) || [], fxFlash: (fx && fx.flashes) || [], fxShake: (fx && fx.shake) || [], fxGlitch: (fx && fx.glitch) || [], fxMore: fx || {} });
   let graph = vGraph;
   // audio source for split screen: facecam audio (default), game audio, or both
   let aSrc = '0:a', aMap = '0:a:0';
@@ -337,8 +354,8 @@ async function thumbnail(video, jpg) {
   return 'data:image/jpeg;base64,' + fs.readFileSync(jpg).toString('base64');
 }
 // Exact camera-cut times (seconds from clip start) using FFmpeg scene detection on a small copy of the video.
-async function detectCuts(input, start, dur, th = 0.32) {
-  const { stderr } = await run(ffmpeg(), ['-hide_banner', '-nostats', '-ss', String(start), '-t', String(dur), '-i', path.resolve(input), '-an', '-vf', `fps=15,scale=256:-2,select='gt(scene,${th})',showinfo`, '-f', 'null', '-']);
+async function detectCuts(input, start, dur, th = 0.32, fps = 15) {
+  const { stderr } = await run(ffmpeg(), ['-hide_banner', '-nostats', '-ss', String(start), '-t', String(dur), '-i', path.resolve(input), '-an', '-vf', `fps=${fps},scale=256:-2,select='gt(scene,${th})',showinfo`, '-f', 'null', '-']);
   const out = []; for (const m of stderr.matchAll(/pts_time:([\d.]+)/g)) out.push(+m[1]);
   return out.filter((t, i) => i === 0 || t - out[i - 1] > 0.4);
 }

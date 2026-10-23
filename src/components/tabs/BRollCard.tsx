@@ -39,10 +39,10 @@ export const BRollCard: React.FC<{ broll?: BRollState; setBroll: (b: BRollState)
           </ul>
         ) : <p className="text-[11px] text-amber-300/90">No videos added yet. B-roll stays off until you add at least one.</p>}
         <div className="space-y-1">
-          <div className="flex justify-between text-[11px] text-neutral-300"><span>Most of each clip that may be b-roll</span><span className="font-mono text-[#8fd0a4]">{b.pct ?? 20}%</span></div>
+          <div className="flex justify-between text-[11px] text-neutral-300"><span>Share of each clip for b-roll (about)</span><span className="font-mono text-[#8fd0a4]">{b.pct ?? 20}%</span></div>
           <input type="range" min={10} max={25} step={1} value={b.pct ?? 20} onChange={e => set({ pct: parseInt(e.target.value) })} className="w-full h-1.5 bg-[#1d3228] rounded-lg appearance-none accent-[#bef264] cursor-pointer" />
         </div>
-        <p className="text-[10px] text-neutral-500">The b-roll never covers more than about a fifth of a clip (25% at most), never in the first seconds, and the captions and hook stay on top. For the best matches add an AI key in Settings: the AI looks at your videos and describes them. Without a key, matching uses the words in the file names. Not used together with split screen. It is applied while rendering and shows in the finished clip, not in the preview.</p>
+        <p className="text-[10px] text-neutral-500">The b-roll covers only the area where your video is shown (the full screen in Full Crop, the video band in Fit / Custom) and never more than about a third of a clip, never in the first seconds, and the captions and hook stay on top. For the best matches add an AI key in Settings: the AI looks at your videos and describes them. Without a key, matching uses the words in the file names. Not used together with split screen. It is applied while rendering and shows in the finished clip, not in the preview.</p>
       </>)}
     </section>
   );

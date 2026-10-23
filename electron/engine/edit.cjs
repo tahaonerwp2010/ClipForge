@@ -87,6 +87,11 @@ async function rerender(outDir, i, ov, onProgress, deps) {
   let fx; const o = st.grading && st.grading.fx;
   if (o && o.enabled) { try { fx = FX.plan(x.cw, x.start, x.end, o, i + 1); } catch {} }
   let broll; try { if (st.grading && st.grading.broll && st.grading.broll.enabled && !st.split) broll = JSON.parse(fs.readFileSync(path.join(outDir, '.edit', `broll_${nn(i)}.json`), 'utf8')); } catch {}
+  try {   // camera-cut click + flash (same as the first render)
+    const CF = require('./cutfx.cjs'); let cuts;
+    try { cuts = JSON.parse(fs.readFileSync(path.join(outDir, '.edit', `cuts_${nn(i)}.json`), 'utf8')); } catch { cuts = await CF.find(R, x.input, x.start, x.end - x.start); }
+    fx = CF.apply(fx, cuts, broll, x.info.hasAudio !== false);
+  } catch {}
   await R.renderClip({ broll, behind: x.behind, assBehind: x.assBehind, quality: x.quality, fx, input: x.input, start: x.start, end: x.end, out: tmp, assText: x.ass, ratio: st.ratio || '9:16', framing: st.framing, grading: st.grading,
     workDir: w, track: (st.tracks || [])[i] || null, emojis: x.emojis, emojiBox: x.emojiBox, srcAspect: x.info.width / x.info.height, hasAudio: x.info.hasAudio !== false, fontFamilies: x.fontFamilies,
     watermark: x.watermark, music: x.music, split: st.split || undefined, fps: Math.round(x.info.fps || 30) || 30, onProgress });
