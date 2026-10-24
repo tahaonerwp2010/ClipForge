@@ -3,12 +3,15 @@ const G = require('./ai.cjs');
 // Viral moments: Gemini (if key) -> offline sentence-aware heuristic.
 const HOOK = /\b(secret|mistake|never|always|truth|biggest|nobody|everyone|stop|why|how|worst|best|insane|crazy|million|billion|free|fail|lesson|warning|problem|actually|honestly)\b/i;
 
+// Sentence boundaries. With punctuation in the transcript a sentence ends at . ! ? (or a long pause); without punctuation (some languages / models) only the pauses are available.
+let PUNCTED = true;
+const setBoundaryMode = (words) => { const n = words.length || 1; PUNCTED = words.filter(w => /[.!?…]["'”’)\]]*$/.test(String(w.word || '').trim())).length / n >= 0.03; };
+const isEnd = (w, nx) => !nx || (PUNCTED && /[.!?…]["'”’)\]]*$/.test(String(w.word || '').trim())) || nx.start - w.end > (PUNCTED ? 0.6 : 0.3);
 function sentences(words) {
   const out = []; let cur = [];
   words.forEach((w, i) => {
     cur.push(i);
-    const gap = words[i + 1] ? words[i + 1].start - w.end : 99;
-    if (/[.!?]$/.test(w.word) || gap > 0.9) { out.push(cur); cur = []; }
+    if (isEnd(w, words[i + 1])) { out.push(cur); cur = []; }
   });
   if (cur.length) out.push(cur);
   return out;
@@ -136,20 +139,24 @@ Return ONLY JSON: {"hasVisualCondition":boolean,"subject":string,"candidates":[{
 }
 
 let LIM = { min: 5, max: 150 };                                  // allowed clip length (set per run in findClips)
-const isEnd = (w, nx) => !nx || /[.!?…]["'”’)\]]*$/.test(String(w.word || '').trim()) || nx.start - w.end > 0.7;
-// A clip always starts on the first word of a sentence and ends on the last word of a sentence (no leftover word of the next sentence, no cut-off thought)
+// A clip always starts on the first word of a sentence and ends on the last word of a sentence. The start / end pair nearest to what the AI asked for is chosen
+// (within the allowed length); if no clean pair exists the clip is dropped, a clip that ends in the middle of a sentence is never returned.
 function snapSentences(c, words) {
-  const N = words.length;
-  let i0 = words.findIndex(w => w.end > c.start); if (i0 < 0) return null;
-  let i1 = N - 1; for (let k = N - 1; k >= 0; k--) if (words[k].start < c.end) { i1 = k; break; }
-  if (i1 < i0) return null;
-  let s = i0; while (s > 0 && !isEnd(words[s - 1], words[s]) && words[i0].start - words[s - 1].start < 5) s--;
-  if (s > 0 && !isEnd(words[s - 1], words[s])) { s = i0; while (s < i1 && !isEnd(words[s - 1], words[s]) && words[s].start - words[i0].start < 3) s++; }
-  let e = i1; while (e < N - 1 && !isEnd(words[e], words[e + 1]) && words[e].end - words[i1].end < 6) e++;
-  if (!isEnd(words[e], words[e + 1])) { e = i1; while (e > s && !isEnd(words[e], words[e + 1]) && words[i1].end - words[e].end < 4) e--; }
-  const d = words[e].end - words[s].start;
-  if (e <= s || d < LIM.min * 0.8 || d > LIM.max) { s = i0; e = i1; }          // snapping would break the length rules: keep the original words
-  return { ...c, start: words[s].start, end: words[e].end };
+  const N = words.length, d0 = c.end - c.start;
+  const starts = [], ends = [];
+  for (let k = 0; k < N; k++) {
+    if ((k === 0 || isEnd(words[k - 1], words[k])) && Math.abs(words[k].start - c.start) <= 10) starts.push(k);
+    if (isEnd(words[k], words[k + 1]) && Math.abs(words[k].end - c.end) <= 12) ends.push(k);
+  }
+  let best = null;
+  for (const a of starts) for (const b of ends) {
+    if (b <= a) continue;
+    const d = words[b].end - words[a].start;
+    if (d < LIM.min || d > LIM.max) continue;
+    const sc = Math.abs(words[a].start - c.start) + Math.abs(words[b].end - c.end) + Math.abs(d - d0) * 0.5;
+    if (!best || sc < best.sc) best = { sc, a, b };
+  }
+  return best ? { ...c, start: words[best.a].start, end: words[best.b].end } : null;
 }
 function sanitize(clips, words) {
   const cats = ['High Energy', 'Deep Insight', 'Storytelling', 'Shocking Truth'];
@@ -324,6 +331,7 @@ async function writeTitles(clips, words, g, log, hookLines = 2) {
 
 async function findClips(words, { hookLines = 2, count = 4, clipLen = 30, gemini: g, log = () => {}, userPrompt = '', filePath = '', workDir = '' }) {
   if (!words.length) return { clips: [], engine: 'none' };
+  setBoundaryMode(words);
   LIM = clipLen ? { min: Math.max(5, clipLen * 0.6), max: Math.min(150, clipLen * 1.5) } : { min: 8, max: 120 };
   const kws = keywordsOf(userPrompt);
   const topUp = (picked) => {                                  // fewer than asked (after removing duplicates)? fill from the offline finder, never overlapping
