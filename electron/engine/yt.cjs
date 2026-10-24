@@ -17,12 +17,41 @@ function killTree(p) {
     else p.kill('SIGKILL');
   } catch { try { p.kill(); } catch {} }
 }
-// Newer yt-dlp needs a JavaScript runtime to read YouTube. We hand it the runtime we already ship (Electron's own Node), so nothing extra must be installed.
+// Newer yt-dlp needs a JavaScript runtime (Deno 2.3+) to read YouTube. Electron's built-in Node is too old for it, so we fetch Deno once into userData/bin.
+let jsRt = null;
+async function ensureDeno(onStatus) {
+  if (global.__cfMobileSpawn) return null;
+  if (jsRt && fs.existsSync(jsRt)) return jsRt;
+  const win = process.platform === 'win32';
+  const dest = path.join(P.userDataDir(), 'bin', win ? 'deno.exe' : 'deno');
+  if (fs.existsSync(dest)) return (jsRt = dest);
+  const sys = P.resolveBin('deno'); if (sys) return (jsRt = sys);
+  const arm = process.arch === 'arm64';
+  const triple = win ? 'x86_64-pc-windows-msvc' : process.platform === 'darwin' ? (arm ? 'aarch64-apple-darwin' : 'x86_64-apple-darwin') : (arm ? 'aarch64-unknown-linux-gnu' : 'x86_64-unknown-linux-gnu');
+  const dir = path.join(P.userDataDir(), 'bin'); fs.mkdirSync(dir, { recursive: true });
+  const zip = path.join(dir, 'deno.zip');
+  onStatus && onStatus('Preparing downloader helper (one-time, ~40 MB)…', 0);
+  try {
+    await fetchTo(`https://github.com/denoland/deno/releases/latest/download/deno-${triple}.zip`, zip, (p) => onStatus && onStatus('Preparing downloader helper (one-time, ~40 MB)…', p));
+    await new Promise((ok, bad) => {
+      const c = win ? spawn('tar', ['-xf', zip, '-C', dir], { windowsHide: true }) : spawn('unzip', ['-o', zip, '-d', dir], { windowsHide: true });
+      c.on('error', bad); c.on('close', (code) => code === 0 ? ok() : bad(new Error('extract failed ' + code)));
+    }).catch(() => new Promise((ok, bad) => {
+      if (!win) return bad(new Error('extract failed'));
+      const c = spawn('powershell', ['-NoProfile', '-Command', `Expand-Archive -Force -LiteralPath '${zip}' -DestinationPath '${dir}'`], { windowsHide: true });
+      c.on('error', bad); c.on('close', (code) => code === 0 ? ok() : bad(new Error('extract failed ' + code)));
+    }));
+    try { fs.chmodSync(dest, 0o755); } catch {}
+    try { fs.unlinkSync(zip); } catch {}
+    if (fs.existsSync(dest)) return (jsRt = dest);
+  } catch { try { fs.unlinkSync(zip); } catch {} }
+  return null;
+}
 function jsArgs() {
   if (global.__cfMobileSpawn) return [];
-  return ['--js-runtimes', 'node:' + process.execPath, '--remote-components', 'ejs:github'];
+  return jsRt ? ['--js-runtimes', 'deno:' + jsRt, '--remote-components', 'ejs:github'] : ['--remote-components', 'ejs:github'];
 }
-const jsEnv = () => ({ ...process.env, ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}) });
+const jsEnv = () => process.env;
 const isUrl = (u) => /^https?:\/\/[^\s]+\.[^\s]+/i.test(String(u || '').trim());
 
 function fetchTo(url, dest, onPct, hops = 0) {
@@ -67,7 +96,7 @@ function friendly(err) {
   if (/Video unavailable|not available|removed/i.test(t)) return 'This video is unavailable.';
   if (/Unsupported URL/i.test(t)) return 'This link is not supported. Paste a YouTube video link.';
   if (/Unable to download|getaddrinfo|Temporary failure|timed out|Network/i.test(t)) return 'Network problem. Check your internet and try again.';
-  if (/JavaScript runtime|js.?runtime|EJS|challenge solving/i.test(t)) return 'The downloader could not start its helper. Please update ClipForge or try again in a minute.';
+  if (/JavaScript runtime|js.?runtime|EJS|challenge solving/i.test(t)) return 'The downloader helper could not be prepared. Check your internet connection and try again. (' + (t.trim().split('\n').pop() || '').slice(0, 140) + ')';
   return 'Download failed. ' + (t.trim().split('\n').pop() || '').slice(0, 160);
 }
 
@@ -107,6 +136,8 @@ async function download(url, dir, onProgress) {
   fs.mkdirSync(dir, { recursive: true });
   cancelled = false;
   const bin = await ensureYtDlp((m, p) => { if (!cancelled) onProgress({ phase: 'prepare', percent: p, text: m }); });
+  if (cancelled) throw new Error('Cancelled');
+  await ensureDeno((m, p) => { if (!cancelled) onProgress({ phase: 'prepare', percent: p, text: m }); });
   if (cancelled) throw new Error('Cancelled');
   const ff = global.__cfMobileSpawn ? null : P.resolveBin('ffmpeg');
   const fmt = 'bv*[height<=1080]+ba/b[height<=1080]/b';
@@ -181,4 +212,4 @@ function attempt(bin, url, dir, fmt, ff, route, grand, onProgress, canSwitch) {
     });
   });
 }
-module.exports = { download, cancel, isUrl, ensureYtDlp };
+module.exports = { download, cancel, isUrl, ensureYtDlp, ensureDeno };
