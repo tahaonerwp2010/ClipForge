@@ -29,6 +29,35 @@ function normalizeJob(job) {
   return job;
 }
 
+// A resumed run must never reuse results made with OTHER settings (e.g. clips already rendered with default framing/captions).
+// We keep a fingerprint of the settings next to the checkpoints; on resume, anything that depends on a changed setting is thrown away.
+function guardSettings(job, work, log) {
+  const J = v => JSON.stringify(v === undefined ? null : v);
+  const sel = J({ f: job.filePath, files: (job.files || []).map(x => x.path), l: job.language, m: job.modelId, cl: job.clipLength, n: job.targetClipsCount, p: (job.aiPrompt || '').trim(), sp: !!job.shorts });
+  const ren = J({ r: job.ratio, q: job.quality, sp: job.split, fr: job.framing, ca: job.captions, gr: job.grading, br: job.branding });
+  const cap = J({ t: job.captions?.translateTo, ro: job.captions?.romanScript, en: job.captions?.enabled });
+  const sigF = path.join(work, 'sig.json');
+  let prev = null; try { prev = JSON.parse(fs.readFileSync(sigF, 'utf8')); } catch {}
+  const rm = n => { try { fs.rmSync(path.join(work, n), { force: true, recursive: true }); } catch {} };
+  const list = () => { try { return fs.readdirSync(work); } catch { return []; } };
+  if (job.resume && fs.existsSync(work)) {
+    if (prev && prev.sel !== sel) {
+      for (const n of list()) rm(n);
+      log('System', 'Clip selection settings changed, starting this project fresh.', 'info');
+    } else if (!prev || prev.ren !== ren || prev.cap !== cap) {
+      for (const n of list()) if (/^(res_|track_|fr\d|c\d)/.test(n)) rm(n);
+      let meta = null; try { meta = JSON.parse(fs.readFileSync(path.join(work, 'meta.json'), 'utf8')); } catch {}
+      if (meta && meta.steps) {
+        delete meta.steps[7];
+        if (!prev || prev.cap !== cap) { delete meta.steps[3]; delete meta.steps[4]; rm('capwords.json'); }
+        try { fs.writeFileSync(path.join(work, 'meta.json'), JSON.stringify(meta)); } catch {}
+      }
+      log('System', 'Settings changed since the last run, re-rendering clips with your current settings.', 'info');
+    }
+  }
+  try { fs.mkdirSync(work, { recursive: true }); fs.writeFileSync(sigF, JSON.stringify({ sel, ren, cap })); } catch {}
+}
+
 async function planFx(job, words, s, e, seed, log) {
   const o = job.grading && job.grading.fx;
   if (!o || !o.enabled) return undefined;
@@ -115,6 +144,7 @@ async function runInner(job, emit, deps = {}) {
   // Stable work dir per project => a paused run can resume from its checkpoints.
   const work = path.join(P.workRoot(), `job_${slug(job.id || job.name)}`);
   if (!job.resume) fs.rmSync(work, { recursive: true, force: true });
+  guardSettings(job, work, log);
   fs.mkdirSync(work, { recursive: true });
   const f = n => path.join(work, n);
   const readJson = n => { try { return JSON.parse(fs.readFileSync(f(n), 'utf8')); } catch { return null; } };
@@ -366,6 +396,7 @@ async function runShortsInner(job, emit, deps = {}) {
   try { fs.writeFileSync(path.join(outDir, '.clipforge.json'), JSON.stringify({ projectId: String(job.id || job.name) })); } catch {}
   const work = path.join(P.workRoot(), `job_${slug(job.id || job.name)}`);
   if (!job.resume) fs.rmSync(work, { recursive: true, force: true });
+  guardSettings(job, work, log);
   fs.mkdirSync(work, { recursive: true });
   const f = n => path.join(work, n);
   const readJson = n => { try { return JSON.parse(fs.readFileSync(f(n), 'utf8')); } catch { return null; } };
