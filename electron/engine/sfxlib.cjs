@@ -10,7 +10,7 @@ function list() {
   if (!d) return [];
   if (cache && cacheDir === d) return cache;
   try {
-    cache = JSON.parse(fs.readFileSync(path.join(d, 'manifest.json'), 'utf8')).map(x => ({ ...x, id: x.name, path: path.join(d, x.file) })).filter(x => fs.existsSync(x.path));
+    cache = JSON.parse(fs.readFileSync(path.join(d, 'manifest.json'), 'utf8')).map(x => ({ ...x, id: x.name, path: path.join(d, x.file) })).filter(x => x.tier !== 'off' && fs.existsSync(x.path));
     cacheDir = d;
   } catch { cache = []; }
   return cache;

@@ -26,7 +26,7 @@ import {
   AlertTriangle,
   Cloud
 } from 'lucide-react';
-import { PipelineRunner } from '../services/pipelineRunner';
+import { PipelineRunner, PipelineCallbacks } from '../services/pipelineRunner';
 import { SoftwareLogEvent } from '../services/softwareManager';
 import { AiService } from '../services/aiService';
 
@@ -186,22 +186,7 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
       creatorHandle: '@creator'
     };
 
-    PipelineRunner.execute(
-      {
-        project,
-        framing: effectiveFraming,
-        captions: effectiveCaptions,
-        grading: effectiveGrading,
-        branding: effectiveBranding,
-        targetClipsCount: targetClipsCount || project.clipCount || 4,
-        clipLength: clipLength || 'auto',
-        language: language || 'auto',
-        aiPrompt: (aiPrompt || '').trim(),
-        canvasRatio: canvasRatio || '9:16',
-        split,
-        resume: resumeRef.current
-      },
-      {
+    const cb: PipelineCallbacks = {
         onStepChange: (idx, updatedSteps) => {
           setStarted(true);
           const run = updatedSteps.findIndex(x => x.status === 'running');
@@ -229,8 +214,27 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
             onUpdateProject(updatedProj);
           }
         }
-      }
+    };
+    PipelineRunner.execute(
+      {
+        project,
+        framing: effectiveFraming,
+        captions: effectiveCaptions,
+        grading: effectiveGrading,
+        branding: effectiveBranding,
+        targetClipsCount: targetClipsCount || project.clipCount || 4,
+        clipLength: clipLength || 'auto',
+        language: language || 'auto',
+        aiPrompt: (aiPrompt || '').trim(),
+        canvasRatio: canvasRatio || '9:16',
+        split,
+        resume: resumeRef.current,
+        initialSteps: steps
+      },
+      cb
     );
+    // leaving this screen (Back) only stops the updates to it; the run keeps going and the next visit shows it again
+    return () => { PipelineRunner.detach(cb); hasExecutedRef.current = false; };
   }, [isInitiallyFinished, isPaused]);
 
   // Active step second counter timer (resets when the step changes)

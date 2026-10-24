@@ -47,7 +47,7 @@ const CAP = { whoosh: 0.9, hit: 1.0, funny: 1.3, fail: 1.3, reward: 1.1, pop: 0.
 const norm = w => String(w).toLowerCase().replace(/[^a-z0-9']/g, '');
 function rng(seed) { let s = (seed * 9301 + 49297) % 233280 || 1; return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
 
-function plan(words, clipStart, clipEnd, opt = {}, seed = 1) {
+function planLegacy(words, clipStart, clipEnd, opt = {}, seed = 1) {
   const out = { zoom: [], push: [], pull: [], pulse: [], shake: [], tilt: [], pan: [], flashes: [], dip: [], strobe: [], negate: [], glitch: [], vhs: [], chroma: [], mono: [], colorpop: [], glow: [], blur: [], sfx: [], events: 0, kinds: {} };
   if (!opt || !opt.enabled) return out;
   const lv = LEVEL[opt.intensity] || LEVEL.balanced, dur = clipEnd - clipStart, r = rng(seed);
@@ -217,4 +217,9 @@ function plan(words, clipStart, clipEnd, opt = {}, seed = 1) {
   out.sfx.sort((a, b) => a.t - b.t);
   return out;
 }
-module.exports = { plan, FAMILY };
+// The planner used in the app: case based (see cases.cjs). The old random planner is only a safety net if the new one ever throws.
+function plan(words, clipStart, clipEnd, opt = {}, seed = 1) {
+  try { return require('./cases.cjs').plan(words, clipStart, clipEnd, opt, seed, SFX); }
+  catch (e) { return planLegacy(words, clipStart, clipEnd, opt, seed); }
+}
+module.exports = { plan, planLegacy, FAMILY };

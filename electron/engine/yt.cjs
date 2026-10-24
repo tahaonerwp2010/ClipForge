@@ -17,6 +17,12 @@ function killTree(p) {
     else p.kill('SIGKILL');
   } catch { try { p.kill(); } catch {} }
 }
+// Newer yt-dlp needs a JavaScript runtime to read YouTube. We hand it the runtime we already ship (Electron's own Node), so nothing extra must be installed.
+function jsArgs() {
+  if (global.__cfMobileSpawn) return [];
+  return ['--js-runtimes', 'node:' + process.execPath, '--remote-components', 'ejs:github'];
+}
+const jsEnv = () => ({ ...process.env, ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}) });
 const isUrl = (u) => /^https?:\/\/[^\s]+\.[^\s]+/i.test(String(u || '').trim());
 
 function fetchTo(url, dest, onPct, hops = 0) {
@@ -61,6 +67,7 @@ function friendly(err) {
   if (/Video unavailable|not available|removed/i.test(t)) return 'This video is unavailable.';
   if (/Unsupported URL/i.test(t)) return 'This link is not supported. Paste a YouTube video link.';
   if (/Unable to download|getaddrinfo|Temporary failure|timed out|Network/i.test(t)) return 'Network problem. Check your internet and try again.';
+  if (/JavaScript runtime|js.?runtime|EJS|challenge solving/i.test(t)) return 'The downloader could not start its helper. Please update ClipForge or try again in a minute.';
   return 'Download failed. ' + (t.trim().split('\n').pop() || '').slice(0, 160);
 }
 
@@ -70,7 +77,7 @@ const num = (x) => { const n = Number(x); return isFinite(n) && x !== '' && x !=
 function probeSize(bin, url, fmt, extra = []) {
   return new Promise((resolve) => {
     let out = '', done = false;
-    const p = spawn(bin, ['--no-playlist', ...extra, '-f', fmt, '--print', 'CFSZ|%(requested_formats.0.filesize,requested_formats.0.filesize_approx)s|%(requested_formats.1.filesize,requested_formats.1.filesize_approx)s|%(filesize,filesize_approx)s', url], { windowsHide: true }); procs.add(p);
+    const p = spawn(bin, ['--no-playlist', ...jsArgs(), ...extra, '-f', fmt, '--print', 'CFSZ|%(requested_formats.0.filesize,requested_formats.0.filesize_approx)s|%(requested_formats.1.filesize,requested_formats.1.filesize_approx)s|%(filesize,filesize_approx)s', url], { windowsHide: true, env: jsEnv() }); procs.add(p);
     const fin = (v) => { if (!done) { done = true; clearTimeout(t); procs.delete(p); killTree(p); resolve(v); } };
     const t = setTimeout(() => fin(0), 30000);
     p.stdout.on('data', (d) => { out += d; });
@@ -129,13 +136,13 @@ async function download(url, dir, onProgress) {
 }
 
 function attempt(bin, url, dir, fmt, ff, route, grand, onProgress, canSwitch) {
-  const args = ['--no-playlist', '--newline', '--no-colors', '--progress', '-f', fmt, '--merge-output-format', 'mp4', ...FAST_ARGS, ...route.args,
+  const args = ['--no-playlist', '--newline', '--no-colors', '--progress', '-f', fmt, '--merge-output-format', 'mp4', ...FAST_ARGS, ...jsArgs(), ...route.args,
     '--progress-template', 'download:CFP|%(progress.status)s|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s',
     '-o', path.join(dir, '%(title).80B [%(id)s].%(ext)s'), '--print', 'after_move:CFFILE:%(filepath)s', '--print', 'CFTITLE:%(title)s'];
   if (ff) args.push('--ffmpeg-location', path.dirname(ff));
   args.push(url);
   return new Promise((resolve) => {
-    const p = spawn(bin, args, { windowsHide: true }); cur = p; procs.add(p);
+    const p = spawn(bin, args, { windowsHide: true, env: jsEnv() }); cur = p; procs.add(p);
     let file = '', title = '', errBuf = '', buf = '', slowFlag = false;
     let base = 0, lastD = 0, lastT = 0, lastEmit = 0, tStart = 0, ema = 0, slowSince = 0;
     const line = (l) => {

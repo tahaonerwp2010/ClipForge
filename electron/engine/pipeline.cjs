@@ -34,7 +34,7 @@ async function planFx(job, words, s, e, seed, log) {
   if (!o || !o.enabled) return undefined;
   try {
     const f = FX.plan(words, s, e, o, seed);
-    if (f && f.sfx && f.sfx.length && o.sfx !== false && o.aiSound !== false) await require('./sfxai.cjs').refine(f, words, job.gemini, log);
+    if (f && f.sfx && f.sfx.length && !f.cases && o.sfx !== false && o.aiSound !== false) await require('./sfxai.cjs').refine(f, words, job.gemini, log);
     if (f && f.events) log('FFmpeg', `Auto effects: ${f.events} moment${f.events === 1 ? '' : 's'} (${Object.entries(f.kinds || {}).map(([k, v]) => k + (v > 1 ? '×' + v : '')).join(', ')}), ${f.sfx.length} sound effect${f.sfx.length === 1 ? '' : 's'}`);
     if (o.sfx !== false && (!f || !f.sfx.length)) log('FFmpeg', 'No sound effects were added (' + (require('./sfxlib.cjs').list().length ? 'no suitable moments' : 'the sound library was not found') + ')', 'warn');
     return f;

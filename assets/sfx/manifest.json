@@ -385,8 +385,8 @@
   "dur": 0.35,
   "gainDb": 2.5,
   "natural": 0.35,
-  "tier": "core",
-  "desc": "camera shutter click, for flash or photo moments"
+  "tier": "off",
+  "desc": "(retired: too heavy) camera shutter"
  },
  {
   "file": "camera_flash.mp3",
@@ -635,5 +635,29 @@
   "natural": 1.34,
   "tier": "fun",
   "desc": "amazed chime, for surprise and wow"
+ },
+ {
+  "file": "camera_click.wav",
+  "name": "camera_click",
+  "roles": [
+   "camera"
+  ],
+  "dur": 0.16,
+  "gainDb": -0.0,
+  "natural": 0.16,
+  "tier": "core",
+  "desc": "light, crisp camera click (two quick shutter ticks), for camera changes and photo flashes"
+ },
+ {
+  "file": "wrong_buzz.wav",
+  "name": "wrong_buzz",
+  "roles": [
+   "fail"
+  ],
+  "dur": 0.42,
+  "gainDb": -7.9,
+  "natural": 0.42,
+  "tier": "core",
+  "desc": "short double buzzer for a wrong answer or a mistake, clean and not boomy"
  }
 ]

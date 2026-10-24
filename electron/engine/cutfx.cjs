@@ -17,12 +17,12 @@ function apply(fx, cuts, broll, hasAudio = true) {
   if (!list.length) return fx;
   const out = fx || { sfx: [], flashes: [] };
   out.cutFlash = list.filter(t => !(out.flashes || []).some(f => Math.abs(f - t) < 0.15));
-  let click = null; try { click = SFX.list().find(x => x.name === 'camera_shutter') || SFX.list().find(x => (x.roles || []).includes('camera')); } catch {}
+  let click = null; try { click = SFX.list().find(x => x.name === 'camera_click') || SFX.list().find(x => (x.roles || []).includes('camera')); } catch {}
   if (click && hasAudio) {
     out.sfx = out.sfx || [];
     for (const t of list) {
       if (out.sfx.some(s => Math.abs((s.t0 ?? s.t) - t) < 0.12 && s.role === 'camera')) continue;
-      out.sfx.push({ file: click.path, t: Math.max(0, +(t - 0.015).toFixed(3)), db: +(-8 + (click.gainDb || 0)).toFixed(1), dur: Math.min(click.dur || 0.35, 0.35), role: 'camera', name: click.name, cut: true });
+      out.sfx.push({ file: click.path, t: Math.max(0, +(t - 0.015).toFixed(3)), db: +(-9 + (click.gainDb || 0)).toFixed(1), dur: Math.min(click.dur || 0.16, 0.2), role: 'camera', name: click.name, cut: true });
     }
   }
   return out;

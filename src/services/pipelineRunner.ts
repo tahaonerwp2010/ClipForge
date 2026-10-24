@@ -31,6 +31,7 @@ export interface PipelineExecutionConfig {
   quality?: number;
   split?: SplitConfig;
   resume?: boolean;
+  initialSteps?: PipelineStep[];   // what the screen already shows (keeps finished steps / percentages when resuming)
 }
 
 export interface PipelineCallbacks {
@@ -48,11 +49,23 @@ export interface PipelineCallbacks {
  */
 export class PipelineRunner {
   private static cancelRequested = false;
+  // One live run per project: leaving the progress screen (Back) must NOT start a second run, and coming back attaches to the same one.
+  private static runs = new Map<string, {
+    steps: PipelineStep[]; percent: number; eta: number | null | undefined; logs: SoftwareLogEvent[];
+    subs: Set<PipelineCallbacks>; off?: () => void; promise?: Promise<any>;
+  }>();
 
   public static cancel() {
     this.cancelRequested = true;
+    // stop listening to the run being paused right away, so a quick Resume can never mix the old and the new run
+    for (const r of this.runs.values()) { try { r.off && r.off(); } catch { /* ignore */ } r.off = undefined; r.subs.clear(); }
+    this.runs.clear();
     try { window.electronAPI?.cancelPipeline?.(); } catch { /* ignore */ }
   }
+  /** true while this project's pipeline is running in the background */
+  public static isRunning(projectId: string) { return this.runs.has(projectId); }
+  /** stop sending updates to a screen that was closed (the run itself keeps going) */
+  public static detach(cb: PipelineCallbacks) { for (const r of this.runs.values()) r.subs.delete(cb); }
 
   /**
    * REAL pipeline: runs in the Electron main process (ffprobe -> whisper.cpp -> analyzer -> ffmpeg render).
@@ -65,12 +78,34 @@ export class PipelineRunner {
     const api = window.electronAPI!;
     const { project, framing, captions, grading, branding, targetClipsCount = 4 } = config;
 
+    // The same project is already running (the screen was closed and opened again): just show it again.
+    const existing = this.runs.get(project.id);
+    if (existing && existing.promise) {
+      existing.subs.add(callbacks);
+      callbacks.onStepChange?.(Math.max(0, existing.steps.findIndex(x => x.status === 'running')), existing.steps.map(x => ({ ...x })));
+      callbacks.onProgressChange?.(existing.percent, existing.eta);
+      existing.logs.forEach(l => callbacks.onLog?.(l));
+      return existing.promise;
+    }
+
     const steps: PipelineStep[] = [
       'Reading video metadata', 'Extracting audio', 'Transcribing speech', 'Translating captions',
       'Converting to Roman script', 'Finding moments & titles', 'Cutting clips', 'Reframing to vertical', 'Rendering clips'
-    ].map((name, i) => ({ id: i + 1, name, duration: '', status: 'pending' as const, detail: '' }));
+    ].map((name, i) => {
+      const prev = config.initialSteps && config.initialSteps.length === 9 ? config.initialSteps[i] : null;
+      // a resumed run starts from what was already shown: finished steps stay finished, unfinished ones keep their percentage
+      if (config.resume && prev) return { ...prev, status: prev.status === 'completed' ? 'completed' as const : 'pending' as const };
+      return { id: i + 1, name, duration: '', status: 'pending' as const, detail: '' };
+    });
+    const run: { steps: PipelineStep[]; percent: number; eta: number | null | undefined; logs: SoftwareLogEvent[]; subs: Set<PipelineCallbacks>; off?: () => void; promise?: Promise<any> } =
+      { steps, percent: project.progressPercent ?? 0, eta: null, logs: [], subs: new Set([callbacks]) };
+    this.runs.set(project.id, run);
+    const each = (f: (c: PipelineCallbacks) => void) => run.subs.forEach(c => { try { f(c); } catch { /* a closed screen must never stop the run */ } });
+    // show what we already know straight away (no flash of 0%)
+    if (config.resume) each(c => c.onStepChange?.(Math.max(0, steps.findIndex(x => x.status === 'running')), steps.map(x => ({ ...x }))));
 
     const off = api.onPipelineEvent?.((ev: any) => {
+      if (this.runs.get(project.id) !== run) return;
       if (ev.type === 'step') {
         const s = steps[ev.index];
         s.status = ev.status;
@@ -78,26 +113,31 @@ export class PipelineRunner {
         if (ev.status === 'completed') s.percent = 100;
         if (ev.duration) s.duration = ev.duration;
         if (ev.detail) s.detail = ev.detail;
-        callbacks.onStepChange?.(ev.index, [...steps]);
+        each(c => c.onStepChange?.(ev.index, steps.map(x => ({ ...x }))));
       } else if (ev.type === 'stepProgress') {
-        steps[ev.index].percent = ev.percent;
-        callbacks.onStepChange?.(ev.index, [...steps]);
+        steps[ev.index].percent = Math.max(steps[ev.index].percent || 0, ev.percent);      // a step never goes backwards
+        each(c => c.onStepChange?.(ev.index, steps.map(x => ({ ...x }))));
       } else if (ev.type === 'progress') {
-        callbacks.onProgressChange?.(ev.percent, ev.etaSec);
+        run.percent = Math.max(run.percent, ev.percent); run.eta = ev.etaSec;
+        each(c => c.onProgressChange?.(run.percent, ev.etaSec));
       } else if (ev.type === 'log') {
-        callbacks.onLog?.({
+        const l: SoftwareLogEvent = {
           timestamp: new Date().toLocaleTimeString(),
           type: ev.kind === 'warn' ? 'warn' : ev.kind === 'success' ? 'success' : ev.kind === 'error' ? 'error' : 'info',
           source: ev.source,
           message: ev.message
-        });
+        };
+        run.logs = [...run.logs.slice(-120), l];
+        each(c => c.onLog?.(l));
       }
     });
+    run.off = off;
 
+    run.promise = (async () => {
     try {
       const result = await api.startPipeline!({
         id: project.id,
-        resume: !!config.resume,
+        resume: !!config.resume || ((project.progressPercent ?? 0) > 0 && project.status !== 'Finished' && (project.status === 'Processing' || project.status === 'Paused')),
         filePath: project.sourceFilePath,
         shorts: !!project.shortsFiles?.length,
         files: project.shortsFiles?.map(f => ({ path: f.path, name: f.name })),
@@ -149,16 +189,20 @@ export class PipelineRunner {
         outputDir: result.outDir,
         lastEdited: 'Just now'
       };
-      callbacks.onProgressChange?.(100);
-      callbacks.onComplete?.(updatedProject, clips);
+      each(c => c.onProgressChange?.(100));
+      each(c => c.onComplete?.(updatedProject, clips));
       return { project: updatedProject, clips };
     } catch (e: any) {
       const msg = String(e?.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
-      if (!/CANCELLED/.test(msg)) callbacks.onError?.(msg);
+      if (!/CANCELLED/.test(msg)) each(c => c.onError?.(msg));
       throw e;
     } finally {
       if (typeof off === 'function') off();
+      if (this.runs.get(project.id) === run) this.runs.delete(project.id);
     }
+    })();
+    run.promise.catch(() => { /* reported through the callbacks */ });
+    return run.promise;
   }
 
   public static async execute(
