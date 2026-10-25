@@ -50,7 +50,8 @@ async function ensureDeno(onStatus) {
 }
 function jsArgs() {
   if (global.__cfMobileSpawn) return [];
-  return jsRt ? ['--js-runtimes', 'deno:' + jsRt] : [];
+  const c = ['--cache-dir', path.join(P.userDataDir(), 'ytcache')];     // our own cache folder: it can be wiped if a killed download left it damaged
+  return jsRt ? ['--js-runtimes', 'deno:' + jsRt, ...c] : c;
 }
 const jsEnv = () => process.env;
 const isUrl = (u) => /^https?:\/\/[^\s]+\.[^\s]+/i.test(String(u || '').trim());
@@ -128,16 +129,35 @@ function probeSize(bin, url, fmt, extra = []) {
 const ROUTES = [
   { name: 'default', args: [] },
   { name: 'android_vr', args: ['--extractor-args', 'youtube:player_client=android_vr'] },
+  { name: 'web_safari', args: ['--extractor-args', 'youtube:player_client=web_safari'] },
   { name: 'tv', args: ['--extractor-args', 'youtube:player_client=tv'] },
+  { name: 'mweb', args: ['--extractor-args', 'youtube:player_client=mweb'] },
+  { name: 'web_embedded', args: ['--extractor-args', 'youtube:player_client=web_embedded'] },
   { name: 'ios', args: ['--extractor-args', 'youtube:player_client=ios'] },
 ];
 const SLOW_BPS = 40 * 1024;                        // below this for ~15 s = really throttled (a merely slow connection is left alone)
 const FAST_ARGS = ['-N', '4', '--http-chunk-size', '10M', '--retries', '15', '--fragment-retries', '15', '--retry-sleep', '2', '--socket-timeout', '60'];
 
+// A download that was interrupted (app closed, network lost) leaves partial files that yt-dlp cannot always continue. A new request starts clean.
+function hasPartials(dir, url) {
+  const m = String(url).match(/(?:v=|youtu\.be\/|shorts\/|live\/|embed\/)([\w-]{11})/);
+  try { return fs.readdirSync(dir).some(n => /\.part$|\.f\d+[\w-]*\.\w+(\.part)?$/i.test(n) && (!m || n.includes('[' + m[1] + ']'))); } catch { return false; }
+}
+function cleanPartials(dir, url, soft) {
+  const m = String(url).match(/(?:v=|youtu\.be\/|shorts\/|live\/|embed\/)([\w-]{11})/);
+  let names = []; try { names = fs.readdirSync(dir); } catch { return; }
+  for (const n of names) {
+    if (soft ? !/\.ytdl$/i.test(n) : !/(\.part|\.ytdl|\.temp)$|\.f\d+[\w-]*\.\w+(\.part)?$|\.part-Frag\d+$/i.test(n)) continue;
+    if (m && !n.includes('[' + m[1] + ']')) continue;
+    try { fs.rmSync(path.join(dir, n), { force: true }); } catch {}
+  }
+}
+
 async function download(url, dir, onProgress) {
   url = String(url || '').trim();
   if (!isUrl(url)) throw new Error('Please paste a valid video link.');
   fs.mkdirSync(dir, { recursive: true });
+  cleanPartials(dir, url, true);                                 // keep what was already downloaded (resume), drop only yt-dlp's state files
   cancelled = false;
   const bin = await ensureYtDlp((m, p) => { if (!cancelled) onProgress({ phase: 'prepare', percent: p, text: m }); });
   if (cancelled) throw new Error('Cancelled');
@@ -145,7 +165,7 @@ async function download(url, dir, onProgress) {
   if (cancelled) throw new Error('Cancelled');
   const ff = global.__cfMobileSpawn ? null : P.resolveBin('ffmpeg');
   const fmt = 'bv*[height<=1080]+ba/b[height<=1080]/b';
-  let lastErr = '';
+  let lastErr = '', wiped = false, hardCleaned = false;
   const NET = /Unable to download|getaddrinfo|Temporary failure|timed out|Network|Connection (reset|aborted)|Read timed out|IncompleteRead|HTTP Error 5\d\d|EOF occurred/i;
   // Routes 0..n-1 may be abandoned when throttled. The last pass (default route, patient) never gives up because of speed.
   const passes = [...ROUTES.map((rt, i) => ({ rt, canSwitch: i < ROUTES.length - 1 })), { rt: ROUTES[0], canSwitch: false, last: true }];
@@ -153,6 +173,7 @@ async function download(url, dir, onProgress) {
     const { rt, canSwitch, last } = passes[r];
     onProgress({ phase: 'prepare', percent: 0, text: r === 0 ? 'Reading video info…' : (last ? 'Continuing the download…' : 'Slow connection to YouTube — trying another route…') });
     if (cancelled) throw new Error('Cancelled');
+    if (r > 0) cleanPartials(dir, url, true);                    // other route: keep the downloaded bytes, only the state files go
     const grand = await probeSize(bin, url, fmt, rt.args);
     if (cancelled) throw new Error('Cancelled');
     let res;
@@ -164,10 +185,31 @@ async function download(url, dir, onProgress) {
     }
     if (res.ok) return res.value;
     if (res.cancelled || cancelled) throw new Error('Cancelled');
+    if (!hardCleaned && !res.slow && hasPartials(dir, url)) {                // resuming failed: throw the old partial files away once and start this route clean
+      hardCleaned = true; cleanPartials(dir, url, false); onProgress({ phase: 'prepare', percent: 0, text: 'Could not continue the old download — starting it fresh…' });
+      r--; continue;
+    }
+    if (!wiped && /Requested format is not available|Only images are available|challenge|JavaScript/i.test(res.error || '')) {   // damaged cache after an interrupted run? wipe it and try this route once more
+      wiped = true; try { fs.rmSync(path.join(P.userDataDir(), 'ytcache'), { recursive: true, force: true }); } catch {}
+      r--; continue;
+    }
     lastErr = res.slow ? lastErr : (res.error || lastErr);
     if (!res.slow && /Private video|Sign in|unavailable|Unsupported URL/i.test(res.error || '') && r === 0) break;
   }
+  await diagnose(bin, url);
   throw new Error(friendly(lastErr));
+}
+
+// Writes what YouTube really offered (and our tool versions) to ytdlp-log.txt, so a failure can be understood.
+function diagnose(bin, url) {
+  return new Promise((resolve) => {
+    let out = '';
+    const p = spawn(bin, ['--no-playlist', '-v', ...jsArgs(), '-F', url], { windowsHide: true }); procs.add(p);
+    const t = setTimeout(() => { killTree(p); }, 45000);
+    p.stdout.on('data', (d) => { out += d; }); p.stderr.on('data', (d) => { out += d; });
+    const fin = () => { clearTimeout(t); procs.delete(p); try { fs.appendFileSync(path.join(P.userDataDir(), 'ytdlp-log.txt'), `\n==== DIAGNOSIS ${new Date().toISOString()}\n${out.slice(-6000)}\n`); } catch {} resolve(); };
+    p.on('error', fin); p.on('close', fin);
+  });
 }
 
 function attempt(bin, url, dir, fmt, ff, route, grand, onProgress, canSwitch) {
