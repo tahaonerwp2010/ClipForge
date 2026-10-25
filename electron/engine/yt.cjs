@@ -110,21 +110,21 @@ const num = (x) => { const n = Number(x); return isFinite(n) && x !== '' && x !=
 // Ask yt-dlp for the size of the chosen formats first, so the bar can show a real total (video + audio).
 function probeSize(bin, url, fmt, extra = []) {
   return new Promise((resolve) => {
-    let out = '', done = false;
+    let out = '', err = '', done = false;
     const p = spawn(bin, ['--no-playlist', ...jsArgs(), ...extra, '-f', fmt, '--print', 'CFSZ|%(requested_formats.0.filesize,requested_formats.0.filesize_approx)s|%(requested_formats.1.filesize,requested_formats.1.filesize_approx)s|%(filesize,filesize_approx)s', url], { windowsHide: true, env: jsEnv() }); procs.add(p);
     const fin = (v) => { if (!done) { done = true; clearTimeout(t); procs.delete(p); killTree(p); resolve(v); } };
-    const t = setTimeout(() => fin(0), 30000);
+    const t = setTimeout(() => fin({ ok: false, size: 0, err: 'timed out' }), 40000);
     p.stdout.on('data', (d) => { out += d; });
-    p.on('error', () => fin(0));
+    p.stderr.on('data', (d) => { err += d; });
+    p.on('error', (e) => fin({ ok: false, size: 0, err: e.message }));
     p.on('close', () => {
       const m = out.match(/CFSZ\|([^|\n]*)\|([^|\n]*)\|([^|\n\r]*)/);
-      if (!m) return fin(0);
+      if (!m) return fin({ ok: false, size: 0, err });
       const a = num(m[1].trim()), b = num(m[2].trim()), c = num(m[3].trim());
-      fin(a != null && b != null ? a + b : (c || a || 0));
+      fin({ ok: true, size: a != null && b != null ? a + b : (c || a || 0), err: '' });
     });
   });
 }
-
 // Different "routes" to YouTube. The first is yt-dlp's default; if a route is throttled (a few KB/s) we switch to the next one and resume.
 const ROUTES = [
   { name: 'default', args: [] },
@@ -159,42 +159,55 @@ async function download(url, dir, onProgress) {
   fs.mkdirSync(dir, { recursive: true });
   cleanPartials(dir, url, true);                                 // keep what was already downloaded (resume), drop only yt-dlp's state files
   cancelled = false;
-  const bin = await ensureYtDlp((m, p) => { if (!cancelled) onProgress({ phase: 'prepare', percent: p, text: m }); });
+  const prep = (m, p) => { if (!cancelled) onProgress({ phase: 'prepare', percent: p, text: m }); };
+  const bin = await ensureYtDlp(prep);
   if (cancelled) throw new Error('Cancelled');
-  await ensureDeno((m, p) => { if (!cancelled) onProgress({ phase: 'prepare', percent: p, text: m }); });
+  await ensureDeno(prep);
   if (cancelled) throw new Error('Cancelled');
   const ff = global.__cfMobileSpawn ? null : P.resolveBin('ffmpeg');
   const fmt = 'bv*[height<=1080]+ba/b[height<=1080]/b';
+  const NET = /Unable to download|getaddrinfo|Temporary failure|timed out|Network|Connection (reset|aborted)|Read timed out|IncompleteRead|HTTP Error 5\d\d|EOF occurred|HTTP Error 4(03|16|29)|Remote end closed|SSL|Errno|urlopen/i;
   let lastErr = '', wiped = false, hardCleaned = false;
-  const NET = /Unable to download|getaddrinfo|Temporary failure|timed out|Network|Connection (reset|aborted)|Read timed out|IncompleteRead|HTTP Error 5\d\d|EOF occurred/i;
-  // Routes 0..n-1 may be abandoned when throttled. The last pass (default route, patient) never gives up because of speed.
-  const passes = [...ROUTES.map((rt, i) => ({ rt, canSwitch: i < ROUTES.length - 1 })), { rt: ROUTES[0], canSwitch: false, last: true }];
-  for (let r = 0; r < passes.length; r++) {
-    const { rt, canSwitch, last } = passes[r];
-    onProgress({ phase: 'prepare', percent: 0, text: r === 0 ? 'Reading video info…' : (last ? 'Continuing the download…' : 'Slow connection to YouTube — trying another route…') });
-    if (cancelled) throw new Error('Cancelled');
-    if (r > 0) cleanPartials(dir, url, true);                    // other route: keep the downloaded bytes, only the state files go
-    const grand = await probeSize(bin, url, fmt, rt.args);
-    if (cancelled) throw new Error('Cancelled');
-    let res;
-    for (let t = 0; t < 3; t++) {                               // brief network hiccups: retry the same route (the partial file is resumed)
-      res = await attempt(bin, url, dir, fmt, ff, rt, grand, onProgress, canSwitch);
-      if (res.ok || res.cancelled || cancelled || res.slow || !NET.test(res.error || '')) break;
-      onProgress({ phase: 'prepare', percent: 0, text: 'Connection dropped — reconnecting…' });
-      await new Promise(ok => setTimeout(ok, 2500));
+  const tried = new Set();
+  // ONE route is chosen before the download starts (the first one YouTube really serves streams on) and the whole download stays on it:
+  // no switching because of speed, and a dropped connection simply continues on the same route until the video is complete.
+  const chooseRoute = async () => {
+    for (const rt of ROUTES) {
+      if (tried.has(rt.name)) continue;
+      if (cancelled) throw new Error('Cancelled');
+      onProgress({ phase: 'prepare', percent: 0, text: 'Reading video info…' });
+      const pr = await probeSize(bin, url, fmt, rt.args);
+      if (cancelled) throw new Error('Cancelled');
+      if (pr.ok) { tried.add(rt.name); return { rt, grand: pr.size }; }
+      lastErr = pr.err || lastErr;
+      if (rt === ROUTES[0] && /Private video|Sign in|ERROR:[^\n]*(Video unavailable|Unsupported URL)/i.test(pr.err || '')) return null;   // no other route can fix that
     }
+    return null;
+  };
+  let choice = await chooseRoute(), netTries = 0, failsInRow = 0;
+  while (choice) {
+    const res = await attempt(bin, url, dir, fmt, ff, choice.rt, choice.grand, onProgress, false);
     if (res.ok) return res.value;
     if (res.cancelled || cancelled) throw new Error('Cancelled');
-    if (!hardCleaned && !res.slow && hasPartials(dir, url)) {                // resuming failed: throw the old partial files away once and start this route clean
+    lastErr = res.error || lastErr;
+    if (NET.test(res.error || '') && netTries < 60) {              // connection problem: wait a moment and continue on the SAME route
+      netTries++; failsInRow++;
+      onProgress({ phase: 'prepare', percent: 0, text: 'Connection dropped — reconnecting…' });
+      if (failsInRow >= 4 && !hardCleaned && hasPartials(dir, url)) { hardCleaned = true; cleanPartials(dir, url, false); }   // resume keeps failing: start the file over once
+      await new Promise(ok => setTimeout(ok, Math.min(2500 + netTries * 1000, 12000)));
+      continue;
+    }
+    failsInRow = 0;
+    if (!hardCleaned && hasPartials(dir, url)) {                    // resuming failed: throw the old partial files away once and try again
       hardCleaned = true; cleanPartials(dir, url, false); onProgress({ phase: 'prepare', percent: 0, text: 'Could not continue the old download — starting it fresh…' });
-      r--; continue;
+      continue;
     }
-    if (!wiped && /Requested format is not available|Only images are available|challenge|JavaScript/i.test(res.error || '')) {   // damaged cache after an interrupted run? wipe it and try this route once more
+    if (!wiped && /Requested format is not available|Only images are available|challenge|JavaScript/i.test(res.error || '')) {
       wiped = true; try { fs.rmSync(path.join(P.userDataDir(), 'ytcache'), { recursive: true, force: true }); } catch {}
-      r--; continue;
+      continue;
     }
-    lastErr = res.slow ? lastErr : (res.error || lastErr);
-    if (!res.slow && /Private video|Sign in|unavailable|Unsupported URL/i.test(res.error || '') && r === 0) break;
+    cleanPartials(dir, url, false);                                 // this route cannot deliver this video: pick the next working one, from scratch
+    choice = await chooseRoute();
   }
   await diagnose(bin, url);
   throw new Error(friendly(lastErr));
