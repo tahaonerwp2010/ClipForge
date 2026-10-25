@@ -24,7 +24,8 @@ async function ensureDeno(onStatus) {
   if (jsRt && fs.existsSync(jsRt)) return jsRt;
   const win = process.platform === 'win32';
   const dest = path.join(P.userDataDir(), 'bin', win ? 'deno.exe' : 'deno');
-  if (fs.existsSync(dest)) return (jsRt = dest);
+  const works = (b) => { try { return /deno\s+\d/.test(require('child_process').execFileSync(b, ['--version'], { timeout: 15000, windowsHide: true }).toString()); } catch { return false; } };
+  if (fs.existsSync(dest)) { if (works(dest)) return (jsRt = dest); try { fs.unlinkSync(dest); } catch {} }
   const sys = P.resolveBin('deno'); if (sys) return (jsRt = sys);
   const arm = process.arch === 'arm64';
   const triple = win ? 'x86_64-pc-windows-msvc' : process.platform === 'darwin' ? (arm ? 'aarch64-apple-darwin' : 'x86_64-apple-darwin') : (arm ? 'aarch64-unknown-linux-gnu' : 'x86_64-unknown-linux-gnu');
@@ -43,13 +44,13 @@ async function ensureDeno(onStatus) {
     }));
     try { fs.chmodSync(dest, 0o755); } catch {}
     try { fs.unlinkSync(zip); } catch {}
-    if (fs.existsSync(dest)) return (jsRt = dest);
+    if (fs.existsSync(dest) && works(dest)) return (jsRt = dest);
   } catch { try { fs.unlinkSync(zip); } catch {} }
   return null;
 }
 function jsArgs() {
   if (global.__cfMobileSpawn) return [];
-  return jsRt ? ['--js-runtimes', 'deno:' + jsRt, '--remote-components', 'ejs:github'] : ['--remote-components', 'ejs:github'];
+  return jsRt ? ['--js-runtimes', 'deno:' + jsRt] : [];
 }
 const jsEnv = () => process.env;
 const isUrl = (u) => /^https?:\/\/[^\s]+\.[^\s]+/i.test(String(u || '').trim());
@@ -93,10 +94,11 @@ function cancel() { cancelled = true; for (const p of procs) killTree(p); procs.
 function friendly(err) {
   const t = String(err || '');
   if (/Private video|Sign in|members-only/i.test(t)) return 'This video is private or needs a sign-in.';
-  if (/Video unavailable|not available|removed/i.test(t)) return 'This video is unavailable.';
+  if (/Requested format is not available|Only images are available|n challenge|challenge solving|JavaScript runtime|js.?runtime/i.test(t)) return 'YouTube did not give a downloadable stream (the downloader helper may be missing). ' + (jsRt ? '' : 'The helper could not be installed — check your internet and try again. ') + 'Details saved in ytdlp-log.txt in the app data folder.';
+  if (/ERROR:[^\n]*(Video unavailable|has been removed|no longer available|not made this video available)/i.test(t)) return 'This video is unavailable.';
   if (/Unsupported URL/i.test(t)) return 'This link is not supported. Paste a YouTube video link.';
   if (/Unable to download|getaddrinfo|Temporary failure|timed out|Network/i.test(t)) return 'Network problem. Check your internet and try again.';
-  if (/JavaScript runtime|js.?runtime|EJS|challenge solving/i.test(t)) return 'The downloader helper could not be prepared. Check your internet connection and try again. (' + (t.trim().split('\n').pop() || '').slice(0, 140) + ')';
+  if (/ZZZZ/.test(t)) return 'The downloader helper could not be prepared. Check your internet connection and try again. (' + (t.trim().split('\n').pop() || '').slice(0, 140) + ')';
   return 'Download failed. ' + (t.trim().split('\n').pop() || '').slice(0, 160);
 }
 
@@ -127,7 +129,7 @@ const ROUTES = [
   { name: 'tv', args: ['--extractor-args', 'youtube:player_client=tv'] },
   { name: 'ios', args: ['--extractor-args', 'youtube:player_client=ios'] },
 ];
-const SLOW_BPS = 80 * 1024;                        // below this for ~15 s = really throttled (a merely slow connection is left alone)
+const SLOW_BPS = 40 * 1024;                        // below this for ~15 s = really throttled (a merely slow connection is left alone)
 const FAST_ARGS = ['-N', '4', '--http-chunk-size', '10M', '--retries', '15', '--fragment-retries', '15', '--retry-sleep', '2', '--socket-timeout', '60'];
 
 async function download(url, dir, onProgress) {
@@ -190,7 +192,7 @@ function attempt(bin, url, dir, fmt, ff, route, grand, onProgress, canSwitch) {
         if (!tStart) tStart = now;
         if (speed != null) ema = ema ? ema * 0.7 + speed * 0.3 : speed;
         // throttled? (slow for 9 s in a row while a lot is still left) -> switch route and resume
-        if (canSwitch && ema && ema < SLOW_BPS && total - overall > 8 * 1024 * 1024 && now - tStart > 4000) { if (!slowSince) slowSince = now; if (now - slowSince > 15000) { slowFlag = true; killTree(p); return; } }
+        if (canSwitch && ema && ema < SLOW_BPS && total - overall > 8 * 1024 * 1024 && now - tStart > 4000) { if (!slowSince) slowSince = now; if (now - slowSince > 30000) { slowFlag = true; killTree(p); return; } }
         else slowSince = 0;
         if (now - lastEmit < 120 && status !== 'finished') return;
         lastEmit = now;
@@ -202,9 +204,10 @@ function attempt(bin, url, dir, fmt, ff, route, grand, onProgress, canSwitch) {
     };
     p.stdout.on('data', (d) => { buf += d; let i; while ((i = buf.indexOf('\n')) >= 0) { line(buf.slice(0, i).replace(/\r$/, '')); buf = buf.slice(i + 1); } });
     p.stderr.on('data', (d) => { errBuf += d; });
+    const logIt = () => { try { fs.appendFileSync(path.join(P.userDataDir(), 'ytdlp-log.txt'), `\n==== ${new Date().toISOString()} route=${route.name} deno=${jsRt || 'none'}\n${errBuf.slice(-4000)}\n`); } catch {} };
     p.on('error', (e) => { cur = null; procs.delete(p); resolve({ ok: false, error: e.message }); });
     p.on('close', (code) => {
-      procs.delete(p); const wasCancelled = cancelled; if (cur === p) cur = null;
+      if (errBuf) logIt(); procs.delete(p); const wasCancelled = cancelled; if (cur === p) cur = null;
       if (wasCancelled) return resolve({ ok: false, cancelled: true });
       if (slowFlag) return resolve({ ok: false, slow: true, error: 'slow' });
       if (code === 0 && file && fs.existsSync(file)) return resolve({ ok: true, value: { path: file, title } });
