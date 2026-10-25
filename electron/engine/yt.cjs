@@ -74,8 +74,10 @@ function fetchTo(url, dest, onPct, hops = 0) {
 async function ensureYtDlp(onStatus) {
   if (global.__cfMobileSpawn) { onStatus && onStatus('Preparing downloader…', 0); await global.__cfMobileInitYt(); return '__mobile_ytdlp__'; }
   const have = P.resolveBin('yt-dlp');
-  const fresh = have && (Date.now() - fs.statSync(have).mtimeMs < 3 * 86400e3 || have.indexOf(path.join(P.userDataDir(), 'bin')) !== 0);   // bundled copies are left alone; downloaded ones are refreshed every 3 days
-  if (fresh) return have;
+  const userCopy = path.join(P.userDataDir(), 'bin', process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
+  // Always use our own freshly downloaded copy (refreshed every 12 h). A copy that shipped inside the installer is only a fallback because YouTube breaks old versions within weeks.
+  const fresh = fs.existsSync(userCopy) && (Date.now() - fs.statSync(userCopy).mtimeMs < 12 * 3600e3);
+  if (fresh) return userCopy;
   const win = process.platform === 'win32';
   const name = win ? 'yt-dlp.exe' : (process.platform === 'darwin' ? 'yt-dlp_macos' : 'yt-dlp');
   const binDir = path.join(P.userDataDir(), 'bin'); fs.mkdirSync(binDir, { recursive: true });
@@ -83,7 +85,7 @@ async function ensureYtDlp(onStatus) {
   const url = process.env.CF_YTDLP_URL || `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${name}`;
   onStatus && onStatus('Preparing downloader (one-time, ~15 MB)…', 0);
   try { await fetchTo(url, dest + '.part', (p) => onStatus && onStatus('Preparing downloader (one-time, ~15 MB)…', p)); }
-  catch (e) { try { fs.unlinkSync(dest + '.part'); } catch {} if (have) return have; throw new Error('Could not fetch the downloader. Check your internet connection. (' + e.message + ')'); }
+  catch (e) { try { fs.unlinkSync(dest + '.part'); } catch {} if (fs.existsSync(userCopy)) return userCopy; if (have) return have; throw new Error('Could not fetch the downloader. Check your internet connection. (' + e.message + ')'); }
   fs.renameSync(dest + '.part', dest);
   try { fs.chmodSync(dest, 0o755); } catch {}
   return dest;
@@ -94,7 +96,7 @@ function cancel() { cancelled = true; for (const p of procs) killTree(p); procs.
 function friendly(err) {
   const t = String(err || '');
   if (/Private video|Sign in|members-only/i.test(t)) return 'This video is private or needs a sign-in.';
-  if (/Requested format is not available|Only images are available|n challenge|challenge solving|JavaScript runtime|js.?runtime/i.test(t)) return 'YouTube did not give a downloadable stream (the downloader helper may be missing). ' + (jsRt ? '' : 'The helper could not be installed — check your internet and try again. ') + 'Details saved in ytdlp-log.txt in the app data folder.';
+  if (/Requested format is not available|Only images are available|n challenge|challenge solving|JavaScript runtime|js.?runtime/i.test(t)) return 'YouTube did not give a downloadable stream (the downloader helper may be missing). ' + (jsRt ? '' : 'The helper could not be installed — check your internet and try again. ') + '[' + ((t.match(/ERROR:[^\n]*/g) || []).pop() || '').replace(/^ERROR:\s*(\[youtube\]\s*)?/, '').slice(0, 170) + '] Log: ytdlp-log.txt in the app data folder.';
   if (/ERROR:[^\n]*(Video unavailable|has been removed|no longer available|not made this video available)/i.test(t)) return 'This video is unavailable.';
   if (/Unsupported URL/i.test(t)) return 'This link is not supported. Paste a YouTube video link.';
   if (/Unable to download|getaddrinfo|Temporary failure|timed out|Network/i.test(t)) return 'Network problem. Check your internet and try again.';
