@@ -138,7 +138,7 @@ function cutFit(words, wavPath, clips) {
     const pe = prev ? prev.end : Math.max(0, first.start - 0.6), nw = next ? next.start : last.end + 0.6;
     // start: the quiet moment closest before the first word (never later than 40 ms before the word)
     let start;
-    const hiS = first.start - 0.04, loS = Math.max(pe + 0.01, first.start - 0.35);
+    const hiS = first.start - 0.10, loS = Math.max(pe + 0.01, first.start - 0.35);
     if (hiS > loS) {
       start = hasContrast ? null : hiS;
       if (start == null) { let best = -1; for (let i = at(hiS); i >= at(loS); i--) if (env[i] <= quiet) { best = i; break; } start = best >= 0 ? best / 100 : Math.max(loS, hiS - 0.02); }

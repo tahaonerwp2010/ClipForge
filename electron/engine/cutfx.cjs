@@ -12,8 +12,20 @@ async function find(R, input, start, dur) {
   return out.slice(0, 40);
 }
 // merge the cuts into the effects plan (creates a plan when Auto Effects is off)
-function apply(fx, cuts, broll, hasAudio = true) {
-  const list = (cuts || []).filter(t => !(broll || []).some(b => t >= b.t - 0.05 && t <= b.t + b.dur));
+// Not every camera change gets an effect: it would feel mechanical. A few are picked at random (the same ones every time for the same clip), at least 3.5 s apart,
+// about one per 10 s of video.
+function pick(list, dur) {
+  if (list.length <= 1) return list;
+  let seed = Math.floor((list[0] + list[list.length - 1] + list.length) * 1000) % 2147483647 || 7;
+  const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
+  const maxN = Math.max(1, Math.round((dur || list[list.length - 1] + 5) / 10));
+  const order = list.map((t, i) => ({ t, k: rnd() })).sort((a, b) => a.k - b.k).map(x => x.t);
+  const out = [];
+  for (const t of order) { if (out.length >= maxN) break; if (out.every(o => Math.abs(o - t) >= 3.5)) out.push(t); }
+  return out.sort((a, b) => a - b);
+}
+function apply(fx, cuts, broll, hasAudio = true, dur = 0) {
+  const list = pick((cuts || []).filter(t => !(broll || []).some(b => t >= b.t - 0.05 && t <= b.t + b.dur)), dur);
   if (!list.length) return fx;
   const out = fx || { sfx: [], flashes: [] };
   out.cutFlash = list.filter(t => !(out.flashes || []).some(f => Math.abs(f - t) < 0.15));
@@ -22,7 +34,7 @@ function apply(fx, cuts, broll, hasAudio = true) {
     out.sfx = out.sfx || [];
     for (const t of list) {
       if (out.sfx.some(s => Math.abs((s.t0 ?? s.t) - t) < 0.12 && s.role === 'camera')) continue;
-      out.sfx.push({ file: click.path, t: Math.max(0, +(t - 0.015).toFixed(3)), db: +(-9 + (click.gainDb || 0)).toFixed(1), dur: Math.min(click.dur || 0.16, 0.2), role: 'camera', name: click.name, cut: true });
+      out.sfx.push({ file: click.path, t: Math.max(0, +(t - 0.015).toFixed(3)), db: +(-3 + (click.gainDb || 0)).toFixed(1), dur: Math.min(click.dur || 0.35, 0.35), role: 'camera', name: click.name, cut: true });
     }
   }
   return out;

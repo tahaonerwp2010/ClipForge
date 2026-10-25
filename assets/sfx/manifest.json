@@ -642,11 +642,11 @@
   "roles": [
    "camera"
   ],
-  "dur": 0.16,
-  "gainDb": -0.0,
-  "natural": 0.16,
+  "dur": 0.35,
+  "gainDb": 0.0,
+  "natural": 0.35,
   "tier": "core",
-  "desc": "light, crisp camera click (two quick shutter ticks), for camera changes and photo flashes"
+  "desc": "light camera shutter click (user-supplied), for camera changes and photo flashes"
  },
  {
   "file": "wrong_buzz.wav",

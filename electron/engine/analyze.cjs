@@ -83,7 +83,7 @@ async function gemini(words, count, clipLen, g, log = () => {}, userPrompt = '')
     const ch = chunks[ci];
     const where = chunks.length > 1 ? `This is part ${ci + 1} of ${chunks.length} of a longer video (${Math.round(ch[0].start / 60)}–${Math.round(ch[ch.length - 1].end / 60)} min). ` : '';
     const prompt = `You are a viral short-form video editor. ${where}Transcript with timestamps below.${req}
-Pick the ${per} most engaging, self-contained moments. ${clipLen ? `Aim for about ${clipLen} seconds each, but a moment may be anywhere from ${Math.round(clipLen * 0.6)} to ${Math.round(clipLen * 1.5)} seconds when that is what it needs to be complete: finishing the thought properly matters more than hitting ${clipLen} seconds exactly.` : 'There is NO fixed length: every moment is exactly as long as it needs to be to make complete sense on its own (usually 15 to 90 seconds). Never cut a thought in half and never pad with filler.'} Each moment must make sense without the rest of the video: it starts at the beginning of a sentence or thought (never in the middle of one, never on a leftover word of the previous sentence) and ends right when the thought is finished, on the last word of a sentence. No overlaps.
+Pick the ${per} most engaging, self-contained moments. ${clipLen ? `Aim for about ${clipLen} seconds each, but a moment may be anywhere from ${Math.round(clipLen * 0.6)} to ${Math.round(clipLen * 1.5)} seconds when that is what it needs to be complete: finishing the thought properly matters more than hitting ${clipLen} seconds exactly.` : 'There is NO fixed length: every moment is exactly as long as it needs to be to make complete sense on its own (usually 15 to 90 seconds). Never cut a thought in half and never pad with filler.'} Each moment must make sense without the rest of the video: it starts at the beginning of a sentence or thought (never in the middle of one, never on a leftover word of the previous sentence) and ends right when the thought is finished, on the last word of a sentence. Never end on a question that is not answered inside the moment (if a question starts the moment, include its answer; if the speaker answers a question, start at that question). Never start with an answer fragment ("and", "but", "so", "because"...). No overlaps.
 Score honestly and strictly on the same scale for every part of the video: 90+ only for exceptional moments, most moments are 55-80.
 Return ONLY a JSON array of objects: {${userPrompt ? '"fit":0-10,' : ''}"start":number,"end":number,"title":"punchy hook title max 8 words","hookText":"first-3-seconds hook line","viralityScore":1-99,"reason":"short","category":"High Energy|Deep Insight|Storytelling|Shocking Truth"}
 
@@ -141,19 +141,41 @@ Return ONLY JSON: {"hasVisualCondition":boolean,"subject":string,"candidates":[{
 let LIM = { min: 5, max: 150 };                                  // allowed clip length (set per run in findClips)
 // A clip always starts on the first word of a sentence and ends on the last word of a sentence. The start / end pair nearest to what the AI asked for is chosen
 // (within the allowed length); if no clean pair exists the clip is dropped, a clip that ends in the middle of a sentence is never returned.
+const TERM = /[.!?…]["'”’)\]]*$/;
+const CONJ = /^(and|but|so|because|which|that|or|also|then|though|although|if|when|while|than|as|nor|yet|cause|cuz)$/i;
+const bare = w => String(w.word || '').toLowerCase().replace(/[^a-z']/g, '');
+// How bad is it to START a clip at word k / END it at word k (in "seconds-equivalents" added to the distance score).
+function startPenalty(words, k) {
+  let pen = 0; const w = words[k], pv = words[k - 1];
+  if (pv && PUNCTED && !TERM.test(String(pv.word || '').trim())) pen += 16;          // boundary found only by a pause: probably the middle of a sentence
+  if (CONJ.test(bare(w))) pen += 14;                                                   // "and / but / so ..." = continues something said before
+  if (PUNCTED && /^[a-z]/.test(String(w.word || '').trim()) && pv && !TERM.test(String(pv.word || '').trim())) pen += 6;
+  if (pv && TERM.test(String(pv.word || '').trim()) && /\?["'”’)\]]*$/.test(String(pv.word || '').trim()) && w.start - pv.end < 2) pen += 18;   // answer without its question
+  let m = 0; for (let j = k; j < words.length; j++) { m++; if (isEnd(words[j], words[j + 1])) break; }
+  if (m <= 2) pen += 8;                                                                // tiny fragment
+  return pen;
+}
+function endPenalty(words, k) {
+  let pen = 0; const w = words[k], nx = words[k + 1], t = String(w.word || '').trim();
+  if (PUNCTED && !TERM.test(t) && nx) pen += 16;                                       // ended by a pause only
+  if (/\?["'”’)\]]*$/.test(t)) pen += 30;                                              // never leave the viewer on an unanswered question
+  if (nx && CONJ.test(bare(nx)) && nx.start - w.end < 0.5) pen += 6;                   // the thought continues right after the cut
+  return pen;
+}
 function snapSentences(c, words) {
   const N = words.length, d0 = c.end - c.start;
   const starts = [], ends = [];
   for (let k = 0; k < N; k++) {
-    if ((k === 0 || isEnd(words[k - 1], words[k])) && Math.abs(words[k].start - c.start) <= 10) starts.push(k);
-    if (isEnd(words[k], words[k + 1]) && Math.abs(words[k].end - c.end) <= 12) ends.push(k);
+    if ((k === 0 || isEnd(words[k - 1], words[k])) && words[k].start - c.start <= 10 && c.start - words[k].start <= 18) starts.push(k);
+    if (isEnd(words[k], words[k + 1]) && words[k].end - c.end <= 26 && c.end - words[k].end <= 12) ends.push(k);
   }
+  const sp = new Map(starts.map(k => [k, startPenalty(words, k)])), ep = new Map(ends.map(k => [k, endPenalty(words, k)]));
   let best = null;
   for (const a of starts) for (const b of ends) {
     if (b <= a) continue;
     const d = words[b].end - words[a].start;
     if (d < LIM.min || d > LIM.max) continue;
-    const sc = Math.abs(words[a].start - c.start) + Math.abs(words[b].end - c.end) + Math.abs(d - d0) * 0.5;
+    const sc = Math.abs(words[a].start - c.start) + Math.abs(words[b].end - c.end) + Math.abs(d - d0) * 0.5 + sp.get(a) + ep.get(b);
     if (!best || sc < best.sc) best = { sc, a, b };
   }
   return best ? { ...c, start: words[best.a].start, end: words[best.b].end } : null;
@@ -378,4 +400,4 @@ async function findClips(words, { hookLines = 2, count = 4, clipLen = 30, gemini
   const te = await writeTitles(local, words, g, log, hookLines);
   return { clips: local, engine: 'offline', titleEngine: te };
 }
-module.exports = { findClips, offline, writeTitles };
+module.exports = { findClips, offline, writeTitles, __t: { snapSentences, setBoundaryMode, setLim: (l) => { LIM = l; } } };

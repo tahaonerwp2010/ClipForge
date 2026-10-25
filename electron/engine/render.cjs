@@ -241,7 +241,7 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
   if (ng) chain.push(`negate=enable='${ng}'`);
   if (dp) chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=black@0.8:t=fill:enable='${dp}'`);
   if (st) chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=white@0.55:t=fill:enable='${st}'`);
-  { const cf = (mo.cutFlash || []).map(t => `between(t,${t},${(t + 0.05).toFixed(2)})`).join('+'); if (cf) chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=white@0.2:t=fill:enable='${cf}'`); }   // very short, very light flash on every camera cut
+  { const cf = (mo.cutFlash || []).map(t => `between(t,${t},${(t + 0.034).toFixed(3)})`).join('+'); if (cf) chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=white@0.2:t=fill:enable='${cf}'`); }   // very short, very light flash on every camera cut
   { const T = mo.tint || []; T.forEach(x => { const d = x.d || 0.2, a = [0.38, 0.24, 0.12], c = '0x' + (x.c || 'ffffff');   // coloured flash that fades out over `d` seconds
       a.forEach((al, k) => chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=${c}@${al}:t=fill:enable='between(t,${(x.t + k * d / 3).toFixed(3)},${(x.t + (k + 1) * d / 3).toFixed(3)})'`)); }); }
   if (flashEn) chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=white@0.5:t=fill:enable='${flashEn}'`);

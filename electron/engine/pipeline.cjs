@@ -91,7 +91,7 @@ async function cutFx(fx, R2, input, s, dur, broll, hasAudio, outDir, idx, log) {
     const cuts = await CF.find(R2, input, s, dur);
     try { const d = path.join(outDir, '.edit'); fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, `cuts_${String(idx + 1).padStart(2, '0')}.json`), JSON.stringify(cuts)); } catch {}
     if (cuts.length) log('FFmpeg', `${cuts.length} camera change${cuts.length === 1 ? '' : 's'}: click sound + light flash added`, 'info');
-    return CF.apply(fx, cuts, broll, hasAudio);
+    return CF.apply(fx, cuts, broll, hasAudio, dur);
   } catch (err) { if (String(err.message) === 'CANCELLED') throw err; return fx; }
 }
 async function planBroll(job, words, s, e, seed, log, work, outDir, idx) {
