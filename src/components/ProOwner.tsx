@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Copy, Check, ArrowLeft, ArrowRight, Crown, ShieldCheck, Loader2, Lock } from 'lucide-react';
+import { X, Copy, Check, ArrowLeft, ArrowRight, Crown, ShieldCheck, Loader2, Lock, Smartphone, ExternalLink } from 'lucide-react';
+import solLogo from '../assets/pay/sol.png';
 import { PAY_METHODS, PRO_PLAN_NAME, PRO_PRICE_USD, PRO_PERIOD, PRO_DETAILS, CONTACTS } from '../config/proConfig';
 import { LicenseService, useLicense } from '../services/licenseService';
 
@@ -14,6 +15,15 @@ const Btn: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { primary?: 
 const CopyBtn: React.FC<{ text: string }> = ({ text }) => {
   const [ok, setOk] = useState(false);
   return <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(text); setOk(true); setTimeout(() => setOk(false), 1500); } catch {} }} className="text-neutral-400 hover:text-white cursor-pointer shrink-0" title="Copy">{ok ? <Check className="w-3.5 h-3.5 text-[#bef264]" /> : <Copy className="w-3.5 h-3.5" />}</button>;
+};
+
+// Easypaisa logo: drop the official logo file into src/assets/pay/ as easypaisa.png (or .svg / .webp / .jpg); until then a neutral wallet icon is shown.
+const epLogos = import.meta.glob('../assets/pay/easypaisa.{png,svg,webp,jpg,jpeg}', { eager: true, import: 'default' }) as Record<string, string>;
+const easypaisaLogo: string | undefined = Object.values(epLogos)[0];
+const PayLogo: React.FC<{ kind: 'easypaisa' | 'crypto'; size?: number }> = ({ kind, size = 28 }) => {
+  if (kind === 'crypto') return <img src={solLogo} alt="SOL" width={size} height={size} className="rounded-full shrink-0" style={{ width: size, height: size }} />;
+  if (easypaisaLogo) return <img src={easypaisaLogo} alt="Easypaisa" className="rounded-md object-contain shrink-0 bg-white" style={{ width: size, height: size }} />;
+  return <span className="rounded-md bg-[#1f9d55] text-white flex items-center justify-center shrink-0" style={{ width: size, height: size }}><Smartphone className="w-4 h-4" /></span>;
 };
 
 // ---------------- Buy Pro: plan (price + what you get) -> payment details (+ socials + device ID) ----------------
@@ -51,11 +61,12 @@ export const BuyProModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div className="grid grid-cols-2 gap-2">
           {PAY_METHODS.map(x => (
             <button key={x.id} type="button" onClick={() => setMethod(x.id)}
-              className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left cursor-pointer border ${method === x.id ? 'bg-[#12201a] border-[#3f9a5a] text-[#8fd0a4]' : 'bg-[#0f1c16] border-[#1d3228] text-neutral-300 hover:text-white'}`}>{x.name}</button>
+              className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left cursor-pointer border flex items-center gap-2.5 ${method === x.id ? 'bg-[#12201a] border-[#3f9a5a] text-[#8fd0a4]' : 'bg-[#0f1c16] border-[#1d3228] text-neutral-300 hover:text-white'}`}><PayLogo kind={x.kind} />{x.name}</button>
           ))}
         </div>
         {m && (
           <div className="rounded-xl bg-[#09100d] border border-[#17291f] p-3 space-y-2">
+            <div className="flex items-center gap-2.5 pb-1"><PayLogo kind={m.kind} size={36} /><div className="text-sm font-bold text-white">{m.name}<div className="text-[11px] font-normal text-neutral-400">${PRO_PRICE_USD} {PRO_PERIOD}</div></div></div>
             {m.lines.map(l => (
               <div key={l.label} className="flex items-center justify-between gap-3 text-xs"><span className="text-neutral-500">{l.label}</span><span className="flex items-center gap-2 text-neutral-100 font-mono break-all text-right">{l.value}<CopyBtn text={l.value} /></span></div>
             ))}
@@ -67,7 +78,12 @@ export const BuyProModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <div className="space-y-2">
             {Object.values(CONTACTS).map(c => (
               <div key={c.label} className="flex items-center justify-between gap-3 rounded-xl bg-[#09100d] border border-[#17291f] px-3 py-2">
-                <div><div className="text-xs font-bold text-white">{c.label}</div><div className="text-[11px] text-neutral-400 font-mono">{c.handle}</div></div>
+                <div>
+                  <div className="text-xs font-bold text-white">{c.label}</div>
+                  {c.url
+                    ? <button type="button" onClick={() => open(c.url)} className="text-[11px] text-[#8fd0a4] hover:text-[#bef264] font-mono underline underline-offset-2 cursor-pointer flex items-center gap-1" title={`Open ${c.label}`}>{c.handle}<ExternalLink className="w-3 h-3" /></button>
+                    : <div className="text-[11px] text-neutral-300 font-mono">{c.handle}</div>}
+                </div>
                 <div className="flex items-center gap-2"><CopyBtn text={c.handle} />{c.url && <Btn onClick={() => open(c.url)} className="!py-1.5">Open</Btn>}</div>
               </div>
             ))}

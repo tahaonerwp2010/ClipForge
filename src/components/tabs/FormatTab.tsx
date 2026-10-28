@@ -80,7 +80,7 @@ const AutoReframeControls: React.FC<{ framing: InnerFramingConfig; onFramingChan
     <div className="space-y-2 text-[11px]" onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-white font-semibold flex items-center gap-1.5"><UserCheck className="w-3.5 h-3.5 text-[#8fd0a4]" />AI Auto-Reframing</div>
+          <div className="text-white font-semibold flex items-center gap-1.5"><UserCheck className="w-3.5 h-3.5 text-[#8fd0a4]" />AI Auto-Reframing<ProTag /></div>
           <div className="text-neutral-400">Follows the speaker's face and keeps them centred.</div>
         </div>
         <button type="button" onClick={() => onFramingChange({ ...framing, autoReframing: !on })}

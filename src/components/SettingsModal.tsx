@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Sparkles, Mic, FolderOpen, Cpu, Eye, EyeOff, Download, ShieldCheck, Trash2, Check, Loader2, CheckCircle2, AlertTriangle, RotateCw, Plus, Lock } from 'lucide-react';
 import { SpeechModelItem } from '../types/clipper';
+import { ProTag } from './common/ProTag';
 import { SoftwareManager } from '../services/softwareManager';
 import { AiService, AiConfig, AiProviderCfg, KeyStatus, PROVIDERS, PROVIDER_ORDER } from '../services/aiService';
 
@@ -13,10 +14,10 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 const fmtMB = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(2)} GB` : `${Math.round(b / 1e6)} MB`);
 
-const Card: React.FC<{ title: string; hint?: string; children: React.ReactNode }> = ({ title, hint, children }) => (
+const Card: React.FC<{ title: string; hint?: string; proTag?: boolean; children: React.ReactNode }> = ({ title, hint, proTag, children }) => (
   <div className="p-5 rounded-2xl bg-[#101d17] border border-[#20322a] space-y-3">
     <div>
-      <h2 className="text-sm font-bold text-white">{title}</h2>
+      <h2 className="text-sm font-bold text-white flex items-center gap-2">{title}{proTag && <ProTag />}</h2>
       {hint && <p className="text-xs text-neutral-400 mt-1">{hint}</p>}
     </div>
     {children}
@@ -106,7 +107,7 @@ const AiTab: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <Card title="AI Boost" hint="Add API keys from any provider. ClipForge uses them to pick moments, write titles, hooks and descriptions, and translate captions. If nothing works, the built-in local writer takes over, so clips are always made.">
+      <Card title="AI Boost" proTag hint="Add API keys from any provider. ClipForge uses them to pick moments, write titles, hooks and descriptions, and translate captions. If nothing works, the built-in local writer takes over, so clips are always made.">
         <label className="flex items-center justify-between text-xs text-neutral-200 font-semibold">
           Use AI Boost
           <input type="checkbox" checked={cfg.enabled} onChange={e => commit({ ...cfg, enabled: e.target.checked })} className="w-4 h-4 accent-[#bef264]" />

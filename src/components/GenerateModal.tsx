@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { OuterCanvasRatio } from '../types/clipper';
+import { ProTag } from './common/ProTag';
 import { 
   Check, 
   Sparkles, 
@@ -120,6 +121,7 @@ export const GenerateModal: React.FC<GenerateModalProps> = ({
                       <span className={`text-sm font-bold ${isSelected ? 'text-emerald-400' : 'text-white'}`}>
                         {opt.label}
                       </span>
+                      {opt.q > 1080 && <ProTag />}
                       {opt.badge && (
                         <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">
                           BEST

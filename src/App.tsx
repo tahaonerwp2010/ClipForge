@@ -346,7 +346,7 @@ export default function App() {
     return models.some(m => (m as any).kind !== 'aligner' && (m.status === 'downloaded' || m.status === 'active'));
   };
   // Pro features this project uses right now (used to stop a render when the trial is over and there is no Pro)
-  const proUsage = () => ({ dynamicCaptions: isDynStyle(captions.style), split: !!selectedVideo?.split, customFormat: framing.mode === 'custom-scale', autoHook: !!branding.autoTitle?.enabled, fx: !!(grading as any).fx?.enabled });
+  const proUsage = (q: number = 0) => ({ autoReframe: !!framing.autoReframing, ai: (() => { try { const c = AiService.getConfig(); return !!c.enabled && Object.values(c.providers).some((p: any) => (p.keys || []).some((k: any) => k.status !== 'invalid')); } catch { return false; } })(), highRes: q > 1080, dynamicCaptions: isDynStyle(captions.style), split: !!selectedVideo?.split, customFormat: framing.mode === 'custom-scale', autoHook: !!branding.autoTitle?.enabled, fx: !!(grading as any).fx?.enabled });
   const requestGenerate = async () => {
     if (!(await hasModel())) { setModelDialogOpen(true); return; }
     if (LicenseService.blockIfLocked(proUsage())) return;
@@ -373,7 +373,7 @@ export default function App() {
 
   const handleStartGeneration = (quality: number = 1080) => {
     setIsGenerateModalOpen(false);
-    if (LicenseService.blockIfLocked(proUsage())) return;
+    if (LicenseService.blockIfLocked(proUsage(quality))) return;
 
     const projTitle = selectedVideo ? selectedVideo.title : 'Untitled project';
     const existing = projects.find(p => p.id === activeProjectId);

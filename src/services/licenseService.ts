@@ -9,7 +9,7 @@ let state: LicenseState = { id: '', pro: false, forever: false, proDaysLeft: nul
 const subs = new Set<() => void>();
 const set = (p: Partial<LicenseState>) => { state = { ...state, ...p }; subs.forEach(f => f()); };
 
-export interface ProUsage { dynamicCaptions?: boolean; split?: boolean; customFormat?: boolean; autoHook?: boolean; fx?: boolean }
+export interface ProUsage { dynamicCaptions?: boolean; split?: boolean; customFormat?: boolean; autoHook?: boolean; fx?: boolean; autoReframe?: boolean; ai?: boolean; highRes?: boolean }
 
 export const LicenseService = {
   get: () => state,
