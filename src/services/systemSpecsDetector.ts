@@ -33,7 +33,7 @@ declare global {
       ytCancel?: () => Promise<boolean>;
       onYtProgress?: (cb: (d: { phase: string; percent: number; done?: number; total?: number; speed?: number; eta?: number | null; text?: string }) => void) => () => void;
       saveClipSheet?: (dir: string, rows: string[][]) => Promise<string>;
-      openFolder?: (p: string) => Promise<string>;
+      openFolder?: (p: string, projectId?: string) => Promise<string>;
       updateInstall?: (filePath: string) => Promise<{ ok: boolean; mode?: string; error?: string }>;
       projectsLoad?: () => Promise<any[]>;
       projectsSave?: (list: any[]) => Promise<boolean>;
@@ -57,7 +57,7 @@ declare global {
       engineStatus?: () => Promise<{ ffmpeg: boolean; whisper: boolean }>;
       startPipeline?: (job: any) => Promise<{ clips: any[]; outDir: string; durationSec: number }>;
       deleteClipFile?: (args: { outputPath: string; outputDir?: string }) => Promise<{ ok: boolean; removed?: number; error?: string }>;
-      deleteProjectFiles?: (args: { name?: string; outputDir?: string; files?: string[] }) => Promise<{ removed: number }>;
+      deleteProjectFiles?: (args: { id?: string; name?: string; outputDir?: string; files?: string[] }) => Promise<{ removed: number }>;
       cancelPipeline?: () => Promise<boolean>;
       listUserFonts?: () => Promise<{ family: string; file: string; url: string }[]>;
       importFont?: () => Promise<{ family: string; file: string; url: string }[]>;

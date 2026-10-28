@@ -252,7 +252,14 @@ ipcMain.handle('save-clip-sheet', async (e, { dir, rows }) => {
   fs.writeFileSync(file, X.build(rows, [18, 48, 70, 48]));
   return file;
 });
-ipcMain.handle('open-folder', async (e, p) => { try { fs.mkdirSync(p, { recursive: true }); } catch {} return shell.openPath(p); });
+ipcMain.handle('open-folder', async (e, p, projectId) => {
+  if (projectId != null) {                                      // a project's own clips folder: it must still exist and still belong to THIS project
+    if (!fs.existsSync(p)) return 'MISSING';
+    try { const m = JSON.parse(fs.readFileSync(path.join(p, '.clipforge.json'), 'utf8')).projectId; if (m != null && String(m) !== String(projectId)) return 'OTHER'; } catch {}
+    return shell.openPath(p);
+  }
+  try { fs.mkdirSync(p, { recursive: true }); } catch {} return shell.openPath(p);
+});
 ipcMain.handle('ai-test', async (e, a) => AI.test(a));
 ipcMain.handle('ai-ping', async (e, a) => AI.ping(a));
 ipcMain.handle('ai-list-models', async (e, a) => AI.listModels(a));
@@ -404,16 +411,19 @@ ipcMain.handle('start-pipeline', async (event, job) => {
   return p;
 });
 // ---- Delete a project's generated clips from disk (never touches the original video) ----
-ipcMain.handle('delete-project-files', async (e, { name, outputDir, files }) => {
+ipcMain.handle('delete-project-files', async (e, { id, name, outputDir, files }) => {
   const slug = (x) => String(x || '').replace(/[^\w\-]+/g, '_').slice(0, 50) || 'project';
+  const marker = (d) => { try { return JSON.parse(fs.readFileSync(path.join(d, '.clipforge.json'), 'utf8')).projectId; } catch { return null; } };
+  const mine = (d) => { const m = marker(d); return !(m != null && id != null && String(m) !== String(id)); };   // a folder stamped with ANOTHER project's id is never touched
   const dirs = new Set();
   if (outputDir) dirs.add(path.resolve(outputDir));
-  dirs.add(path.join(Settings.clipsDir(), slug(name)));
   for (const f of files || []) dirs.add(path.resolve(path.dirname(f)));
+  if (!dirs.size) dirs.add(path.join(Settings.clipsDir(), slug(name)));          // very old projects without a saved folder only
   let removed = 0;
   for (const d of dirs) {
     if (!fs.existsSync(d)) continue;
     if (path.resolve(d) === path.resolve(Settings.clipsDir())) continue;       // never touch the main clips folder itself
+    if (!mine(d)) continue;                                                     // several projects can be made from one video: each has its own folder
     for (const f of fs.readdirSync(d)) {
       if (/^clip_\d+(\.edit)?\.(mp4|srt|jpg|png|txt)$/i.test(f) || /^clips_title_description\.xlsx$/i.test(f) || /^~\$clips_title_description\.xlsx$/i.test(f)) { try { fs.unlinkSync(path.join(d, f)); removed++; } catch {} }   // only files ClipForge created (clips + the title/description sheet)
     }

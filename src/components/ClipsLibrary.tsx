@@ -29,6 +29,7 @@ import { ViralDetectorEngine } from '../services/viralDetectorEngine';
 interface ClipsLibraryProps {
   clips: GeneratedClip[];
   projectName?: string;
+  projectId?: string;
   sourceVideoUrl?: string;
   onBack?: () => void;
   onSelectClipToEdit: (clip: GeneratedClip) => void;
@@ -44,6 +45,7 @@ interface ClipsLibraryProps {
 export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
   clips,
   projectName = 'Scaling AI Rocketships',
+  projectId,
   sourceVideoUrl,
   onBack,
   onSelectClipToEdit,
@@ -400,7 +402,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
       {/* Bottom bar: open the folder with all clips of this project */}
       {clipsFolder && window.electronAPI?.openFolder && (
         <div className="shrink-0 h-12 px-6 border-t border-[#111e18] bg-[#09100d] flex items-center">
-          <button type="button" onClick={() => window.electronAPI!.openFolder!(clipsFolder)}
+          <button type="button" onClick={async () => { const r = await window.electronAPI!.openFolder!(clipsFolder, projectId); if (r === 'MISSING') setSheetMsg('The clips of this project were deleted (the folder no longer exists).'); else if (r === 'OTHER') setSheetMsg('This project\'s folder was removed; the same folder name is now used by another project.'); else setSheetMsg(''); }}
             className="px-3 py-1.5 rounded-lg bg-[#111e18] hover:bg-[#192c23] text-neutral-200 text-xs font-bold flex items-center gap-2 border border-[#1d3228] cursor-pointer transition-colors">
             <Film className="w-3.5 h-3.5 text-[#8fd0a4]" /> Open clips folder
           </button>

@@ -326,6 +326,7 @@ export default function App() {
     try { await window.electronAPI?.discardCheckpoint?.({ id: p.id, name: p.name }); } catch { /* ignore */ }
     try {
       await window.electronAPI?.deleteProjectFiles?.({
+        id: p.id,
         name: p.name,
         outputDir: p.outputDir,
         files: (p.clips || []).map(c => c.outputPath).filter(Boolean) as string[]
@@ -550,6 +551,7 @@ export default function App() {
             <ClipsLibrary
               clips={getProjectClips(activeProject)}
               projectName={activeProject.name}
+              projectId={activeProject.id}
               sourceVideoUrl={activeProject.sourceVideoUrl || selectedVideo?.url}
               onBack={() => setActiveView('my_projects')}
               onSelectClipToEdit={(clip) => {

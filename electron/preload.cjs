@@ -26,7 +26,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getFolders: () => ipcRenderer.invoke('get-folders'),
   chooseFolder: (kind, reset) => ipcRenderer.invoke('choose-folder', { kind, reset }),
   saveClipSheet: (dir, rows) => ipcRenderer.invoke('save-clip-sheet', { dir, rows }),
-  openFolder: (p) => ipcRenderer.invoke('open-folder', p),
+  openFolder: (p, projectId) => ipcRenderer.invoke('open-folder', p, projectId),
   projectsLoad: () => ipcRenderer.invoke('projects-load'),
   projectsSave: (list) => ipcRenderer.invoke('projects-save', list),
   licenseStatus: (o) => ipcRenderer.invoke('license-status', o),
