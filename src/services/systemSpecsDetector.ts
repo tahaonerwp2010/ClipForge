@@ -35,6 +35,8 @@ declare global {
       saveClipSheet?: (dir: string, rows: string[][]) => Promise<string>;
       openFolder?: (p: string, projectId?: string) => Promise<string>;
       updateInstall?: (filePath: string) => Promise<{ ok: boolean; mode?: string; error?: string }>;
+      kvLoad?: (name: string) => Promise<any>;
+      kvSave?: (name: string, val: any) => Promise<boolean>;
       projectsLoad?: () => Promise<any[]>;
       projectsSave?: (list: any[]) => Promise<boolean>;
       licenseStatus?: (o?: { trial?: boolean }) => Promise<{ id: string; pro: boolean; forever: boolean; proDaysLeft: number | null; trial: boolean; trialDaysLeft: number; configured: boolean; online: boolean }>;

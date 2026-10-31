@@ -312,6 +312,10 @@ ipcMain.handle('pick-folder', async () => {
 });
 // ---- Projects list (kept on disk between sessions) ----
 const projectsFile = () => path.join(app.getPath('userData'), 'projects.json');
+// Small settings kept in a real file next to the projects, so they survive even if the browser storage of the window is ever reset (e.g. API keys).
+const kvFile = (n) => path.join(app.getPath('userData'), 'kv_' + String(n).replace(/[^\w\-]/g, '_') + '.json');
+ipcMain.handle('kv-load', async (e, name) => { for (const f of [kvFile(name), kvFile(name) + '.bak']) { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch {} } return null; });
+ipcMain.handle('kv-save', async (e, name, val) => { try { const f = kvFile(name); const t = JSON.stringify(val); try { if (fs.existsSync(f)) fs.copyFileSync(f, f + '.bak'); } catch {} fs.writeFileSync(f + '.tmp', t); fs.renameSync(f + '.tmp', f); return true; } catch { return false; } });
 ipcMain.handle('projects-load', async () => { try { return JSON.parse(fs.readFileSync(projectsFile(), 'utf8')); } catch { return []; } });
 ipcMain.handle('projects-save', async (e, list) => { try { const f = projectsFile(); fs.writeFileSync(f + '.tmp', JSON.stringify(list)); fs.renameSync(f + '.tmp', f); return true; } catch { return false; } });
 // ---- Edit a finished clip (captions + hook only) ----

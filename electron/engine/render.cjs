@@ -343,7 +343,7 @@ async function renderClip({ quality = 1080, input, start, end, out, assText, rat
   const args = ['-y', '-ss', String(start), '-t', String(end - start), '-i', path.resolve(input),
     ...emojiGroups.flatMap(g => ['-i', g.png]), ...maskArgs, ...splitInputs, ...sfxInputs, ...behindInputs, ...brollInputs,
     '-filter_complex', graph, '-map', '[v]', ...(hasAudio ? ['-map', musicIdx != null ? '[aout]' : aMap, '-c:a', 'aac', '-b:a', '160k'] : []),
-    ...(await encoderArgs(hw)), '-movflags', '+faststart', path.resolve(out)];
+    ...(await encoderArgs(hw)), '-movflags', '+faststart', '-map_chapters', '-1', '-map_metadata', '-1', path.resolve(out)];   // never copy chapters / tags from the sound files into the clip
   const total = end - start;
   const runIt = (a) => run(ffmpeg(), a, { cwd: workDir, onStderr: s => {
     const m = [...s.matchAll(/time=(\d+):(\d+):(\d+(?:\.\d+)?)/g)].pop();

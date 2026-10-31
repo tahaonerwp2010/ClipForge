@@ -27,6 +27,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   chooseFolder: (kind, reset) => ipcRenderer.invoke('choose-folder', { kind, reset }),
   saveClipSheet: (dir, rows) => ipcRenderer.invoke('save-clip-sheet', { dir, rows }),
   openFolder: (p, projectId) => ipcRenderer.invoke('open-folder', p, projectId),
+  kvLoad: (name) => ipcRenderer.invoke('kv-load', name),
+  kvSave: (name, val) => ipcRenderer.invoke('kv-save', name, val),
   projectsLoad: () => ipcRenderer.invoke('projects-load'),
   projectsSave: (list) => ipcRenderer.invoke('projects-save', list),
   licenseStatus: (o) => ipcRenderer.invoke('license-status', o),

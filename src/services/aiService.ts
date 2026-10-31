@@ -38,8 +38,18 @@ export class AiService {
     } catch { /* ignore */ }
     return base;
   }
+  /** At start-up: the keys live in two places (window storage + a file). If one of them is empty or lost, it is rebuilt from the other. */
+  static async restore(): Promise<void> {
+    const api = window.electronAPI; if (!api?.kvLoad) return;
+    const count = (c: any) => PROVIDER_ORDER.reduce((n, id) => n + ((c?.providers?.[id]?.keys || []).length), 0);
+    let local: any = null; try { const r = localStorage.getItem(STORE); if (r) local = JSON.parse(r); } catch { /* ignore */ }
+    let disk: any = null; try { disk = await api.kvLoad('ai_config'); } catch { /* ignore */ }
+    if (count(disk) > 0 && count(local) === 0) { try { localStorage.setItem(STORE, JSON.stringify(disk)); } catch { /* ignore */ } }
+    else if (count(local) > 0 && count(disk) === 0) { try { await api.kvSave?.('ai_config', local); } catch { /* ignore */ } }
+  }
   static saveConfig(cfg: AiConfig): AiConfig {
     try { localStorage.setItem(STORE, JSON.stringify(cfg)); } catch { /* ignore */ }
+    try { window.electronAPI?.kvSave?.('ai_config', cfg); } catch { /* ignore */ }      // second copy in a real file
     // keep the older single-key settings in step (used by the browser preview paths)
     const g = cfg.providers.gemini;
     GeminiService.saveSettings({ enabled: cfg.enabled, apiKey: g.keys[0]?.key || '', model: g.model });
