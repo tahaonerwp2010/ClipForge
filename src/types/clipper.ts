@@ -96,6 +96,7 @@ export interface AutoTitleConfig {
   animOut?: 'none' | 'fade' | 'shrink';              // default none
   showSeconds?: number;                              // 0 / undefined = whole clip
   lines?: 1 | 2 | 3;                                 // how many lines the hook is written in (default 2)
+  wordColors?: (string | null)[];   // per-word colours of the hook text of ONE clip (index = word number, null = the normal hook colour)
   showEmoji?: boolean;                               // emoji above the hook (default true)
   size?: number;                                     // user's hook size in px at 1080 wide; undefined = automatic
 }

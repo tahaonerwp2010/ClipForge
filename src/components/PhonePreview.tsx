@@ -18,7 +18,7 @@ import { SplitPreview } from './SplitPreview';
 import { DynCaption } from './DynCaption';
 import { getDyn } from '../utils/dynCaptions';
 import { SECONDARY_FOOTAGE } from '../data/sampleVideos';
-import { getContextualEmoji, CAPCUT_DYNAMIC_COLORS, hookLines, hookFontPx } from '../utils/captionHelpers';
+import { getContextualEmoji, CAPCUT_DYNAMIC_COLORS, hookLines, hookFontPx, hookWordTokens } from '../utils/captionHelpers';
 
 interface PhonePreviewProps {
   videoUrl: string;
@@ -851,7 +851,12 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                   }}
                   className="font-black uppercase tracking-tight text-center leading-tight"
                 >
-                  {hookLines(branding.autoTitle.title || clipTitle || 'THE VIRAL TRUTH', branding.autoTitle.lines || 2).map((l, i) => <div key={i}>{l}</div>)}
+                  {(() => {
+                    const wc = (branding.autoTitle as any).wordColors as (string | null)[] | undefined; let wi = 0;
+                    return hookLines(branding.autoTitle.title || clipTitle || 'THE VIRAL TRUTH', branding.autoTitle.lines || 2).map((l, i) => (
+                      <div key={i}>{l.split(' ').map((tok, j) => { const counted = hookWordTokens(tok).length > 0; const c = counted ? wc?.[wi] : null; if (counted) wi++; return <React.Fragment key={j}>{j > 0 ? ' ' : ''}{c ? <span style={{ color: c }}>{tok}</span> : tok}</React.Fragment>; })}</div>
+                    ));
+                  })()}
                 </div>
               </div>
             </div>

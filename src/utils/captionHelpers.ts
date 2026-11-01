@@ -272,6 +272,27 @@ export function hookLines(text: string, n: number = 2): string[] {
   const cuts = [0, ...(best ? best.cuts : [Math.ceil(W / 2)]), W];
   return cuts.slice(1).map((c, i) => words.slice(cuts[i], c).join(' '));
 }
+// ---- Per-word hook colours (CapCut style). A "word" is a whitespace-separated piece of the hook text without emoji / quotes; its index is
+// the same in the studio preview and in the real render (electron/engine/ass.cjs), so a colour stays on the word it was chosen for.
+const HOOK_EMOJI_RE = (() => { try { return new RegExp('\\p{Extended_Pictographic}(?:\\uFE0F|\\u200D\\p{Extended_Pictographic}|[\\u{1F3FB}-\\u{1F3FF}])*|\\uFE0F', 'gu'); } catch { return /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]|\uFE0F/gu; } })();
+export const hookWordTokens = (text: string): { w: string; s: number; e: number }[] => {
+  const raw = String(text || '').replace(/\\n/g, '\n'); const out: { w: string; s: number; e: number }[] = []; const re = /\S+/g; let m: RegExpExecArray | null;
+  while ((m = re.exec(raw))) { const w = m[0].replace(HOOK_EMOJI_RE, '').replace(/[“”"]/g, ''); if (w.trim()) out.push({ w, s: m.index, e: m.index + m[0].length }); }
+  return out;
+};
+/** keeps the colours on the right words when the hook text is edited */
+export const remapHookColors = (oldText: string, newText: string, colors?: (string | null)[]): (string | null)[] | undefined => {
+  if (!colors || !colors.some(Boolean)) return undefined;
+  const a = hookWordTokens(oldText).map(x => x.w), b = hookWordTokens(newText).map(x => x.w);
+  let out: (string | null)[];
+  if (a.length === b.length) out = b.map((_, i) => colors[i] ?? null);
+  else {
+    let p = 0; while (p < a.length && p < b.length && a[p] === b[p]) p++;
+    let q = 0; while (q < a.length - p && q < b.length - p && a[a.length - 1 - q] === b[b.length - 1 - q]) q++;
+    out = b.map((_, i) => i < p ? (colors[i] ?? null) : i >= b.length - q ? (colors[a.length - (b.length - i)] ?? null) : null);
+  }
+  return out.some(Boolean) ? out : undefined;
+};
 export const hookTwoLines = (text: string): string[] => hookLines(text, 2);
 /** font size in px for a screen that is `screenW` px wide (1080 = the real video width). userSize = the size the user chose. */
 export function hookFontPx(lines: string[], screenW: number, userSize?: number): number {

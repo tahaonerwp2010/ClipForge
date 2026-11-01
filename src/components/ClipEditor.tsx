@@ -6,7 +6,7 @@ import { BrandingTab } from './tabs/BrandingTab';
 import { AutoFxCard, DEFAULT_FX, FxState } from './tabs/AutoFxCard';
 import { FontPicker } from './common/FontPicker';
 import { ColorPicker } from './common/ColorPicker';
-import { hookLines } from '../utils/captionHelpers';
+import { hookLines, hookWordTokens, remapHookColors } from '../utils/captionHelpers';
 import { fileUrl } from '../utils/fileUrl';
 import { LicenseService } from '../services/licenseService';
 import { isDynStyle } from '../utils/dynCaptions';
@@ -71,7 +71,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
         const b = { ...fallback.branding, ...(st.branding || {}) } as any;
         if (b.watermarkImage?.path && !b.watermarkImage.dataUrl) b.watermarkImage = { ...b.watermarkImage, dataUrl: fileUrl(b.watermarkImage.path) };
         const h = st.clips?.[index]?.hookText || clip.hookText;
-        setBranding({ ...b, autoTitle: { ...fallback.branding.autoTitle, ...(b.autoTitle || {}), enabled: true, title: h } });
+        setBranding({ ...b, autoTitle: { ...fallback.branding.autoTitle, ...(b.autoTitle || {}), enabled: true, title: h, wordColors: st.clips?.[index]?.hookColors || undefined } });
         const r = await api.editPrepare(outDir, index);
         if (!r?.ok) throw new Error(r?.error || 'Could not prepare the preview.');
         setUrl(r.url); setState('ready');
@@ -81,6 +81,14 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
     return () => { try { off && off(); } catch {} };
   }, []);
 
+  const [sel, setSel] = useState({ s: 0, e: 0 });                     // selection inside the hook text box (kept while a colour is picked)
+  const selIdx = hookWordTokens(hookText).map((t, i) => ({ t, i })).filter(({ t }) => sel.e > sel.s && t.s < sel.e && t.e > sel.s).map(x => x.i);
+  const applyHookColor = (hex: string) => {
+    if (selIdx.length) {
+      const n = hookWordTokens(hookText).length; const wc: (string | null)[] = Array.from({ length: n }, (_, i) => (hook.wordColors || [])[i] ?? null);
+      selIdx.forEach(i => { wc[i] = hex; }); setHook({ wordColors: wc });
+    } else setHook({ color: hex, wordColors: undefined });             // nothing selected: the whole hook
+  };
   const setHook = (patch: any) => setBranding(b => ({ ...b, autoTitle: { ...b.autoTitle, enabled: true, ...patch } }));
   const brandingOut = () => {
     const b: any = { ...branding };
@@ -99,7 +107,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
     for (let n = 0; n < idx.length; n++) {
       const i = idx[n]; cur.current = i; doneBefore.current = n; setJob(all ? `Clip ${n + 1} of ${idx.length}` : '');
       const own = i === index;
-      const { title: _t, ...atNoTitle } = at as any;
+      const { title: _t, wordColors: _wc, ...atNoTitle } = at as any;
       const r = await api.editRender(outDir, i, own ? { captions, hookText, autoTitle: at, branding: bo, fx } : { captions, autoTitle: atNoTitle, branding: bo, fx });
       if (!r?.ok) { setSaving(false); setErr(r?.error || 'Render failed.'); setState('error'); return; }
       onSaved(i, { outputPath: r.outputPath, thumbnailUrl: r.thumbnailUrl });
@@ -182,10 +190,14 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
                   <section className="p-4 rounded-xl bg-[#0b1410] border border-[#172820] space-y-3 text-xs">
                     <div>
                       <label className="text-[11px] font-semibold text-neutral-300">Hook text (this clip)</label>
-                      <textarea value={hookText} rows={2} onChange={e => setHook({ title: e.target.value })} className="mt-1 w-full bg-[#09100d] border border-[#20322a] rounded-lg px-3 py-2 text-xs text-white outline-none resize-none" />
+                      <textarea value={hookText} rows={2} onChange={e => { const nt = e.target.value; setHook({ title: nt, wordColors: remapHookColors(hookText, nt, hook.wordColors) }); setSel({ s: e.target.selectionStart, e: e.target.selectionEnd }); }} onSelect={e => setSel({ s: e.currentTarget.selectionStart, e: e.currentTarget.selectionEnd })} className="mt-1 w-full bg-[#09100d] border border-[#20322a] rounded-lg px-3 py-2 text-xs text-white outline-none resize-none" />
                     </div>
                     <FontPicker label="Hook Font" value={hook.fontFamily} onChange={f => setHook({ fontFamily: f || 'Montserrat Black' })} />
-                    <ColorPicker label="Hook Colour" value={hook.color || '#ffffff'} onChange={hex => setHook({ color: hex })} />
+                    <div className="space-y-1">
+                      <ColorPicker label={selIdx.length ? 'Colour of the selected words' : 'Hook Colour'} value={(selIdx.length && hook.wordColors?.[selIdx[0]]) || hook.color || '#ffffff'} onChange={applyHookColor} />
+                      <p className="text-[10px] text-neutral-500">Select some words in the box above, then pick a colour to change only those words. With nothing selected the colour changes the whole hook.</p>
+                      {hook.wordColors?.some(Boolean) && <button type="button" onClick={() => setHook({ wordColors: undefined })} className="text-[10px] text-[#8fd0a4] underline cursor-pointer">Remove the colours of single words</button>}
+                    </div>
                     <div className="flex items-center gap-2 flex-wrap"><span className="text-[11px] text-neutral-300">Lines</span>
                       {[1, 2, 3].map(n => <Chip key={n} on={(hook.lines || 2) === n} onClick={() => setHook({ lines: n })}>{n}</Chip>)}</div>
                     <div className="flex items-center gap-2 flex-wrap"><span className="text-[11px] text-neutral-300">Size</span>

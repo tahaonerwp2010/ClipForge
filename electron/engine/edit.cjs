@@ -28,7 +28,8 @@ async function ctxFor(st, i, ov = {}, work, extra = {}) {
   const captions = { ...(st.captions || {}), ...(ov.captions || {}) };
   const hookText0 = ov.hookText != null ? ov.hookText : (st.clips[i].hookText || st.clips[i].title);
   const ovb = ov.branding || {};
-  const branding = { ...(st.branding || {}), ...ovb, autoTitle: { ...((st.branding || {}).autoTitle || {}), ...(ovb.autoTitle || {}), ...(ov.autoTitle || {}), title: hookText0 } };
+  const branding = { ...(st.branding || {}), ...ovb, autoTitle: { ...((st.branding || {}).autoTitle || {}), ...(ovb.autoTitle || {}), ...(ov.autoTitle || {}), title: hookText0,
+    wordColors: ov.hookText != null ? ((ov.autoTitle || {}).wordColors || null) : (st.clips[i].hookColors || null) } };       // single-word hook colours belong to ONE clip
   const quality = +st.quality || 1080;
   const [Wd, Ht] = R.dimsFor(st.ratio || '9:16', quality);
   const c = st.clips[i];
@@ -100,8 +101,8 @@ async function rerender(outDir, i, ov, onProgress, deps) {
   let thumb; try { thumb = await R.thumbnail(out, path.join(w, 't.jpg')); } catch {}
   try { fs.rmSync(w, { recursive: true, force: true }); } catch {}
   // remember the edit so the next editor session starts from it
-  st.captions = x.captions; st.branding = { ...x.branding, autoTitle: { ...x.branding.autoTitle, title: '' } };
-  if (ov.hookText != null) st.clips[i].hookText = ov.hookText;
+  st.captions = x.captions; st.branding = { ...x.branding, autoTitle: { ...x.branding.autoTitle, title: '', wordColors: undefined } };
+  if (ov.hookText != null) { st.clips[i].hookText = ov.hookText; const wc = (ov.autoTitle || {}).wordColors; if (Array.isArray(wc) && wc.some(Boolean)) st.clips[i].hookColors = wc; else delete st.clips[i].hookColors; }
   saveState(outDir, st);
   return { outputPath: out, thumbnailUrl: thumb };
 }

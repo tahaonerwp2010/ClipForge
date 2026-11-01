@@ -40,6 +40,15 @@ function fontsUsed({ captions = {}, branding = {} }) {
   if (dyn) return [...DYN.fontsOf(dyn), at.fontFamily || 'Montserrat Black', branding.hookFontFamily || 'Montserrat Black', branding.watermarkFontFamily || 'Arial'].map(fam);   // dynamic templates: their own fonts, not changeable
   return [captions.fontFamily || preset.font, at.fontFamily || 'Montserrat Black', branding.hookFontFamily || 'Montserrat Black', branding.watermarkFontFamily || 'Arial'].map(fam);
 }
+// The hook words in their lines; words with their own colour (the user selected them in the editor) get an inline colour that is switched back right after.
+function hookColored(lines, at) {
+  const wc = Array.isArray(at.wordColors) ? at.wordColors : null, base = /^#[0-9a-f]{6}$/i.test(at.color || '') ? at.color : '#FFFFFF';
+  let wi = 0;
+  return lines.map(l => l.split(' ').filter(t => t !== '').map(tok => {
+    const c = wc && wc[wi++]; const t = esc(tok.toUpperCase());
+    return c && /^#[0-9a-f]{6}$/i.test(c) ? `{\\1c${bgr(c)}}${t}{\\1c${bgr(base)}}` : t;
+  }).join(' ')).join('\\N');
+}
 function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hookText, part = 'all', keywords, behindBox }) {
   const preset = PRESETS[captions.style] || PRESETS['capcut-emoji'];
   const k = W / 1080;
@@ -74,7 +83,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
     if (ao === 'shrink') fx += `\\t(${Math.max(0, ms - 300)},${ms},\\fscx10\\fscy10\\alpha&HFF&)`;
     const hk = HK.hookLines(title, '', at.lines).split('\n');
     const hs = HK.hookFontPx(hk.join('\n'), W, at.size);
-    L.push(`Dialogue: 2,${ts(0)},${ts(tShow)},Title,,0,0,0,,${place}{\\fs${hs}}${fx ? '{' + fx + '}' : ''}${hk.map(l => esc(l.toUpperCase())).join('\\N')}`);
+    L.push(`Dialogue: 2,${ts(0)},${ts(tShow)},Title,,0,0,0,,${place}{\\fs${hs}}${fx ? '{' + fx + '}' : ''}${hookColored(hk, at)}`);
   }
   if (branding.showHookTitle && branding.hookTitle && part !== 'behind')
     L.push(`Dialogue: 2,${ts(0)},${ts(dur)},Hook,,0,0,0,,${pos(branding.bannerPositionX ?? 50, branding.bannerPositionY ?? 8)}${wrap(esc(plain(branding.hookTitle).toUpperCase()), Math.round(54 * k), W)}`);
