@@ -62,6 +62,20 @@ function layout(ws, tpl, W, base, H, kw, allowEmph = true, allowSoft = false) {
   });
 }
 
+// How the word being spoken arrives (ASS transforms, so the exported video and the clip editor look the same). The preview in src/components/DynCaption.tsx mirrors these.
+const ANIMS = {
+  pop:     '\\fscx70\\fscy70\\t(0,110,\\fscx110\\fscy110)\\t(110,210,\\fscx100\\fscy100)',
+  bounce:  '\\fscx55\\fscy55\\t(0,120,\\fscx128\\fscy128)\\t(120,220,\\fscx92\\fscy92)\\t(220,300,\\fscx100\\fscy100)',
+  slam:    '\\fscx230\\fscy230\\t(0,130,\\fscx100\\fscy100)',
+  stretch: '\\fscx260\\fscy65\\t(0,150,\\fscx100\\fscy100)',
+  squash:  '\\fscx75\\fscy150\\t(0,90,\\fscx118\\fscy84)\\t(90,180,\\fscx100\\fscy100)',
+  flip:    '\\fscy0\\t(0,150,\\fscy118)\\t(150,240,\\fscy100)',
+  wobble:  '\\frz-7\\fscx85\\fscy85\\t(0,100,\\frz6\\fscx110\\fscy110)\\t(100,200,\\frz-3\\fscx100\\fscy100)\\t(200,290,\\frz0)',
+  shake:   '\\frz4\\t(0,50,\\frz-4)\\t(50,100,\\frz3)\\t(100,150,\\frz-2)\\t(150,210,\\frz0)',
+  track:   '\\fsp16\\fscx100\\fscy100\\t(0,240,\\fsp0)',
+  glow:    '\\blur10\\fscx118\\fscy118\\t(0,230,\\blur0.6\\fscx100\\fscy100)',
+};
+
 function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', keywords, behindBox }) {
   const k = W / 1080, base = Math.round(captions.fontSize * 3.4 * k * tpl.sizeMul * 1.15);
   const off = Math.max(-0.5, Math.min(0.5, Number(captions.syncOffset) || 0));
@@ -90,6 +104,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', k
       if (part === 'behind' && !isEm[li]) return;
       if (part === 'front' && isEm[li]) return;
       const fsOf = it => Math.round(ln.bs * it.st.scale * ln.fit * ({ 'Noto Sans Arabic ExtraBold': 1.3, 'Noto Sans Devanagari ExtraBold': 1.7 }[FONTS.scriptFont(it.text || '')] || 1));   // Arabic / Hindi letters are smaller than Latin capitals
+      const rotL = (tpl.rot && !isEm[li]) ? tpl.rot : 0;
       const lineIdx = ln.items.map(it => idxs[it.j]);
       lineIdx.forEach((gi, q) => {
         const s = tS[gi]; let e = q + 1 < lineIdx.length ? tS[lineIdx[q + 1]] : pEnd;
@@ -114,11 +129,11 @@ function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', k
           }
           const flat = !metal || boxed || tinted;
           if (layer === 'shine' && flat) tags += '\\alpha&HFF&';
-          if (cur && tpl.anim === 'pop') tags += '\\fscx70\\fscy70\\t(0,110,\\fscx110\\fscy110)\\t(110,210,\\fscx100\\fscy100)';
+          if (cur && ANIMS[tpl.anim || 'pop']) tags += ANIMS[tpl.anim || 'pop'].replace(/\\frz(-?\d+)/g, (_, n) => '\\frz' + (+n + rotL));
           else if (cur) tags += '\\fscx100\\fscy100';
-          return `{${tags}}${it.text}{\\fscx100\\fscy100}`;
-        }).join(`{\\fscx100\\fscy100} `);
-        const pos = `\\an5\\pos(${isEm[li] ? Math.round(W / 2) : cx},${yc})`;
+          return `{${tags}}${it.text}{\\fscx100\\fscy100\\fsp0\\frz${rotL}}`;
+        }).join(`{\\fscx100\\fscy100\\fsp0\\frz${rotL}} `);
+        const pos = `\\an5\\pos(${isEm[li] ? Math.round(W / 2) : cx},${yc})` + (tpl.rot && !isEm[li] ? `\\frz${tpl.rot}` : '');
         const S = ln.size;
         L.push(`Dialogue: 0,${ts(s)},${ts(e)},Cap,,0,0,0,,{${pos}}${runs('outline')}`);
         L.push(`Dialogue: 1,${ts(s)},${ts(e)},Cap,,0,0,0,,{${pos}}${runs('fill')}`);

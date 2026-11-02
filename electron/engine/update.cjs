@@ -12,6 +12,14 @@ async function getJson(url) {
   return r.json();
 }
 
+// What changed in the new version: RELEASE_NOTES.md from the release's own commit (written by hand, in plain English), else the release text
+async function whatsNew(repo, rel) {
+  const get = async (ref) => { try { const r = await fetch(`https://raw.githubusercontent.com/${repo}/${ref}/RELEASE_NOTES.md`, { headers: { 'User-Agent': 'ClipForge-Updater' }, signal: AbortSignal.timeout(8000) }); return r.ok ? await r.text() : ''; } catch { return ''; } };
+  let t = await get(encodeURIComponent(rel.tag_name));
+  if (!t.trim()) t = String(rel.body || '').replace(/\*\*Full Changelog\*\*:.*$/im, '').replace(/^#+\s*What's Changed\s*$/im, '');
+  return t.trim().slice(0, 2500);
+}
+
 async function check(repoIn, current) {
   const repo = cleanRepo(repoIn);
   if (!/^[\w.\-]+\/[\w.\-]+$/.test(repo)) return { ok: false, error: 'no-repo', message: 'No GitHub repository is set for updates.' };
@@ -22,7 +30,9 @@ async function check(repoIn, current) {
       const plat = process.platform === 'android' ? { os: /android/i, ext: /\.apk$/i } : process.platform === 'win32' ? { os: /windows|win/i, ext: /\.exe$/i } : process.platform === 'darwin' ? { os: /mac|darwin|osx/i, ext: /\.dmg$/i } : { os: /linux/i, ext: /\.appimage$/i };
       const archRe = process.arch === 'arm64' ? /arm64/i : /x64|x86_64/i;
       const asset = (process.platform === 'win32' && assets.find(a => /setup.*\.exe$/i.test(a.name))) || (process.platform === 'darwin' && assets.find(a => plat.ext.test(a.name) && archRe.test(a.name))) || assets.find(a => plat.ext.test(a.name)) || assets.find(a => plat.os.test(a.name)) || null;
-      return { ok: true, repo, current, latest: String(rel.tag_name).replace(/^v/i, ''), available: newer(rel.tag_name, current), notes: String(rel.body || '').slice(0, 800), pageUrl: rel.html_url, asset: asset ? { name: asset.name, url: asset.browser_download_url, size: asset.size } : null, source: 'release' };
+      const isNew = newer(rel.tag_name, current);
+      const notes = isNew ? await whatsNew(repo, rel) : '';
+      return { ok: true, repo, current, latest: String(rel.tag_name).replace(/^v/i, ''), available: isNew, notes, pageUrl: rel.html_url, asset: asset ? { name: asset.name, url: asset.browser_download_url, size: asset.size } : null, source: 'release' };
     }
     const r = await fetch(`https://raw.githubusercontent.com/${repo}/HEAD/package.json`, { headers: { 'User-Agent': 'ClipForge-Updater' }, signal: AbortSignal.timeout(15000) });
     if (r.status === 404) return { ok: false, error: 'not-found', message: `Repository "${repo}" was not found. Check the name (owner/repo) and that it is public.` };

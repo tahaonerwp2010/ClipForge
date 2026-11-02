@@ -4,16 +4,13 @@ import { CaptionConfig } from '../../types/clipper';
 import { 
   ChevronDown, 
   ChevronUp, 
-  Sparkles, 
   Move, 
-  Check, 
   Type,
   Maximize2
 } from 'lucide-react';
 import { FontPicker } from '../common/FontPicker';
-import { DynCaption } from '../DynCaption';
-import { DYN_TEMPLATES, isDynStyle } from '../../utils/dynCaptions';
-import { POPULAR_CAPTION_PRESETS } from '../../utils/captionHelpers';
+import { isDynStyle } from '../../utils/dynCaptions';
+import { CaptionStylePicker } from './CaptionStylePicker';
 
 interface CaptionsTabProps {
   captions: CaptionConfig;
@@ -27,9 +24,6 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
   hideLanguage
 }) => {
   // Independent collapsible category states
-  const [openTemplates, setOpenTemplates] = useState(false);
-  const [openDyn, setOpenDyn] = useState(true);
-  const [dynCat, setDynCat] = useState<'all' | 'style' | 'behind'>('all');
   const [openPosition, setOpenPosition] = useState(false);
   const [openLang, setOpenLang] = useState(false);
 
@@ -101,255 +95,7 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
       {/* When Captions are ON, render closeable Templates and Position/Scale categories */}
       {captions.enabled && (
         <>
-          {/* ========================================================
-              CATEGORY 1: TEMPLATES & STYLES (Closeable / Collapsible)
-              1 emoji template (CapCut) + distinct typography styles
-              NO background banners on any caption!
-          ======================================================== */}
-          <section className="rounded-xl bg-[#0b1410] border border-[#172820] overflow-hidden shadow-md">
-            {/* Header toggle */}
-            <div
-              onClick={() => setOpenTemplates(!openTemplates)}
-              className="p-3.5 px-4 flex items-center justify-between cursor-pointer hover:bg-[#111e18] transition-colors border-b border-[#172820]"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-6 h-6 rounded-lg bg-[#3f9a5a]/10 border border-[#3f9a5a]/30 flex items-center justify-center">
-                  <Sparkles className="w-3.5 h-3.5 text-[#8fd0a4]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-extrabold text-white text-xs uppercase tracking-wider">
-                      Templates & Typography Styles
-                    </h3>
-                    <span className="text-[10px] text-[#8fd0a4] font-mono font-bold bg-[#3f9a5a]/10 px-1.5 py-0.5 rounded border border-[#3f9a5a]/20">
-                      {POPULAR_CAPTION_PRESETS.length} Styles
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-neutral-400">
-                    CapCut dynamic emoji pop with rotating colors + clean no-background viral fonts
-                  </p>
-                </div>
-              </div>
-              <button 
-                type="button" 
-                className="w-7 h-7 rounded-lg bg-[#12201a] flex items-center justify-center text-neutral-400 hover:text-white"
-              >
-                {openTemplates ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
-            </div>
-
-            {/* Collapsible Content */}
-            {openTemplates && (
-              <div className="p-4 space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {POPULAR_CAPTION_PRESETS.map((preset) => {
-                    const isSelected = captions.style === preset.id;
-                    return (
-                      <div
-                        key={preset.id}
-                        onClick={() => { onCaptionsChange({
-                          ...captions,
-                          style: preset.id,
-                          highlightColor: preset.highlight
-                        }); }}
-                        className={`p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                          isSelected
-                            ? 'bg-[#101d17] border-[#3f9a5a] ring-1 ring-[#3f9a5a]/50 shadow-md shadow-[#3f9a5a]/10'
-                            : 'bg-[#0e1914] border-[#1a2c24] hover:border-[#2b4338] hover:bg-[#111e18]'
-                        }`}
-                      >
-                        <div>
-                          {/* Live Template Visual Preview (Clean background, NO banner!) */}
-                          <div className="h-12 rounded-lg bg-black/60 flex items-center justify-center p-2 mb-2.5 border border-[#1c3127] overflow-hidden relative">
-                            
-                            {/* PRESET 1: CapCut Auto-Emoji Pop (ONLY one with emojis + dynamic multicolor word highlight) */}
-                            {preset.id === 'capcut-emoji' && (
-                              <div className="flex items-center gap-1.5 font-black uppercase text-xs" style={{ fontFamily: preset.fontFamily }}>
-                                <span className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">BIGGEST</span>
-                                <span className="text-[#8fd0a4] flex items-center gap-1 scale-110 drop-shadow-[0_2px_8px_rgba(190,242,100,0.6)]">
-                                  <span>MISTAKE</span>
-                                  <span className="text-sm">🤯</span>
-                                </span>
-                              </div>
-                            )}
-
-                            {preset.id === 'capcut-pop' && (
-                              <div className="flex items-center gap-1.5 font-black uppercase text-sm" style={{ fontFamily: preset.fontFamily }}>
-                                <span className="text-white" style={{ WebkitTextStroke: '3px #000', paintOrder: 'stroke fill' as any }}>MISTAKE</span>
-                              </div>
-                            )}
-
-                            {/* PRESET 2: Alex Hormozi Viral Yellow (NO BOX) */}
-                            {preset.id === 'hormozi' && (
-                              <div className="flex items-center gap-1.5 text-xs font-black tracking-wider uppercase" style={{ fontFamily: preset.fontFamily }}>
-                                <span className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">REVENUE</span>
-                                <span className="text-[#facc15] font-black scale-110 drop-shadow-[0_2px_8px_rgba(250,204,21,0.7)]">SECRET</span>
-                                <span className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">TODAY</span>
-                              </div>
-                            )}
-
-                            {/* PRESET 3: MrBeast Heavy Outline (NO BOX) */}
-                            {preset.id === 'mrbeast' && (
-                              <div 
-                                className="text-xs font-black uppercase tracking-wide flex items-center gap-1 text-white" 
-                                style={{ 
-                                  fontFamily: preset.fontFamily,
-                                  textShadow: '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 3px 6px rgba(0,0,0,0.9)'
-                                }}
-                              >
-                                <span>INSANE</span>
-                                <span className="text-[#22c55e] scale-115 inline-block">CHALLENGE</span>
-                                <span>EVER</span>
-                              </div>
-                            )}
-
-                            {/* PRESET 4: Neon Cyber Bloom (NO BOX) */}
-                            {preset.id === 'neon' && (
-                              <div 
-                                className="text-xs font-extrabold uppercase tracking-widest text-[#38bdf8]"
-                                style={{ 
-                                  fontFamily: preset.fontFamily,
-                                  textShadow: '0 0 8px #38bdf8, 0 0 16px rgba(56, 189, 248, 0.7)'
-                                }}
-                              >
-                                FUTURE MATRIX WORLD
-                              </div>
-                            )}
-
-                            {/* PRESET 5: Karaoke Underline Flow (NO BOX) */}
-                            {preset.id === 'karaoke' && (
-                              <div className="text-xs font-bold uppercase flex items-center gap-1.5" style={{ fontFamily: preset.fontFamily }}>
-                                <span className="text-[#facc15] font-black underline underline-offset-4 decoration-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">SPEECH</span>
-                                <span className="text-white/80 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">FLOW</span>
-                                <span className="text-white/60 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">NOW</span>
-                              </div>
-                            )}
-
-                            {/* PRESET 6: Crimson Punch Outline (NO BOX) */}
-                            {preset.id === 'red-punch' && (
-                              <div className="font-black text-[11px] uppercase tracking-wide flex items-center gap-1" style={{ fontFamily: preset.fontFamily }}>
-                                <span className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">STOP</span>
-                                <span className="text-[#ef4444] scale-110 drop-shadow-[0_2px_8px_rgba(239,68,68,0.8)]">THIS</span>
-                                <span className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">NOW</span>
-                              </div>
-                            )}
-
-                            {/* PRESET 7: Cinematic Minimalist (NO BOX) */}
-                            {preset.id === 'cinematic' && (
-                              <div className="text-xs font-medium tracking-[0.2em] uppercase flex items-center gap-1.5" style={{ fontFamily: preset.fontFamily }}>
-                                <span className="text-neutral-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">ELEGANT</span>
-                                <span className="text-[#facc15] font-bold drop-shadow-[0_2px_6px_rgba(250,204,21,0.6)]">MINDSET</span>
-                              </div>
-                            )}
-
-                            {/* PRESET 8: Comic Action Bold (NO BOX) */}
-                            {preset.id === 'comic-pop' && (
-                              <div 
-                                className="text-xs font-black uppercase tracking-wide text-amber-300 transform -rotate-2"
-                                style={{ 
-                                  fontFamily: preset.fontFamily,
-                                  textShadow: '-1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, 2px 2px 0 #000'
-                                }}
-                              >
-                                UNREAL ACTION LEVEL
-                              </div>
-                            )}
-
-                            {/* PRESET 9: Cyber Glitch Split (NO BOX) */}
-                            {preset.id === 'glitch' && (
-                              <div className="font-mono text-xs font-bold tracking-wider uppercase flex items-center gap-1">
-                                <span className="text-pink-500 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">SYSTEM</span>
-                                <span className="text-cyan-400 drop-shadow-[0_2px_6px_rgba(6,182,212,0.8)]">CRACK</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Preset Header & Details */}
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-extrabold text-white flex items-center gap-1.5">
-                              <span>{preset.name}</span>
-                              {preset.hasEmoji && (
-                                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-[#3f9a5a]/20 text-[#8fd0a4] font-bold border border-[#3f9a5a]/30">
-                                  EMOJI POP 🔥
-                                </span>
-                              )}
-                              {!preset.hasEmoji && (
-                                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-neutral-800 text-neutral-300 font-bold border border-neutral-700">
-                                  NO BOX
-                                </span>
-                              )}
-                            </h4>
-                            {isSelected && (
-                              <div className="w-4 h-4 rounded-full bg-[#bef264] flex items-center justify-center text-black">
-                                <Check className="w-3 h-3 stroke-[3]" />
-                              </div>
-                            )}
-                          </div>
-
-                          <p className="text-[10px] text-neutral-400 mt-1 leading-relaxed">
-                            {preset.tagline}
-                          </p>
-                        </div>
-
-                        <div className="mt-2.5 pt-2 border-t border-[#172820] flex items-center justify-between text-[9px] text-neutral-500 font-mono">
-                          <span>Font: {preset.fontLabel}</span>
-                          <span className="text-neutral-400">
-                            {preset.hasEmoji ? 'Multicolor Cycle' : 'Clean Floating Text'}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </section>
-
-          {/* DYNAMIC CAPTIONS: separate category, fonts are locked to the template */}
-          <section className="rounded-xl bg-[#0b1410] border border-[#172820] overflow-hidden shadow-md">
-            <div onClick={() => setOpenDyn(!openDyn)} className="p-3.5 px-4 flex items-center justify-between cursor-pointer hover:bg-[#111e18] transition-colors border-b border-[#172820]">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-extrabold text-white text-xs uppercase tracking-wider">Dynamic Captions</h3><ProTag />
-                  <span className="text-[10px] text-[#facc15] font-mono font-bold bg-[#facc15]/10 px-1.5 py-0.5 rounded border border-[#facc15]/20">{DYN_TEMPLATES.length} Templates</span>
-                </div>
-                <p className="text-[10px] text-neutral-400">Mixed fonts and sizes, shiny metallic important words. Each template has its own fonts (locked).</p>
-              </div>
-              {openDyn ? <ChevronUp className="w-4 h-4 text-neutral-400" /> : <ChevronDown className="w-4 h-4 text-neutral-400" />}
-            </div>
-            {openDyn && (
-              <div className="p-4 space-y-3">
-              <div className="rounded-lg border border-amber-400/50 bg-amber-400/10 px-3 py-2 text-[11px] font-semibold text-amber-200 flex items-start gap-2">
-                <span className="text-sm leading-none">ⓘ</span><span><b>No live preview for Dynamic Captions.</b> The phone preview shows only a simple sample. The real animation, fonts and the big word behind the person appear only after the clip is rendered (Generate clips).</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {([['all', 'All'], ['style', 'Metallic & styled'], ['behind', 'Behind the person']] as const).map(([id, label]) => (
-                  <button key={id} type="button" onClick={() => setDynCat(id)}
-                    className={`px-2.5 py-1 rounded-full text-[10px] cursor-pointer ${dynCat === id ? 'bg-[#bef264] text-black font-bold' : 'bg-[#0f1c16] text-neutral-400 hover:text-white border border-[#1d3228]'}`}>{label}</button>
-                ))}
-              </div>
-              {dynCat === 'behind' && <p className="text-[10px] text-neutral-400">The big word is drawn behind the speaker. ClipForge sizes it to fit the picture, so it stays visible beside the head and shoulders.</p>}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {DYN_TEMPLATES.filter(t => dynCat === 'all' || (dynCat === 'behind' ? !!(t as any).behind : !(t as any).behind)).map(t => {
-                  const sel = captions.style === t.id;
-                  return (
-                    <div key={t.id} onClick={() => onCaptionsChange({ ...captions, style: t.id as any, fontFamily: undefined })}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all ${sel ? 'bg-[#101d17] border-[#3f9a5a] ring-1 ring-[#3f9a5a]/50' : 'bg-[#0e1914] border-[#1a2c24] hover:border-[#2b4338]'}`}>
-                      <div className="h-20 rounded-lg bg-gradient-to-b from-[#2a3440] to-[#0d1117] flex items-center justify-center overflow-hidden mb-2 border border-[#1c3127]">
-                        <DynCaption tpl={t} base={15} sample />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-white">{t.name}</span>
-                        <span className="text-[9px] text-neutral-500 uppercase tracking-wider">{(t as any).behind ? 'behind person · font locked' : 'font locked'}</span>
-                      </div>
-                      <p className="text-[10px] text-neutral-400 mt-0.5">{t.tagline}</p>
-                    </div>
-                  );
-                })}
-              </div>
-              </div>
-            )}
-          </section>
+          <CaptionStylePicker captions={captions} onCaptionsChange={onCaptionsChange} />
 
           {/* Caption font */}
           {isDynStyle(captions.style) ? (

@@ -4,7 +4,7 @@ import DATA from '../../electron/engine/dyn-templates.json';
 export interface DynStyle { font: string; scale: number; colors: string[]; outline: string; ow: number; upper: boolean; italic: number }
 export interface DynTemplate {
   id: string; name: string; tagline: string; sample: string[]; maxWords: number; maxPerLine: number; cw: number; sizeMul: number; lh: number;
-  anim: string; behind?: boolean; metal: boolean; hollow: boolean; active: null | { mode: 'box' | 'color'; color: string; text?: string; pad?: number };
+  anim: string; rot?: number; behind?: boolean; metal: boolean; hollow: boolean; active: null | { mode: 'box' | 'color'; color: string; text?: string; pad?: number };
   plain: DynStyle; fill: DynStyle; emph: Omit<DynStyle, 'colors'> & { colors: string[][] };
 }
 export const DYN_TEMPLATES = (DATA as any).templates as DynTemplate[];

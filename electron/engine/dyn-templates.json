@@ -1066,6 +1066,1136 @@
     "upper": true,
     "italic": 0
    }
+  },
+  {
+   "id": "dyn-bounce",
+   "name": "Bounce Party",
+   "tagline": "Words bounce in with a big squishy pop, key words in sunny yellow.",
+   "sample": [
+    "This",
+    "is",
+    "so",
+    "CRAZY"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.5,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "bounce",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Lilita One",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#111111",
+    "ow": 6,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Lilita One",
+    "scale": 0.62,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#111111",
+    "ow": 5,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Titan One",
+    "scale": 1.6,
+    "colors": [
+     [
+      "#FFF27A",
+      "#FF9A00"
+     ],
+     [
+      "#9BF6FF",
+      "#2BB6E8"
+     ],
+     [
+      "#FFB3D1",
+      "#FF4D8D"
+     ]
+    ],
+    "outline": "#4A1D00",
+    "ow": 8,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-slam",
+   "name": "Slam Cut",
+   "tagline": "One huge word at a time that slams onto the screen.",
+   "sample": [
+    "Just",
+    "STOP"
+   ],
+   "maxWords": 1,
+   "maxPerLine": 1,
+   "cw": 0.42,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "slam",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Bebas Neue",
+    "scale": 1.5,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 7,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Bebas Neue",
+    "scale": 1.1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 6,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Anton",
+    "scale": 2.1,
+    "colors": [
+     [
+      "#FF5A4F",
+      "#C40000"
+     ],
+     [
+      "#FFE14D",
+      "#E08A00"
+     ]
+    ],
+    "outline": "#000000",
+    "ow": 8,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-stretch",
+   "name": "Elastic",
+   "tagline": "Each word stretches in like rubber, cyan on white.",
+   "sample": [
+    "Make",
+    "it",
+    "POP"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.55,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "stretch",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Sigmar One",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#06283D",
+    "ow": 6,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Sigmar One",
+    "scale": 0.62,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#06283D",
+    "ow": 5,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Sigmar One",
+    "scale": 1.55,
+    "colors": [
+     [
+      "#8EF3FF",
+      "#1CB7E6"
+     ]
+    ],
+    "outline": "#06283D",
+    "ow": 8,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-flip",
+   "name": "Flip Reveal",
+   "tagline": "Words flip up like cards, the spoken one turns green.",
+   "sample": [
+    "Watch",
+    "this",
+    "closely"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.55,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "flip",
+   "metal": false,
+   "active": {
+    "mode": "color",
+    "color": "#4ADE80"
+   },
+   "hollow": false,
+   "plain": {
+    "font": "Kanit Black",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 5,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Kanit Black",
+    "scale": 0.7,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Kanit Black",
+    "scale": 1.4,
+    "colors": [
+     [
+      "#FFFFFF",
+      "#FFFFFF"
+     ]
+    ],
+    "outline": "#000000",
+    "ow": 6,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-wobble",
+   "name": "Sticker Wobble",
+   "tagline": "A tilted pink sticker wobbles onto every spoken word.",
+   "sample": [
+    "you",
+    "need",
+    "THIS"
+   ],
+   "maxWords": 3,
+   "maxPerLine": 3,
+   "cw": 0.55,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "wobble",
+   "metal": false,
+   "active": {
+    "mode": "box",
+    "color": "#FF4D8D",
+    "text": "#FFFFFF",
+    "pad": 11
+   },
+   "hollow": false,
+   "rot": -3,
+   "plain": {
+    "font": "Baloo 2 ExtraBold",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Baloo 2 ExtraBold",
+    "scale": 0.9,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Baloo 2 ExtraBold",
+    "scale": 1.15,
+    "colors": [
+     [
+      "#FFFFFF",
+      "#FFFFFF"
+     ]
+    ],
+    "outline": "#000000",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-glow",
+   "name": "Neon Glow",
+   "tagline": "Words fade in from a soft glow, cyan and magenta neon.",
+   "sample": [
+    "Feel",
+    "the",
+    "VIBE"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.5,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "glow",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Fugaz One",
+    "scale": 1,
+    "colors": [
+     "#E9FDFF",
+     "#8EEBFF"
+    ],
+    "outline": "#18004A",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Fugaz One",
+    "scale": 0.65,
+    "colors": [
+     "#E9FDFF",
+     "#8EEBFF"
+    ],
+    "outline": "#18004A",
+    "ow": 3,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Fugaz One",
+    "scale": 1.6,
+    "colors": [
+     [
+      "#FFB3F7",
+      "#FF2FD0"
+     ],
+     [
+      "#B8FFF2",
+      "#18E0C0"
+     ]
+    ],
+    "outline": "#2A0050",
+    "ow": 6,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-shake",
+   "name": "Shake Alert",
+   "tagline": "Words shake in like an alarm, red on white.",
+   "sample": [
+    "Never",
+    "do",
+    "THIS"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.55,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "shake",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Russo One",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 5,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Russo One",
+    "scale": 0.65,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Russo One",
+    "scale": 1.55,
+    "colors": [
+     [
+      "#FF6B6B",
+      "#D10000"
+     ]
+    ],
+    "outline": "#000000",
+    "ow": 7,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-track",
+   "name": "Cinema Track",
+   "tagline": "Letters slide apart then settle, elegant gold serif.",
+   "sample": [
+    "A",
+    "quiet",
+    "LUXURY"
+   ],
+   "maxWords": 5,
+   "maxPerLine": 3,
+   "cw": 0.62,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "track",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Cinzel Bold",
+    "scale": 0.9,
+    "colors": [
+     "#FFFFFF",
+     "#E6E1D6"
+    ],
+    "outline": "#000000",
+    "ow": 3,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Cinzel Bold",
+    "scale": 0.6,
+    "colors": [
+     "#FFFFFF",
+     "#E6E1D6"
+    ],
+    "outline": "#000000",
+    "ow": 2,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Cinzel Bold",
+    "scale": 1.4,
+    "colors": [
+     [
+      "#FFF1C2",
+      "#C9A227"
+     ]
+    ],
+    "outline": "#2B1E00",
+    "ow": 5,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-jelly",
+   "name": "Jelly",
+   "tagline": "Soft jelly words with a pink outline, they squish when spoken.",
+   "sample": [
+    "so",
+    "much",
+    "FUN"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.55,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "squash",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Fredoka Bold",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#FF3D81",
+    "ow": 7,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Fredoka Bold",
+    "scale": 0.65,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#FF3D81",
+    "ow": 6,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Fredoka Bold",
+    "scale": 1.55,
+    "colors": [
+     [
+      "#FFF27A",
+      "#FFC400"
+     ]
+    ],
+    "outline": "#FF3D81",
+    "ow": 8,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-marker",
+   "name": "Marker Highlight",
+   "tagline": "A lime highlighter marker jumps to each spoken word.",
+   "sample": [
+    "This",
+    "is",
+    "AMAZING"
+   ],
+   "maxWords": 3,
+   "maxPerLine": 3,
+   "cw": 0.62,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "bounce",
+   "metal": false,
+   "active": {
+    "mode": "box",
+    "color": "#BEF264",
+    "text": "#000000",
+    "pad": 10
+   },
+   "hollow": false,
+   "rot": -2,
+   "plain": {
+    "font": "Poppins Black",
+    "scale": 0.95,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Poppins Black",
+    "scale": 0.95,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Poppins Black",
+    "scale": 1.0,
+    "colors": [
+     [
+      "#FFFFFF",
+      "#FFFFFF"
+     ]
+    ],
+    "outline": "#000000",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-arcade",
+   "name": "Retro Arcade",
+   "tagline": "Pixel arcade letters that flip in, yellow with cyan.",
+   "sample": [
+    "Game",
+    "ON",
+    "NOW"
+   ],
+   "maxWords": 3,
+   "maxPerLine": 2,
+   "cw": 1.0,
+   "sizeMul": 0.8,
+   "lh": 1.0,
+   "anim": "flip",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Press Start 2P",
+    "scale": 0.62,
+    "colors": [
+     "#FFF27A",
+     "#FFF27A"
+    ],
+    "outline": "#2A0050",
+    "ow": 5,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Press Start 2P",
+    "scale": 0.42,
+    "colors": [
+     "#FFF27A",
+     "#FFF27A"
+    ],
+    "outline": "#2A0050",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Press Start 2P",
+    "scale": 1.0,
+    "colors": [
+     [
+      "#7DF9FF",
+      "#00B7D6"
+     ],
+     [
+      "#FF8AD8",
+      "#E0149B"
+     ]
+    ],
+    "outline": "#2A0050",
+    "ow": 6,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-western",
+   "name": "Slab Heat",
+   "tagline": "Heavy slab letters that slam down, orange for key words.",
+   "sample": [
+    "The",
+    "big",
+    "SECRET"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.6,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "slam",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Alfa Slab One",
+    "scale": 0.85,
+    "colors": [
+     "#FFF3D6",
+     "#F1DDB0"
+    ],
+    "outline": "#2B1300",
+    "ow": 6,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Alfa Slab One",
+    "scale": 0.55,
+    "colors": [
+     "#FFF3D6",
+     "#F1DDB0"
+    ],
+    "outline": "#2B1300",
+    "ow": 5,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Alfa Slab One",
+    "scale": 1.5,
+    "colors": [
+     [
+      "#FFB24D",
+      "#E0460A"
+     ]
+    ],
+    "outline": "#2B1300",
+    "ow": 8,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-lobster",
+   "name": "Lobster Pop",
+   "tagline": "Friendly script words with a bold block word that bounces.",
+   "sample": [
+    "Love",
+    "your",
+    "LIFE"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.5,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "bounce",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "plain": {
+    "font": "Lobster",
+    "scale": 1,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#7A1244",
+    "ow": 5,
+    "upper": false,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Lobster",
+    "scale": 0.7,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#7A1244",
+    "ow": 4,
+    "upper": false,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Bowlby One",
+    "scale": 1.3,
+    "colors": [
+     [
+      "#FFD1E8",
+      "#FF4DA6"
+     ]
+    ],
+    "outline": "#7A1244",
+    "ow": 7,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-behind-mint",
+   "name": "Behind Mint",
+   "tagline": "Fresh green word slams in behind the speaker.",
+   "sample": [
+    "Stay",
+    "FRESH"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.55,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "flip",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "behind": true,
+   "plain": {
+    "font": "Teko Bold",
+    "scale": 1.0,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Teko Bold",
+    "scale": 0.7,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 3,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Archivo Black",
+    "scale": 3.0,
+    "colors": [
+     [
+      "#C8FFE0",
+      "#10B981"
+     ]
+    ],
+    "outline": "#04281C",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-behind-sunset",
+   "name": "Behind Sunset",
+   "tagline": "Orange-to-pink sunset word bounces in behind the speaker.",
+   "sample": [
+    "Chase",
+    "your",
+    "DREAMS"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.55,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "bounce",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "behind": true,
+   "plain": {
+    "font": "Oswald Bold",
+    "scale": 0.9,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Oswald Bold",
+    "scale": 0.6,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 3,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Bowlby One",
+    "scale": 2.7,
+    "colors": [
+     [
+      "#FFC26B",
+      "#FF2E7E"
+     ]
+    ],
+    "outline": "#3A0020",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-behind-royal",
+   "name": "Behind Royal",
+   "tagline": "Purple and gold royal word fades in behind the speaker.",
+   "sample": [
+    "Be",
+    "a",
+    "KING"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.5,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "glow",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "behind": true,
+   "plain": {
+    "font": "Cinzel Bold",
+    "scale": 0.85,
+    "colors": [
+     "#FFFFFF",
+     "#E6E1D6"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Cinzel Bold",
+    "scale": 0.6,
+    "colors": [
+     "#FFFFFF",
+     "#E6E1D6"
+    ],
+    "outline": "#000000",
+    "ow": 3,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Abril Fatface",
+    "scale": 3.0,
+    "colors": [
+     [
+      "#F6E3FF",
+      "#9333EA"
+     ],
+     [
+      "#FFF1C2",
+      "#C9A227"
+     ]
+    ],
+    "outline": "#240047",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-behind-horror",
+   "name": "Behind Horror",
+   "tagline": "Dripping red horror word shakes behind the speaker.",
+   "sample": [
+    "Do",
+    "not",
+    "RUN"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.5,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "shake",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "behind": true,
+   "plain": {
+    "font": "Black Ops One",
+    "scale": 0.85,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Black Ops One",
+    "scale": 0.6,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 3,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Creepster",
+    "scale": 3.2,
+    "colors": [
+     [
+      "#FF4D4D",
+      "#6E0000"
+     ]
+    ],
+    "outline": "#000000",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-behind-comic",
+   "name": "Behind Comic",
+   "tagline": "Yellow comic word stretches in behind the speaker.",
+   "sample": [
+    "That",
+    "was",
+    "EPIC"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.5,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "stretch",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "behind": true,
+   "plain": {
+    "font": "Bangers",
+    "scale": 1.0,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 5,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Bangers",
+    "scale": 0.7,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Bangers",
+    "scale": 3.0,
+    "colors": [
+     [
+      "#FFF27A",
+      "#FFB800"
+     ],
+     [
+      "#9BF6FF",
+      "#2BB6E8"
+     ]
+    ],
+    "outline": "#000000",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   }
+  },
+  {
+   "id": "dyn-behind-gamer",
+   "name": "Behind Gamer",
+   "tagline": "Toxic green gamer word glows in behind the speaker.",
+   "sample": [
+    "Level",
+    "UP"
+   ],
+   "maxWords": 4,
+   "maxPerLine": 3,
+   "cw": 0.6,
+   "sizeMul": 1.0,
+   "lh": 1.0,
+   "anim": "glow",
+   "metal": true,
+   "active": null,
+   "hollow": false,
+   "behind": true,
+   "plain": {
+    "font": "Russo One",
+    "scale": 0.9,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 4,
+    "upper": true,
+    "italic": 0
+   },
+   "fill": {
+    "font": "Russo One",
+    "scale": 0.6,
+    "colors": [
+     "#FFFFFF",
+     "#FFFFFF"
+    ],
+    "outline": "#000000",
+    "ow": 3,
+    "upper": true,
+    "italic": 0
+   },
+   "emph": {
+    "font": "Black Ops One",
+    "scale": 2.9,
+    "colors": [
+     [
+      "#C9FF6B",
+      "#16A34A"
+     ]
+    ],
+    "outline": "#032B10",
+    "ow": 0,
+    "upper": true,
+    "italic": 0
+   }
   }
  ],
  "words": {

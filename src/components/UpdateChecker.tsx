@@ -96,6 +96,17 @@ export const UpdateChecker: React.FC<{ children: (open: () => void, checking: bo
                   <div className="flex justify-between"><span className="text-neutral-400">Your version</span><span className="font-mono text-white">v{info.current}</span></div>
                   <div className="flex justify-between"><span className="text-neutral-400">New version</span><span className="font-mono text-[#8fd0a4] font-bold">v{info.latest}</span></div>
                 </div>
+                {info.notes && info.notes.trim() && (
+                  <div className="rounded-xl border border-[#1c3026] bg-[#0a130f] p-3 max-h-44 overflow-y-auto space-y-1">
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-[#8fd0a4]">What's new in v{info.latest}</div>
+                    {info.notes.split('\n').map(l => l.trim()).filter(Boolean).map((l, i) => {
+                      const h = /^#{1,4}\s+/.test(l), b = /^[-*+]\s+/.test(l);
+                      const t = l.replace(/^#{1,4}\s+/, '').replace(/^[-*+]\s+/, '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/`/g, '');
+                      return h ? <div key={i} className="text-[11px] font-bold text-white pt-1">{t}</div>
+                        : <div key={i} className="text-[11px] text-neutral-300 leading-snug flex gap-1.5">{b && <span className="text-[#bef264]">•</span>}<span>{t}</span></div>;
+                    })}
+                  </div>
+                )}
                 {dl && (
                   <div>
                     <div className="h-1.5 rounded-full bg-[#09100d] overflow-hidden"><div className="h-full bg-[#bef264] transition-all" style={{ width: `${dl.percent}%` }} /></div>
