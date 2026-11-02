@@ -31,7 +31,17 @@ function normalizeJob(job) {
 
 // A resumed run must never reuse results made with OTHER settings (e.g. clips already rendered with default framing/captions).
 // We keep a fingerprint of the settings next to the checkpoints; on resume, anything that depends on a changed setting is thrown away.
+const CFG_KEYS = ['language', 'modelId', 'clipLength', 'targetClipsCount', 'aiPrompt', 'shorts', 'ratio', 'quality', 'split', 'framing', 'captions', 'grading', 'branding'];
 function guardSettings(job, work, log) {
+  const cfgF = path.join(work, 'cfg.json');
+  // The app was restarted (power cut, crash): the screen only knows defaults, so continue with the settings this project was started with
+  if (job.resume && job.settingsKnown === false) {
+    let saved = null; try { saved = JSON.parse(fs.readFileSync(cfgF, 'utf8')); } catch {}
+    if (saved) { for (const k of CFG_KEYS) if (saved[k] !== undefined) job[k] = saved[k]; log('System', 'Continuing with the settings this project was started with.', 'info'); }
+    try { fs.mkdirSync(work, { recursive: true }); } catch {}
+    if (saved || fs.existsSync(path.join(work, 'sig.json'))) return;   // nothing to compare against: keep every checkpoint
+  }
+  try { fs.mkdirSync(work, { recursive: true }); const c = {}; for (const k of CFG_KEYS) if (job[k] !== undefined) c[k] = job[k]; fs.writeFileSync(cfgF, JSON.stringify(c)); } catch {}
   const J = v => JSON.stringify(v === undefined ? null : v);
   const sel = J({ f: job.filePath, files: (job.files || []).map(x => x.path), l: job.language, m: job.modelId, cl: job.clipLength, n: job.targetClipsCount, p: (job.aiPrompt || '').trim(), sp: !!job.shorts });
   const ren = J({ r: job.ratio, q: job.quality, sp: job.split, fr: job.framing, ca: job.captions, gr: job.grading, br: job.branding });

@@ -503,6 +503,7 @@ export default function App() {
                 onViewClips={() => { setActiveProjectId(id); setActiveView('clips'); }}
                 onNewProject={() => setActiveView('home')}
                 onUpdateProject={(updated) => setProjects(prev => prev.map(x => x.id === updated.id ? updated : x))}
+                settingsKnown={!!settingsRef.current[id]}
                 {...(settingsRef.current[id] || {})}
               />
             </main>

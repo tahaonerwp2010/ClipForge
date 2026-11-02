@@ -41,6 +41,7 @@ interface GenerationProgressViewProps {
   grading?: VideoGradingConfig;
   branding?: BrandingConfig;
   canvasRatio?: string;
+  settingsKnown?: boolean;
   clipLength?: 'auto' | '15s' | '30s' | '45s' | '60s' | '90s';
   targetClipsCount?: number;
   language?: string;
@@ -64,6 +65,7 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
   grading,
   branding,
   canvasRatio,
+  settingsKnown,
   clipLength,
   targetClipsCount,
   language,
@@ -229,6 +231,7 @@ export const GenerationProgressView: React.FC<GenerationProgressViewProps> = ({
         canvasRatio: canvasRatio || '9:16',
         split,
         resume: resumeRef.current,
+        settingsKnown: settingsKnown !== false,
         initialSteps: steps
       },
       cb

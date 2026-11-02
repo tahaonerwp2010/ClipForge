@@ -31,6 +31,7 @@ export interface PipelineExecutionConfig {
   quality?: number;
   split?: SplitConfig;
   resume?: boolean;
+  settingsKnown?: boolean;         // false = the app was restarted, the screen only has defaults, so the engine keeps this project's saved settings
   initialSteps?: PipelineStep[];   // what the screen already shows (keeps finished steps / percentages when resuming)
 }
 
@@ -139,6 +140,7 @@ export class PipelineRunner {
         id: project.id,
         resume: !!config.resume || ((project.progressPercent ?? 0) > 0 && project.status !== 'Finished' && (project.status === 'Processing' || project.status === 'Paused')),
         filePath: project.sourceFilePath,
+        settingsKnown: config.settingsKnown !== false,
         shorts: !!project.shortsFiles?.length,
         files: project.shortsFiles?.map(f => ({ path: f.path, name: f.name })),
         name: project.name,
