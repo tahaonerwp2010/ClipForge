@@ -34,7 +34,7 @@ const hookTwoLines = (text, fallback) => hookLines(text, fallback, 2);
 function hookFontPx(hook, W, userSize) {
   const k = W / 1080;
   const maxLen = Math.max(4, ...String(hook).split('\n').map(l => l.length));
-  const fit = (W * 0.92) / (maxLen * 0.64);
+  const fit = (W * 0.94) / (maxLen * 0.55);
   if (userSize > 0) return Math.round(Math.max(24 * k, Math.min(userSize * k, fit)));
   return Math.round(Math.max(52 * k, Math.min(124 * k, (W * 0.88) / (maxLen * 0.64))));
 }

@@ -17,6 +17,8 @@ async function whatsNew(repo, rel) {
   const get = async (ref) => { try { const r = await fetch(`https://raw.githubusercontent.com/${repo}/${ref}/RELEASE_NOTES.md`, { headers: { 'User-Agent': 'ClipForge-Updater' }, signal: AbortSignal.timeout(8000) }); return r.ok ? await r.text() : ''; } catch { return ''; } };
   let t = await get(encodeURIComponent(rel.tag_name));
   if (!t.trim()) t = String(rel.body || '').replace(/\*\*Full Changelog\*\*:.*$/im, '').replace(/^#+\s*What's Changed\s*$/im, '');
+  const h = [...t.matchAll(/^#{1,3}\s/gm)].map(m => m.index);      // only the first section = this version; older sections are never shown
+  if (h.length > 1 && h[0] === 0) t = t.slice(0, h[1]);
   return t.trim().slice(0, 2500);
 }
 
