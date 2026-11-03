@@ -6,7 +6,7 @@ import { BrandingTab } from './tabs/BrandingTab';
 import { AutoFxCard, DEFAULT_FX, FxState } from './tabs/AutoFxCard';
 import { FontPicker } from './common/FontPicker';
 import { ColorPicker } from './common/ColorPicker';
-import { hookLines, hookWordTokens, remapHookColors } from '../utils/captionHelpers';
+import { hookLines, hookWordTokens, remapHookColors, hookFitMax } from '../utils/captionHelpers';
 import { fileUrl } from '../utils/fileUrl';
 import { LicenseService } from '../services/licenseService';
 import { isDynStyle } from '../utils/dynCaptions';
@@ -118,7 +118,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
 
   const ls = hookLines(hookText || 'THE VIRAL TRUTH', hook.lines || 2);
   const maxLen = Math.max(4, ...ls.map((l: string) => l.length));
-  const fitMax = Math.max(40, Math.min(220, Math.floor((1080 * 0.94) / (maxLen * 0.55))));
+  const fitMax = Math.max(40, Math.min(400, hookFitMax(ls, hook.fontFamily)));
   const Chip = (p: { on: boolean; onClick: () => void; children: any }) => (
     <button type="button" onClick={p.onClick} className={`px-3 py-1 rounded-full text-[11px] cursor-pointer ${p.on ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] font-bold' : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white'}`}>{p.children}</button>
   );

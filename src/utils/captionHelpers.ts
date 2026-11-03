@@ -1,3 +1,4 @@
+import { cssFont, fontCell } from '../services/fontService';
 import { EXTRA_EMOJI_KEYWORDS } from '../data/emojiKeywords';
 import { CaptionPresetStyle, TranscriptWord } from '../types/clipper';
 
@@ -295,9 +296,23 @@ export const remapHookColors = (oldText: string, newText: string, colors?: (stri
 };
 export const hookTwoLines = (text: string): string[] => hookLines(text, 2);
 /** font size in px for a screen that is `screenW` px wide (1080 = the real video width). userSize = the size the user chose. */
-export function hookFontPx(lines: string[], screenW: number, userSize?: number): number {
+const _cv = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
+/** Biggest hook size (video px at 1080 wide) whose longest line still fits edge to edge, from the real glyph widths of the hook font. */
+export function hookFitMax(lines: string[], family?: string): number {
   const maxLen = Math.max(4, ...lines.map(l => l.length));
-  const fit = (1080 * 0.92) / (maxLen * 0.64);
+  const est = Math.floor((1080 * 0.94) / (maxLen * 0.55));
+  try {
+    const fam = family || 'Montserrat Black';
+    if (!_cv) return est;
+    _cv.font = `1000px ${cssFont(fam)}`;
+    const em = Math.max(0.1, ...lines.map(l => _cv.measureText(l).width / 1000));
+    if (!(em > 0.1)) return est;
+    return Math.max(30, Math.floor((1080 * 0.985 - 10) * fontCell(fam) / em));
+  } catch { return est; }
+}
+export function hookFontPx(lines: string[], screenW: number, userSize?: number, family?: string): number {
+  const maxLen = Math.max(4, ...lines.map(l => l.length));
+  const fit = hookFitMax(lines, family);
   if (userSize && userSize > 0) return Math.max(24, Math.min(userSize, fit)) * screenW / 1080;
   return Math.max(52, Math.min(124, (1080 * 0.88) / (maxLen * 0.64))) * screenW / 1080;
 }

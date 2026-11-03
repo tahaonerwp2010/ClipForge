@@ -31,11 +31,19 @@ function hookLines(text, fallback = '', n = 2) {
 const hookTwoLines = (text, fallback) => hookLines(text, fallback, 2);
 // Font size (px at the given canvas width). userSize = the size the user chose (px at 1080 wide); without it the size is picked to fit.
 // A chosen size is only reduced when the text would not fit inside the screen at all.
-function hookFontPx(hook, W, userSize) {
+// measure = {em: text -> width in em, cell}: real glyph widths of the hook font, so the size can fill the screen from edge to edge.
+function hookFontPx(hook, W, userSize, measure) {
   const k = W / 1080;
-  const maxLen = Math.max(4, ...String(hook).split('\n').map(l => l.length));
-  const fit = (W * 0.94) / (maxLen * 0.55);
+  const lines = String(hook).split('\n');
+  const maxLen = Math.max(4, ...lines.map(l => l.length));
+  const fit = fitSize(lines, W, measure) || (W * 0.94) / (maxLen * 0.55);
   if (userSize > 0) return Math.round(Math.max(24 * k, Math.min(userSize * k, fit)));
   return Math.round(Math.max(52 * k, Math.min(124 * k, (W * 0.88) / (maxLen * 0.64))));
 }
-module.exports = { hookLines, hookTwoLines, hookFontPx };
+function fitSize(lines, W, measure) {
+  if (!measure || !measure.em) return 0;
+  const em = Math.max(1, ...lines.map(l => measure.em(l)));
+  const room = W * 0.985 - 2 * Math.round(5 * W / 1080);                 // nearly the whole width, minus the outline
+  return Math.floor(room * (measure.cell || 1.22) / em);
+}
+module.exports = { fitSize, hookLines, hookTwoLines, hookFontPx };

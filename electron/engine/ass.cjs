@@ -34,6 +34,12 @@ const HK = require('./hook.cjs');
 const plain = t => EM.splitTitle(t).text;
 const LEGACY = { 'Montserrat': 'Montserrat Black', 'Syne': 'Syne ExtraBold', 'JetBrains Mono': 'JetBrains Mono ExtraBold' };
 const fam = f => LEGACY[f] || f;
+const _meas = {};
+function hookMeasure(fam) {
+  if (!(fam in _meas)) { const em = FONTS.measurerFor(fam); _meas[fam] = em ? { em, cell: em.cell || cellOf(fam) } : null; }
+  return _meas[fam];
+}
+function cellOf(fam) { try { const f = FONTS.bundled().concat(FONTS.userFonts()).find(x => x.family === fam); return f && f.cell || 1.22; } catch { return 1.22; } }
 function fontsUsed({ captions = {}, branding = {} }) {
   const preset = PRESETS[captions.style] || PRESETS['capcut-emoji'];
   const at = branding.autoTitle || {};
@@ -84,7 +90,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
     if (fin || fout) fx += `\\fad(${fin},${fout})`;
     if (ao === 'shrink') fx += `\\t(${Math.max(0, ms - 300)},${ms},\\fscx10\\fscy10\\alpha&HFF&)`;
     const hk = HK.hookLines(title, '', at.lines).split('\n');
-    const hs = HK.hookFontPx(hk.join('\n'), W, at.size);
+    const hs = HK.hookFontPx(hk.join('\n'), W, at.size, hookMeasure(titleFont));
     L.push(`Dialogue: 2,${ts(0)},${ts(tShow)},Title,,0,0,0,,${place}{\\fs${hs}}${fx ? '{' + fx + '}' : ''}${hookColored(hk, at)}`);
   }
   if (branding.showHookTitle && branding.hookTitle && part !== 'behind')
@@ -142,7 +148,7 @@ function titleEmojis({ title, branding = {}, W, H, dur = 9999 }) {
   const hk = HK.hookTwoLines(title), { emojis } = EM.splitTitle(String(title));
   const list = emojis.map(EM.pngForChar).filter(Boolean).slice(0, 3);
   if (!list.length) return [];
-  const k = W / 1080, size = HK.hookFontPx(hk, W);
+  const k = W / 1080, size = HK.hookFontPx(hk, W, undefined, hookMeasure(String(at.fontFamily || 'Montserrat Black')));
   const em = Math.round(size * 1.1), gap = Math.round(em * 0.1);
   const total = list.length * em + (list.length - 1) * gap;
   const cx = (at.positionX ?? 50) / 100 * W, cy = (at.positionY ?? 10) / 100 * H;

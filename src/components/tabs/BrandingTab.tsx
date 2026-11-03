@@ -1,5 +1,5 @@
 import { ProTag } from '../common/ProTag';
-import { hookLines } from '../../utils/captionHelpers';
+import { hookLines, hookFitMax } from '../../utils/captionHelpers';
 import React, { useEffect, useRef, useState } from 'react';
 import { BrandingConfig } from '../../types/clipper';
 import { 
@@ -381,7 +381,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                   {branding.autoTitle?.size ? (() => {
                     const ls = hookLines(branding.autoTitle?.title || clipTitle || 'THE VIRAL TRUTH', branding.autoTitle?.lines || 2);
                     const maxLen = Math.max(4, ...ls.map(l => l.length));
-                    const fitMax = Math.max(40, Math.min(220, Math.floor((1080 * 0.94) / (maxLen * 0.55))));
+                    const fitMax = Math.max(40, Math.min(400, hookFitMax(ls, branding.autoTitle?.fontFamily)));
                     const val = Math.min(branding.autoTitle.size as number, fitMax);
                     return (<>
                       <input type="range" min={30} max={fitMax} value={val} onChange={(e) => onBrandingChange({ ...branding, autoTitle: { ...branding.autoTitle, size: parseInt(e.target.value) } })} className="w-40 h-1.5 bg-[#1d3228] rounded-lg appearance-none accent-[#bef264] cursor-pointer" />

@@ -46,6 +46,44 @@ function readCell(buf) {
   return null;
 }
 
+// Real text width in em from the font file (cmap + hmtx), so a size can be filled exactly to the screen edges. Returns a function(text) -> em, or null.
+function measurerFor(family) {
+  try {
+    let file = null;
+    const b = bundled().find(f => f.family === family); if (b && bundledDir()) file = path.join(bundledDir(), b.file);
+    if (!file) { const u = userFonts().find(f => f.family === family); if (u) file = path.join(userDir(), u.file); }
+    if (!file && process.env.WINDIR) for (const n of SYSTEM[family] || []) { const c = path.join(process.env.WINDIR, 'Fonts', n); if (fs.existsSync(c)) { file = c; break; } }
+    if (!file || !fs.existsSync(file)) return null;
+    const buf = fs.readFileSync(file);
+    let base = 0; if (buf.toString('latin1', 0, 4) === 'ttcf') base = buf.readUInt32BE(12);
+    const n = buf.readUInt16BE(base + 4), tab = {};
+    for (let i = 0; i < n; i++) { const r = base + 12 + i * 16; tab[buf.toString('latin1', r, r + 4)] = buf.readUInt32BE(r + 8); }
+    const upm = buf.readUInt16BE(tab.head + 18), nH = buf.readUInt16BE(tab.hhea + 34), hm = tab.hmtx;
+    const adv = g => buf.readUInt16BE(hm + 4 * Math.min(g, nH - 1));
+    // pick a Unicode cmap (format 4 or 12)
+    const c0 = tab.cmap, cn = buf.readUInt16BE(c0 + 2); let sub = null;
+    for (let i = 0; i < cn; i++) { const pl = buf.readUInt16BE(c0 + 4 + i * 8), en = buf.readUInt16BE(c0 + 6 + i * 8), off = c0 + buf.readUInt32BE(c0 + 8 + i * 8); const fm = buf.readUInt16BE(off); if ((pl === 3 && en === 10 && fm === 12) || (!sub || sub.fm !== 12) && (pl === 3 && en === 1 || pl === 0) && (fm === 4 || fm === 12)) sub = { off, fm }; }
+    if (!sub) return null;
+    const glyph = (cp) => {
+      const o = sub.off;
+      if (sub.fm === 12) { const g = buf.readUInt32BE(o + 12); for (let i = 0; i < g; i++) { const r = o + 16 + i * 12, a = buf.readUInt32BE(r), z = buf.readUInt32BE(r + 4); if (cp >= a && cp <= z) return buf.readUInt32BE(r + 8) + cp - a; } return 0; }
+      const sc = buf.readUInt16BE(o + 6) / 2, endO = o + 14, startO = endO + sc * 2 + 2, deltaO = startO + sc * 2, rangeO = deltaO + sc * 2;
+      for (let i = 0; i < sc; i++) {
+        if (cp > buf.readUInt16BE(endO + i * 2)) continue;
+        if (cp < buf.readUInt16BE(startO + i * 2)) return 0;
+        const ro = buf.readUInt16BE(rangeO + i * 2), dl = buf.readInt16BE(deltaO + i * 2);
+        if (!ro) return (cp + dl) & 0xFFFF;
+        const g = buf.readUInt16BE(rangeO + i * 2 + ro + (cp - buf.readUInt16BE(startO + i * 2)) * 2);
+        return g ? (g + dl) & 0xFFFF : 0;
+      }
+      return 0;
+    };
+    const fn = (text) => { let w = 0; for (const ch of String(text)) { const g = glyph(ch.codePointAt(0)); w += g ? adv(g) / upm : 0.6; } return w; };
+    fn.cell = readCell(buf);
+    return fn;
+  } catch { return null; }
+}
+
 const SYSTEM = {   // Windows system fonts -> files in C:\Windows\Fonts (copied next to the render so libass always finds them)
   'Arial': ['arial.ttf', 'arialbd.ttf'], 'Arial Black': ['ariblk.ttf'], 'Impact': ['impact.ttf'],
   'Segoe UI': ['segoeui.ttf', 'segoeuib.ttf'], 'Georgia': ['georgia.ttf', 'georgiab.ttf'], 'Verdana': ['verdana.ttf', 'verdanab.ttf'],
@@ -70,4 +108,4 @@ function stageFonts(dst, families = []) {
 // Arabic / Urdu and Hindi (Devanagari) need a font that has those letters; libass cannot always find one by itself, so the word is set in a bundled Noto font.
 const ARABIC = 'Noto Sans Arabic ExtraBold', DEVA = 'Noto Sans Devanagari ExtraBold';
 const scriptFont = t => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(String(t)) ? ARABIC : /[\u0900-\u097F]/.test(String(t)) ? DEVA : null;
-module.exports = { scriptFont, bundled, userFonts, userDir, readFamily, readCell, boldFlag, stageFonts, SYSTEM };
+module.exports = { measurerFor, scriptFont, bundled, userFonts, userDir, readFamily, readCell, boldFlag, stageFonts, SYSTEM };
