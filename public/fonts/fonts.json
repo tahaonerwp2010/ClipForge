@@ -1,352 +1,422 @@
 [
-{
-"family": "Anton",
-"file": "Anton.ttf",
-"category": "Impact"
-},
-{
-"family": "Bebas Neue",
-"file": "BebasNeue.ttf",
-"category": "Impact"
-},
-{
-"family": "Montserrat Black",
-"file": "MontserratBlack.ttf",
-"category": "Impact"
-},
-{
-"family": "Montserrat ExtraBold",
-"file": "MontserratExtraBold.ttf",
-"category": "Impact"
-},
-{
-"family": "Poppins Black",
-"file": "PoppinsBlack.ttf",
-"category": "Impact"
-},
-{
-"family": "Poppins Bold",
-"file": "PoppinsBold.ttf",
-"category": "Clean"
-},
-{
-"family": "Oswald Bold",
-"file": "OswaldBold.ttf",
-"category": "Impact"
-},
-{
-"family": "Bangers",
-"file": "Bangers.ttf",
-"category": "Fun"
-},
-{
-"family": "Lilita One",
-"file": "LilitaOne.ttf",
-"category": "Fun"
-},
-{
-"family": "Titan One",
-"file": "TitanOne.ttf",
-"category": "Fun"
-},
-{
-"family": "Paytone One",
-"file": "PaytoneOne.ttf",
-"category": "Fun"
-},
-{
-"family": "Russo One",
-"file": "RussoOne.ttf",
-"category": "Impact"
-},
-{
-"family": "Archivo Black",
-"file": "ArchivoBlack.ttf",
-"category": "Impact"
-},
-{
-"family": "Black Ops One",
-"file": "BlackOpsOne.ttf",
-"category": "Fun"
-},
-{
-"family": "Rubik Bold",
-"file": "RubikBold.ttf",
-"category": "Clean"
-},
-{
-"family": "Rubik ExtraBold",
-"file": "RubikExtraBold.ttf",
-"category": "Impact"
-},
-{
-"family": "Inter ExtraBold",
-"file": "InterExtraBold.ttf",
-"category": "Clean"
-},
-{
-"family": "Open Sans ExtraBold",
-"file": "OpenSansExtraBold.ttf",
-"category": "Clean"
-},
-{
-"family": "Lato Black",
-"file": "LatoBlack.ttf",
-"category": "Clean"
-},
-{
-"family": "Nunito Black",
-"file": "NunitoBlack.ttf",
-"category": "Clean"
-},
-{
-"family": "Playfair Display Black",
-"file": "PlayfairDisplayBlack.ttf",
-"category": "Serif"
-},
-{
-"family": "Bowlby One",
-"file": "BowlbyOne.ttf",
-"category": "Impact"
-},
-{
-"family": "Passion One Black",
-"file": "PassionOneBlack.ttf",
-"category": "Impact"
-},
-{
-"family": "Righteous",
-"file": "Righteous.ttf",
-"category": "Fun"
-},
-{
-"family": "Bungee",
-"file": "Bungee.ttf",
-"category": "Fun"
-},
-{
-"family": "Press Start 2P",
-"file": "PressStart2P.ttf",
-"category": "Mono"
-},
-{
-"family": "Pacifico",
-"file": "Pacifico.ttf",
-"category": "Script"
-},
-{
-"family": "Lobster",
-"file": "Lobster.ttf",
-"category": "Script"
-},
-{
-"family": "Dancing Script Bold",
-"file": "DancingScriptBold.ttf",
-"category": "Script"
-},
-{
-"family": "Caveat Bold",
-"file": "CaveatBold.ttf",
-"category": "Script"
-},
-{
-"family": "Teko Bold",
-"file": "TekoBold.ttf",
-"category": "Impact"
-},
-{
-"family": "Barlow Condensed ExtraBold",
-"file": "BarlowCondensedExtraBold.ttf",
-"category": "Impact"
-},
-{
-"family": "Alfa Slab One",
-"file": "AlfaSlabOne.ttf",
-"category": "Serif"
-},
-{
-"family": "Fugaz One",
-"file": "FugazOne.ttf",
-"category": "Fun"
-},
-{
-"family": "Knewave",
-"file": "Knewave.ttf",
-"category": "Script"
-},
-{
-"family": "Sigmar One",
-"file": "SigmarOne.ttf",
-"category": "Fun"
-},
-{
-"family": "Staatliches",
-"file": "Staatliches.ttf",
-"category": "Impact"
-},
-{
-"family": "Changa One",
-"file": "ChangaOne.ttf",
-"category": "Fun"
-},
-{
-"family": "Fjalla One",
-"file": "FjallaOne.ttf",
-"category": "Impact"
-},
-{
-"family": "Boogaloo",
-"file": "Boogaloo.ttf",
-"category": "Fun"
-},
-{
-"family": "Creepster",
-"file": "Creepster.ttf",
-"category": "Fun"
-},
-{
-"family": "Monoton",
-"file": "Monoton.ttf",
-"category": "Fun"
-},
-{
-"family": "Orbitron ExtraBold",
-"file": "OrbitronExtraBold.ttf",
-"category": "Mono"
-},
-{
-"family": "Raleway ExtraBold",
-"file": "RalewayExtraBold.ttf",
-"category": "Clean"
-},
-{
-"family": "Cinzel Bold",
-"file": "CinzelBold.ttf",
-"category": "Serif"
-},
-{
-"family": "Abril Fatface",
-"file": "AbrilFatface.ttf",
-"category": "Serif"
-},
-{
-"family": "Syne ExtraBold",
-"file": "SyneExtraBold.ttf",
-"category": "Clean"
-},
-{
-"family": "JetBrains Mono ExtraBold",
-"file": "JetBrainsMonoExtraBold.ttf",
-"category": "Mono"
-},
-{
-"family": "League Gothic",
-"file": "LeagueGothic.ttf",
-"category": "Impact"
-},
-{
-"family": "Roboto Condensed Bold",
-"file": "RobotoCondensedBold.ttf",
-"category": "Clean"
-},
-{
-"family": "Space Grotesk Bold",
-"file": "SpaceGroteskBold.ttf",
-"category": "Clean"
-},
-{
-"family": "Outfit ExtraBold",
-"file": "OutfitExtraBold.ttf",
-"category": "Clean"
-},
-{
-"family": "Sora ExtraBold",
-"file": "SoraExtraBold.ttf",
-"category": "Clean"
-},
-{
-"family": "Urbanist ExtraBold",
-"file": "UrbanistExtraBold.ttf",
-"category": "Clean"
-},
-{
-"family": "Lexend Bold",
-"file": "LexendBold.ttf",
-"category": "Clean"
-},
-{
-"family": "Kanit Black",
-"file": "KanitBlack.ttf",
-"category": "Impact"
-},
-{
-"family": "Prompt Black",
-"file": "PromptBlack.ttf",
-"category": "Impact"
-},
-{
-"family": "Fredoka Bold",
-"file": "FredokaBold.ttf",
-"category": "Fun"
-},
-{
-"family": "Comfortaa Bold",
-"file": "ComfortaaBold.ttf",
-"category": "Fun"
-},
-{
-"family": "Quicksand Bold",
-"file": "QuicksandBold.ttf",
-"category": "Clean"
-},
-{
-"family": "Work Sans ExtraBold",
-"file": "WorkSansExtraBold.ttf",
-"category": "Clean"
-},
-{
-"family": "DM Sans ExtraBold",
-"file": "DMSansExtraBold.ttf",
-"category": "Clean"
-},
-{
-"family": "Source Sans 3 Bold",
-"file": "SourceSans3Bold.ttf",
-"category": "Clean"
-},
-{
-"family": "Rammetto One",
-"file": "RammettoOne.ttf",
-"category": "Fun"
-},
-{
-"family": "Shrikhand",
-"file": "Shrikhand.ttf",
-"category": "Script"
-},
-{
-"family": "Baloo 2 ExtraBold",
-"file": "Baloo2ExtraBold.ttf",
-"category": "Fun"
-},
-{
-"family": "Jovial Mood",
-"file": "JovialMood.otf",
-"category": "Fun"
-},
-{
-"family": "Moderno",
-"file": "Moderno.ttf",
-"category": "Fun"
-},
-{
-"family": "Noto Sans Arabic ExtraBold",
-"file": "NotoSansArabic.ttf",
-"category": "Clean"
-},
-{
-"family": "Noto Sans Devanagari ExtraBold",
-"file": "NotoSansDevanagari.ttf",
-"category": "Clean"
-}
+ {
+  "family": "Anton",
+  "file": "Anton.ttf",
+  "category": "Impact",
+  "cell": 1.7334
+ },
+ {
+  "family": "Bebas Neue",
+  "file": "BebasNeue.ttf",
+  "category": "Impact",
+  "cell": 1.3
+ },
+ {
+  "family": "Montserrat Black",
+  "file": "MontserratBlack.ttf",
+  "category": "Impact",
+  "cell": 1.562
+ },
+ {
+  "family": "Montserrat ExtraBold",
+  "file": "MontserratExtraBold.ttf",
+  "category": "Impact",
+  "cell": 1.562
+ },
+ {
+  "family": "Poppins Black",
+  "file": "PoppinsBlack.ttf",
+  "category": "Impact",
+  "cell": 1.762
+ },
+ {
+  "family": "Poppins Bold",
+  "file": "PoppinsBold.ttf",
+  "category": "Clean",
+  "cell": 1.762
+ },
+ {
+  "family": "Oswald Bold",
+  "file": "OswaldBold.ttf",
+  "category": "Impact",
+  "cell": 1.702
+ },
+ {
+  "family": "Bangers",
+  "file": "Bangers.ttf",
+  "category": "Fun",
+  "cell": 1.757
+ },
+ {
+  "family": "Lilita One",
+  "file": "LilitaOne.ttf",
+  "category": "Fun",
+  "cell": 1.143
+ },
+ {
+  "family": "Titan One",
+  "file": "TitanOne.ttf",
+  "category": "Fun",
+  "cell": 1.145
+ },
+ {
+  "family": "Paytone One",
+  "file": "PaytoneOne.ttf",
+  "category": "Fun",
+  "cell": 1.63
+ },
+ {
+  "family": "Russo One",
+  "file": "RussoOne.ttf",
+  "category": "Impact",
+  "cell": 1.205
+ },
+ {
+  "family": "Archivo Black",
+  "file": "ArchivoBlack.ttf",
+  "category": "Impact",
+  "cell": 1.347
+ },
+ {
+  "family": "Black Ops One",
+  "file": "BlackOpsOne.ttf",
+  "category": "Fun",
+  "cell": 1.4263
+ },
+ {
+  "family": "Rubik Bold",
+  "file": "RubikBold.ttf",
+  "category": "Clean",
+  "cell": 1.532
+ },
+ {
+  "family": "Rubik ExtraBold",
+  "file": "RubikExtraBold.ttf",
+  "category": "Impact",
+  "cell": 1.532
+ },
+ {
+  "family": "Inter ExtraBold",
+  "file": "InterExtraBold.ttf",
+  "category": "Clean",
+  "cell": 1.4302
+ },
+ {
+  "family": "Open Sans ExtraBold",
+  "file": "OpenSansExtraBold.ttf",
+  "category": "Clean",
+  "cell": 1.4419
+ },
+ {
+  "family": "Lato Black",
+  "file": "LatoBlack.ttf",
+  "category": "Clean",
+  "cell": 1.416
+ },
+ {
+  "family": "Nunito Black",
+  "file": "NunitoBlack.ttf",
+  "category": "Clean",
+  "cell": 1.377
+ },
+ {
+  "family": "Playfair Display Black",
+  "file": "PlayfairDisplayBlack.ttf",
+  "category": "Serif",
+  "cell": 1.41
+ },
+ {
+  "family": "Bowlby One",
+  "file": "BowlbyOne.ttf",
+  "category": "Impact",
+  "cell": 1.5664
+ },
+ {
+  "family": "Passion One Black",
+  "file": "PassionOneBlack.ttf",
+  "category": "Impact",
+  "cell": 1.101
+ },
+ {
+  "family": "Righteous",
+  "file": "Righteous.ttf",
+  "category": "Fun",
+  "cell": 1.2417
+ },
+ {
+  "family": "Bungee",
+  "file": "Bungee.ttf",
+  "category": "Fun",
+  "cell": 2.574
+ },
+ {
+  "family": "Press Start 2P",
+  "file": "PressStart2P.ttf",
+  "category": "Mono",
+  "cell": 1.374
+ },
+ {
+  "family": "Pacifico",
+  "file": "Pacifico.ttf",
+  "category": "Script",
+  "cell": 1.935
+ },
+ {
+  "family": "Lobster",
+  "file": "Lobster.ttf",
+  "category": "Script",
+  "cell": 1.49
+ },
+ {
+  "family": "Dancing Script Bold",
+  "file": "DancingScriptBold.ttf",
+  "category": "Script",
+  "cell": 1.402
+ },
+ {
+  "family": "Caveat Bold",
+  "file": "CaveatBold.ttf",
+  "category": "Script",
+  "cell": 1.289
+ },
+ {
+  "family": "Teko Bold",
+  "file": "TekoBold.ttf",
+  "category": "Impact",
+  "cell": 1.433
+ },
+ {
+  "family": "Barlow Condensed ExtraBold",
+  "file": "BarlowCondensedExtraBold.ttf",
+  "category": "Impact",
+  "cell": 1.349
+ },
+ {
+  "family": "Alfa Slab One",
+  "file": "AlfaSlabOne.ttf",
+  "category": "Serif",
+  "cell": 1.565
+ },
+ {
+  "family": "Fugaz One",
+  "file": "FugazOne.ttf",
+  "category": "Fun",
+  "cell": 1.468
+ },
+ {
+  "family": "Knewave",
+  "file": "Knewave.ttf",
+  "category": "Script",
+  "cell": 1.554
+ },
+ {
+  "family": "Sigmar One",
+  "file": "SigmarOne.ttf",
+  "category": "Fun",
+  "cell": 1.648
+ },
+ {
+  "family": "Staatliches",
+  "file": "Staatliches.ttf",
+  "category": "Impact",
+  "cell": 1.312
+ },
+ {
+  "family": "Changa One",
+  "file": "ChangaOne.ttf",
+  "category": "Fun",
+  "cell": 1.062
+ },
+ {
+  "family": "Fjalla One",
+  "file": "FjallaOne.ttf",
+  "category": "Impact",
+  "cell": 1.6162
+ },
+ {
+  "family": "Boogaloo",
+  "file": "Boogaloo.ttf",
+  "category": "Fun",
+  "cell": 1.189
+ },
+ {
+  "family": "Creepster",
+  "file": "Creepster.ttf",
+  "category": "Fun",
+  "cell": 1.1689
+ },
+ {
+  "family": "Monoton",
+  "file": "Monoton.ttf",
+  "category": "Fun",
+  "cell": 1.5566
+ },
+ {
+  "family": "Orbitron ExtraBold",
+  "file": "OrbitronExtraBold.ttf",
+  "category": "Mono",
+  "cell": 1.254
+ },
+ {
+  "family": "Raleway ExtraBold",
+  "file": "RalewayExtraBold.ttf",
+  "category": "Clean",
+  "cell": 1.388
+ },
+ {
+  "family": "Cinzel Bold",
+  "file": "CinzelBold.ttf",
+  "category": "Serif",
+  "cell": 1.348
+ },
+ {
+  "family": "Abril Fatface",
+  "file": "AbrilFatface.ttf",
+  "category": "Serif",
+  "cell": 1.349
+ },
+ {
+  "family": "Syne ExtraBold",
+  "file": "SyneExtraBold.ttf",
+  "category": "Clean",
+  "cell": 1.45
+ },
+ {
+  "family": "JetBrains Mono ExtraBold",
+  "file": "JetBrainsMonoExtraBold.ttf",
+  "category": "Mono",
+  "cell": 1.32
+ },
+ {
+  "family": "League Gothic",
+  "file": "LeagueGothic.ttf",
+  "category": "Impact",
+  "cell": 1.3015
+ },
+ {
+  "family": "Roboto Condensed Bold",
+  "file": "RobotoCondensedBold.ttf",
+  "category": "Clean",
+  "cell": 1.2002
+ },
+ {
+  "family": "Space Grotesk Bold",
+  "file": "SpaceGroteskBold.ttf",
+  "category": "Clean",
+  "cell": 1.442
+ },
+ {
+  "family": "Outfit ExtraBold",
+  "file": "OutfitExtraBold.ttf",
+  "category": "Clean",
+  "cell": 1.26
+ },
+ {
+  "family": "Sora ExtraBold",
+  "file": "SoraExtraBold.ttf",
+  "category": "Clean",
+  "cell": 1.54
+ },
+ {
+  "family": "Urbanist ExtraBold",
+  "file": "UrbanistExtraBold.ttf",
+  "category": "Clean",
+  "cell": 1.31
+ },
+ {
+  "family": "Lexend Bold",
+  "file": "LexendBold.ttf",
+  "category": "Clean",
+  "cell": 1.59
+ },
+ {
+  "family": "Kanit Black",
+  "file": "KanitBlack.ttf",
+  "category": "Impact",
+  "cell": 1.58
+ },
+ {
+  "family": "Prompt Black",
+  "file": "PromptBlack.ttf",
+  "category": "Impact",
+  "cell": 1.512
+ },
+ {
+  "family": "Fredoka Bold",
+  "file": "FredokaBold.ttf",
+  "category": "Fun",
+  "cell": 1.251
+ },
+ {
+  "family": "Comfortaa Bold",
+  "file": "ComfortaaBold.ttf",
+  "category": "Fun",
+  "cell": 1.617
+ },
+ {
+  "family": "Quicksand Bold",
+  "file": "QuicksandBold.ttf",
+  "category": "Clean",
+  "cell": 1.486
+ },
+ {
+  "family": "Work Sans ExtraBold",
+  "file": "WorkSansExtraBold.ttf",
+  "category": "Clean",
+  "cell": 1.448
+ },
+ {
+  "family": "DM Sans ExtraBold",
+  "file": "DMSansExtraBold.ttf",
+  "category": "Clean",
+  "cell": 1.322
+ },
+ {
+  "family": "Source Sans 3 Bold",
+  "file": "SourceSans3Bold.ttf",
+  "category": "Clean",
+  "cell": 1.222
+ },
+ {
+  "family": "Rammetto One",
+  "file": "RammettoOne.ttf",
+  "category": "Fun",
+  "cell": 1.6968
+ },
+ {
+  "family": "Shrikhand",
+  "file": "Shrikhand.ttf",
+  "category": "Script",
+  "cell": 1.458
+ },
+ {
+  "family": "Baloo 2 ExtraBold",
+  "file": "Baloo2ExtraBold.ttf",
+  "category": "Fun",
+  "cell": 1.574
+ },
+ {
+  "family": "Jovial Mood",
+  "file": "JovialMood.otf",
+  "category": "Fun",
+  "cell": 1.167
+ },
+ {
+  "family": "Moderno",
+  "file": "Moderno.ttf",
+  "category": "Fun",
+  "cell": 0.9
+ },
+ {
+  "family": "Noto Sans Arabic ExtraBold",
+  "file": "NotoSansArabic.ttf",
+  "category": "Clean",
+  "cell": 2.169
+ },
+ {
+  "family": "Noto Sans Devanagari ExtraBold",
+  "file": "NotoSansDevanagari.ttf",
+  "category": "Clean",
+  "cell": 1.906
+ }
 ]

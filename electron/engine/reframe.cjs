@@ -130,14 +130,53 @@ function buildPath(dets, { fps = 2, vf = 0.316, style = 'smooth-pan', hints = nu
   return out.filter((k, i) => i === 0 || i === out.length - 1 || Math.abs(k.c - out[i - 1].c) > 0.0015 || Math.abs(k.c - out[i + 1].c) > 0.0015);
 }
 
-// Piecewise-linear ffmpeg expression for C(t)
-function centerExpr(kf) {
-  const f = n => n.toFixed(4);
-  let e = f(kf[kf.length - 1].c);
-  for (let i = kf.length - 2; i >= 0; i--) {
-    const a = kf[i], b = kf[i + 1], dt = Math.max(0.001, b.t - a.t);
-    e = `if(lt(t,${f(b.t)}),${f(a.c)}+(${f(b.c - a.c)})*(t-${f(a.t)})/${f(dt)},${e})`;
-  }
-  return e;
+// Piecewise-linear ffmpeg expression for C(t).
+// ffmpeg refuses expressions that are nested too deeply ("Missing ')' or too many args", the crop filter then fails to start), and a long clip has
+// hundreds of keyframes, so the segments are joined as a balanced tree: only ~log2(n) levels deep instead of n.
+const f4 = n => n.toFixed(4);
+function treeExpr(leaves, last) {                       // leaves: [{ t1, e }] valid while t < t1, in order; last: expression after the final leaf
+  const all = [...leaves.map(l => ({ t1: l.t1, e: l.e })), { t1: Infinity, e: last }];
+  const build = (lo, hi) => {
+    if (hi - lo === 1) return all[lo].e;
+    const mid = (lo + hi) >> 1;
+    return `if(lt(t,${f4(all[mid - 1].t1)}),${build(lo, mid)},${build(mid, hi)})`;
+  };
+  return build(0, all.length);
 }
-module.exports = { buildPath, centerExpr, pickSubjects };
+// Keep the path small: a very long clip would otherwise make the ffmpeg command line too long for Windows (32k characters)
+function thinPath(kf, max = 160) {
+  if (kf.length <= max) return kf;
+  const dev = (a, b, p) => Math.abs(a.c + (b.c - a.c) * ((p.t - a.t) / Math.max(1e-6, b.t - a.t)) - p.c);
+  const rdp = (lo, hi, eps, keep) => {
+    let m = -1, d = 0;
+    for (let i = lo + 1; i < hi; i++) { const v = dev(kf[lo], kf[hi], kf[i]); if (v > d) { d = v; m = i; } }
+    if (m >= 0 && d > eps) { keep.add(m); rdp(lo, m, eps, keep); rdp(m, hi, eps, keep); }
+  };
+  for (let eps = 0.0015; eps < 0.5; eps *= 1.6) {
+    const keep = new Set([0, kf.length - 1]); rdp(0, kf.length - 1, eps, keep);
+    if (keep.size <= max) return kf.filter((_, i) => keep.has(i));
+  }
+  return [kf[0], kf[kf.length - 1]];
+}
+function centerExpr(kf0) {
+  const kf = thinPath(kf0), leaves = [];
+  for (let i = 0; i < kf.length - 1; i++) {
+    const a = kf[i], b = kf[i + 1], dt = Math.max(0.001, b.t - a.t);
+    leaves.push({ t1: b.t, e: `${f4(a.c)}+(${f4(b.c - a.c)})*(t-${f4(a.t)})/${f4(dt)}` });
+  }
+  return treeExpr(leaves, f4(kf[kf.length - 1].c));
+}
+// Face-tracking paths saved by older versions are the deeply nested form: read them back and rebuild them as a balanced tree.
+function balanceExpr(expr) {
+  try {
+    const s = String(expr || '');
+    if ((s.match(/if\(/g) || []).length < 24) return s;
+    const re = /^if\(lt\(t,(-?[\d.]+)\),(-?[\d.]+)\+\((-?[\d.]+)\)\*\(t-(-?[\d.]+)\)\/(-?[\d.]+),/;
+    const leaves = []; let rest = s, m;
+    while ((m = re.exec(rest))) { leaves.push({ t1: +m[1], e: `${m[2]}+(${m[3]})*(t-${m[4]})/${m[5]}` }); rest = rest.slice(m[0].length); }
+    const fin = /^(-?[\d.]+)\)*$/.exec(rest);
+    if (!fin || !leaves.length) return s;
+    return treeExpr(leaves, fin[1]);
+  } catch { return String(expr || ''); }
+}
+module.exports = { buildPath, centerExpr, balanceExpr, pickSubjects };

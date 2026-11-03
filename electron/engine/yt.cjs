@@ -48,9 +48,14 @@ async function ensureDeno(onStatus) {
   } catch { try { fs.unlinkSync(zip); } catch {} }
   return null;
 }
+// Network mode shared by every yt-dlp call of one download: IPv4 only first (many providers black-hole or throttle YouTube over IPv6, which shows up as
+// "connection failed / retrying / slow"), plain dual-stack as the second chance.
+let netArgs = ['--force-ipv4'];
+let cookieArgs = [];                                                    // set while a route is tried with the cookies of a browser (YouTube's "confirm you are not a bot" check)
 function jsArgs() {
   if (global.__cfMobileSpawn) return [];
-  const c = ['--cache-dir', path.join(P.userDataDir(), 'ytcache')];     // our own cache folder: it can be wiped if a killed download left it damaged
+  const c = ['--cache-dir', path.join(P.userDataDir(), 'ytcache'), ...netArgs, ...cookieArgs];     // our own cache folder: it can be wiped if a killed download left it damaged
+  try { const f = path.join(P.userDataDir(), 'cookies.txt'); if (!cookieArgs.length && fs.existsSync(f)) c.push('--cookies', f); } catch {}   // optional: a cookies.txt the user put next to the app data
   return jsRt ? ['--js-runtimes', 'deno:' + jsRt, ...c] : c;
 }
 const jsEnv = () => process.env;
@@ -83,9 +88,14 @@ async function ensureYtDlp(onStatus) {
   const name = win ? 'yt-dlp.exe' : (process.platform === 'darwin' ? 'yt-dlp_macos' : 'yt-dlp');
   const binDir = path.join(P.userDataDir(), 'bin'); fs.mkdirSync(binDir, { recursive: true });
   const dest = path.join(binDir, win ? 'yt-dlp.exe' : 'yt-dlp');
-  const url = process.env.CF_YTDLP_URL || `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${name}`;
+  // The nightly build gets YouTube fixes within hours (the stable one can take weeks), so it is tried first
+  const urls = process.env.CF_YTDLP_URL ? [process.env.CF_YTDLP_URL] : [`https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/${name}`, `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${name}`];
   onStatus && onStatus('Preparing downloader (one-time, ~15 MB)…', 0);
-  try { await fetchTo(url, dest + '.part', (p) => onStatus && onStatus('Preparing downloader (one-time, ~15 MB)…', p)); }
+  try {
+    let lastE = null;
+    for (const url of urls) { try { await fetchTo(url, dest + '.part', (p) => onStatus && onStatus('Preparing downloader (one-time, ~15 MB)…', p)); lastE = null; break; } catch (e) { lastE = e; try { fs.unlinkSync(dest + '.part'); } catch {} } }
+    if (lastE) throw lastE;
+  }
   catch (e) { try { fs.unlinkSync(dest + '.part'); } catch {} if (fs.existsSync(userCopy)) return userCopy; if (have) return have; throw new Error('Could not fetch the downloader. Check your internet connection. (' + e.message + ')'); }
   fs.renameSync(dest + '.part', dest);
   try { fs.chmodSync(dest, 0o755); } catch {}
@@ -96,7 +106,8 @@ function cancel() { cancelled = true; for (const p of procs) killTree(p); procs.
 
 function friendly(err) {
   const t = String(err || '');
-  if (/Private video|Sign in|members-only/i.test(t)) return 'This video is private or needs a sign-in.';
+  if (/not a bot|confirm you.re not|captcha/i.test(t)) return 'YouTube is asking this connection to prove it is not a robot, so it blocked the download. Open YouTube once in Firefox or Edge (signed in), then try again. Using another network or turning a VPN off or on also helps.';
+  if (/Private video|members-only|Sign in to confirm your age|age-restricted/i.test(t)) return 'This video is private, age-restricted or members-only, so YouTube needs a sign-in for it.';
   if (/Requested format is not available|Only images are available|n challenge|challenge solving|JavaScript runtime|js.?runtime/i.test(t)) return 'YouTube did not give a downloadable stream (the downloader helper may be missing). ' + (jsRt ? '' : 'The helper could not be installed — check your internet and try again. ') + '[' + ((t.match(/ERROR:[^\n]*/g) || []).pop() || '').replace(/^ERROR:\s*(\[youtube\]\s*)?/, '').slice(0, 170) + '] Log: ytdlp-log.txt in the app data folder.';
   if (/ERROR:[^\n]*(Video unavailable|has been removed|no longer available|not made this video available)/i.test(t)) return 'This video is unavailable.';
   if (/Unsupported URL/i.test(t)) return 'This link is not supported. Paste a YouTube video link.';
@@ -113,7 +124,7 @@ function probeSize(bin, url, fmt, extra = []) {
     let out = '', err = '', done = false;
     const p = spawn(bin, ['--no-playlist', ...jsArgs(), ...extra, '-f', fmt, '--print', 'CFSZ|%(requested_formats.0.filesize,requested_formats.0.filesize_approx)s|%(requested_formats.1.filesize,requested_formats.1.filesize_approx)s|%(filesize,filesize_approx)s', url], { windowsHide: true, env: jsEnv() }); procs.add(p);
     const fin = (v) => { if (!done) { done = true; clearTimeout(t); procs.delete(p); killTree(p); resolve(v); } };
-    const t = setTimeout(() => fin({ ok: false, size: 0, err: 'timed out' }), 40000);
+    const t = setTimeout(() => fin({ ok: false, size: 0, err: 'timed out' }), 70000);
     p.stdout.on('data', (d) => { out += d; });
     p.stderr.on('data', (d) => { err += d; });
     p.on('error', (e) => fin({ ok: false, size: 0, err: e.message }));
@@ -166,21 +177,29 @@ async function download(url, dir, onProgress) {
   if (cancelled) throw new Error('Cancelled');
   const ff = global.__cfMobileSpawn ? null : P.resolveBin('ffmpeg');
   const fmt = 'bv*[height<=1080]+ba/b[height<=1080]/b';
-  const NET = /Unable to download|getaddrinfo|Temporary failure|timed out|Network|Connection (reset|aborted)|Read timed out|IncompleteRead|HTTP Error 5\d\d|EOF occurred|HTTP Error 4(03|16|29)|Remote end closed|SSL|Errno|urlopen/i;
+  const NET = /Unable to download|getaddrinfo|Temporary failure|timed out|Network|Connection (reset|aborted)|Read timed out|IncompleteRead|HTTP Error 5\d\d|EOF occurred|HTTP Error 416|Remote end closed|SSL|Errno|urlopen/i;
   let lastErr = '', wiped = false, hardCleaned = false;
   const tried = new Set();
   // ONE route is chosen before the download starts (the first one YouTube really serves streams on) and the whole download stays on it:
   // no switching because of speed, and a dropped connection simply continues on the same route until the video is complete.
+  // Every combination is tried before giving up: YouTube answers "Sign in", "unavailable" or "403" per client / per network path, so one bad answer proves nothing.
+  const combos = [];
+  for (const rt of ROUTES) combos.push({ rt, net: ['--force-ipv4'], ck: [], tag: rt.name + '/ipv4' });
+  for (const rt of ROUTES.slice(0, 4)) combos.push({ rt, net: [], ck: [], tag: rt.name + '/dual' });
+  if (!global.__cfMobileSpawn) for (const br of ['firefox', 'edge', 'chrome', 'brave']) for (const rt of [ROUTES[0], ROUTES[3]]) combos.push({ rt, net: ['--force-ipv4'], ck: ['--cookies-from-browser', br], tag: rt.name + '/cookies-' + br });
+  let ci = 0, allErr = '';
   const chooseRoute = async () => {
-    for (const rt of ROUTES) {
-      if (tried.has(rt.name)) continue;
+    while (ci < combos.length) {
+      const c = combos[ci++];
       if (cancelled) throw new Error('Cancelled');
-      onProgress({ phase: 'prepare', percent: 0, text: 'Reading video info…' });
-      const pr = await probeSize(bin, url, fmt, rt.args);
+      netArgs = c.net; cookieArgs = c.ck;
+      onProgress({ phase: 'prepare', percent: 0, text: ci > 1 ? 'Trying another way to reach YouTube…' : 'Reading video info…' });
+      const pr = await probeSize(bin, url, fmt, c.rt.args);
       if (cancelled) throw new Error('Cancelled');
-      if (pr.ok) { tried.add(rt.name); return { rt, grand: pr.size }; }
+      if (pr.ok) return { rt: c.rt, grand: pr.size };
       lastErr = pr.err || lastErr;
-      if (rt === ROUTES[0] && /Private video|Sign in|ERROR:[^\n]*(Video unavailable|Unsupported URL)/i.test(pr.err || '')) return null;   // no other route can fix that
+      if (!/cookies|keyring|DPAPI|database is locked|Could not copy|browser/i.test(pr.err || '') || !c.ck.length) allErr += '\n[' + c.tag + '] ' + (pr.err || '');
+      try { fs.appendFileSync(path.join(P.userDataDir(), 'ytdlp-log.txt'), `\n==== PROBE ${new Date().toISOString()} ${c.tag}\n${String(pr.err || '').slice(-1500)}\n`); } catch {}
     }
     return null;
   };
@@ -209,8 +228,9 @@ async function download(url, dir, onProgress) {
     cleanPartials(dir, url, false);                                 // this route cannot deliver this video: pick the next working one, from scratch
     choice = await chooseRoute();
   }
+  netArgs = ['--force-ipv4']; cookieArgs = [];
   await diagnose(bin, url);
-  throw new Error(friendly(lastErr));
+  throw new Error(friendly(allErr + '\n' + lastErr));
 }
 
 // Writes what YouTube really offered (and our tool versions) to ytdlp-log.txt, so a failure can be understood.

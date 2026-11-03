@@ -1,5 +1,5 @@
 import React from 'react';
-import { cssFont } from '../services/fontService';
+import { cssFont, fontCell } from '../services/fontService';
 import { DynTemplate, DynWord, dynLayout, dynPhrases } from '../utils/dynCaptions';
 
 type W = { word: string; start: number; end: number };
@@ -26,12 +26,12 @@ export const ANIM_CSS = `
 @keyframes dynA-glow{0%{filter:blur(8px);transform:scale(1.18)}100%{filter:blur(0);transform:scale(1)}}`;
 export const ANIM_MS: Record<string, number> = { bounce: 300, slam: 130, stretch: 150, squash: 180, flip: 240, wobble: 290, shake: 210, track: 240, glow: 230 };
 
-function Word({ it, tpl, base, cur, vis, ecol }: { it: DynWord; tpl: DynTemplate; base: number; cur: boolean; vis: boolean; ecol: string[] }) {
+function Word({ it, tpl, base, cur, vis, ecol, ass }: { it: DynWord; tpl: DynTemplate; base: number; cur: boolean; vis: boolean; ecol: string[]; ass?: boolean }) {
   const st = tpl[it.cls] as any;
   const col: string[] = it.cls === 'emph' ? ecol : st.colors;
   const metal = tpl.metal && col[0] !== col[1];
   const act = tpl.active, boxed = !!act && act.mode === 'box' && cur, tinted = !!act && act.mode === 'color' && cur;
-  const size = Math.max(4, base * st.scale);
+  const size = Math.max(4, base * st.scale / (ass ? fontCell(st.font) : 1));   // ass: base is in video units (libass), divide by the font's line cell
   const hollow = tpl.hollow && it.cls !== 'emph';
   const common: React.CSSProperties = { fontFamily: `${cssFont(st.font)}, "Montserrat", Arial, sans-serif`, fontSize: size, fontStyle: st.italic ? 'italic' : 'normal', lineHeight: 1.05, display: 'inline-block', whiteSpace: 'pre', fontWeight: 400 };
   const ow = Math.max(0, st.ow * size / 38);
@@ -49,7 +49,7 @@ function Word({ it, tpl, base, cur, vis, ecol }: { it: DynWord; tpl: DynTemplate
 
 /** Live preview of a dynamic caption (same layout rules as the exported video).
  *  part: 'front' = normal words, 'behind' = the big word that goes behind the speaker (Behind templates only). */
-export function DynCaption({ tpl, words, currentTime, base, sample, part = 'all', fitW }: { tpl: DynTemplate; words?: W[]; currentTime?: number; base: number; sample?: boolean; part?: 'all' | 'front' | 'behind'; fitW?: number }) {
+export function DynCaption({ tpl, words, currentTime, base, sample, part = 'all', fitW, ass }: { tpl: DynTemplate; words?: W[]; currentTime?: number; base: number; sample?: boolean; part?: 'all' | 'front' | 'behind'; fitW?: number; ass?: boolean }) {
   let lines: DynWord[][] = [], curJ = 0;
   const ecol = tpl.emph.colors[0];
   if (sample || !words || !words.length) {
@@ -73,7 +73,7 @@ export function DynCaption({ tpl, words, currentTime, base, sample, part = 'all'
       <style>{ANIM_CSS}</style>
       {shown.map((ln, li) => (
         <div key={li} className="flex items-center justify-center flex-nowrap" style={isEm(ln) ? { opacity: 0.92 } : tpl.rot ? { transform: `rotate(${tpl.rot}deg)` } : undefined}>
-          {ln.map(it => <Word key={it.j} it={it} tpl={tpl} base={isEm(ln) ? (fitW ? Math.min(fitW * 1.0 / (Math.max(1, ln.reduce((a, x) => a + x.text.length, 0)) * tpl.cw), fitW * 16 / 9 * 0.36) / tpl.emph.scale : base * 0.62) : base} cur={it.j === curJ} vis={it.j <= curJ} ecol={ecol} />)}
+          {ln.map(it => <Word key={it.j} it={it} tpl={tpl} base={isEm(ln) ? (fitW ? Math.min(fitW * 1.0 / (Math.max(1, ln.reduce((a, x) => a + x.text.length, 0)) * tpl.cw), fitW * 16 / 9 * 0.36) / tpl.emph.scale : base * 0.62) : base} cur={it.j === curJ} vis={it.j <= curJ} ecol={ecol} ass={ass} />)}
         </div>
       ))}
     </div>

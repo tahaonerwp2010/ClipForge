@@ -32,6 +32,20 @@ function readFamily(buf) {
   } catch { return null; }
 }
 
+// Line-cell height of a font in em: libass (the caption / hook renderer) sizes text by (OS/2 winAscent + winDescent), so the app preview needs the same number
+function readCell(buf) {
+  try {
+    let base = 0;
+    if (buf.toString('latin1', 0, 4) === 'ttcf') base = buf.readUInt32BE(12);
+    const n = buf.readUInt16BE(base + 4), tab = {};
+    for (let i = 0; i < n; i++) { const r = base + 12 + i * 16; tab[buf.toString('latin1', r, r + 4)] = buf.readUInt32BE(r + 8); }
+    const upm = buf.readUInt16BE(tab.head + 18);
+    if (tab['OS/2'] != null) { const w = buf.readUInt16BE(tab['OS/2'] + 74) + buf.readUInt16BE(tab['OS/2'] + 76); if (w > 0) return +(w / upm).toFixed(4); }
+    if (tab.hhea != null) { const h = buf.readInt16BE(tab.hhea + 4) - buf.readInt16BE(tab.hhea + 6); if (h > 0) return +(h / upm).toFixed(4); }
+  } catch {}
+  return null;
+}
+
 const SYSTEM = {   // Windows system fonts -> files in C:\Windows\Fonts (copied next to the render so libass always finds them)
   'Arial': ['arial.ttf', 'arialbd.ttf'], 'Arial Black': ['ariblk.ttf'], 'Impact': ['impact.ttf'],
   'Segoe UI': ['segoeui.ttf', 'segoeuib.ttf'], 'Georgia': ['georgia.ttf', 'georgiab.ttf'], 'Verdana': ['verdana.ttf', 'verdanab.ttf'],
@@ -56,4 +70,4 @@ function stageFonts(dst, families = []) {
 // Arabic / Urdu and Hindi (Devanagari) need a font that has those letters; libass cannot always find one by itself, so the word is set in a bundled Noto font.
 const ARABIC = 'Noto Sans Arabic ExtraBold', DEVA = 'Noto Sans Devanagari ExtraBold';
 const scriptFont = t => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(String(t)) ? ARABIC : /[\u0900-\u097F]/.test(String(t)) ? DEVA : null;
-module.exports = { scriptFont, bundled, userFonts, userDir, readFamily, boldFlag, stageFonts, SYSTEM };
+module.exports = { scriptFont, bundled, userFonts, userDir, readFamily, readCell, boldFlag, stageFonts, SYSTEM };

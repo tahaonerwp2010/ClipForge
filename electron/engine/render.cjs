@@ -4,6 +4,7 @@ const path = require('path');
 const P = require('./paths.cjs');
 const { run } = require('./proc.cjs');
 const FONTS = require('./fonts.cjs');
+const RFX = require('./reframe.cjs');
 
 const ASPECT = { '9:16': [1080, 1920], '4:5': [1080, 1350], '1:1': [1080, 1080], '4:3': [1080, 810], '16:9': [1920, 1080] };
 const ffmpeg = () => P.binOrPath('ffmpeg');
@@ -143,7 +144,7 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
   } else if (mode === 'fill-crop') {
     const pan = Math.max(-50, Math.min(50, f.panX || 0));
     const xExpr = track && track.expr
-      ? `max(0,min(iw-${W},(${track.expr})*iw-${W}/2))`                       // AI face tracking path
+      ? `max(0,min(iw-${W},(${RFX.balanceExpr(track.expr)})*iw-${W}/2))`                       // AI face tracking path
       : `max(0,min(iw-${W},(iw-${W})/2*(1+${pan}/50)))`;                       // manual pan slider
     base = `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H}:'${xExpr}':'(ih-${H})/2'[v0]`;
   } else {
@@ -154,7 +155,7 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
       : `boxblur=${Math.max(4, f.blurIntensity || 18)}:2,eq=brightness=${-(f.backdropDarken ?? 0.3) * 0.5}`;
     const offX = Math.round(((f.offsetX || 0) / 100) * W), offY = Math.round(((f.offsetY || 0) / 100) * H);
     const tracked = mode === 'custom-scale' && track && track.expr && fgW > W;
-    const xo = tracked ? `max(${W}-w,min(0,${W}/2-(${track.expr})*w))+${offX}` : `(W-w)/2+${offX}`;
+    const xo = tracked ? `max(${W}-w,min(0,${W}/2-(${RFX.balanceExpr(track.expr)})*w))+${offX}` : `(W-w)/2+${offX}`;
     const useMask = radius > 0 && maskIdx != null;
     const fgChain = `[b]scale=${fgW}:${fgH}${useMask ? `,format=yuva420p[fg0];[${maskIdx}:v]format=gray[m];[fg0][m]alphamerge[fg]` : '[fg]'}`;
     base = `[0:v]split[a][b];[a]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},${bgFx}[bg];` +

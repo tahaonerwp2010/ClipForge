@@ -1,4 +1,4 @@
-import { cssFont, FontService } from '../services/fontService';
+import { cssFont, FontService, fontCell } from '../services/fontService';
 import React, { useRef, useEffect, useState } from 'react';
 import { 
   MoveHorizontal, 
@@ -531,7 +531,11 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
     return () => ro.disconnect();
   }, []);
   useEffect(() => { const w = phoneScreenRef.current?.clientWidth; if (w && Math.abs(w - scrW) > 1) setScrW(w); });
-  const previewScaleFactor = 3.4 * scrW / 1080 / 1.22;
+  // The video renderer (libass) sizes text by the font's whole line cell, so every size below is "video size / font cell" to look the same here as in the exported clip
+  const ENGINE_FONT: Record<string, string> = { 'capcut-emoji': 'Montserrat Black', 'capcut-pop': 'Montserrat Black', hormozi: 'Bebas Neue', mrbeast: 'Impact', neon: 'Arial Black', karaoke: 'Arial Black', 'red-punch': 'Arial Black', cinematic: 'Georgia', 'comic-pop': 'Comic Sans MS', glitch: 'Consolas' };
+  const capFamily = captions.fontFamily || ENGINE_FONT[captions.style as string] || getClassic(captions.style)?.font;
+  const assCap = captions.fontSize * 3.4 * scrW / 1080;                       // caption size in video units
+  const previewScaleFactor = 3.4 * scrW / 1080 / fontCell(capFamily);
   const titleScaleFactor = 4.5 * scrW / 1080 / 1.22;
   const scaledFontSize = Math.max(0, Math.round(captions.fontSize * previewScaleFactor * 10) / 10);
 
@@ -845,7 +849,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                   style={{
                     animation: (() => { const i = branding.autoTitle.animIn || 'none', o = branding.autoTitle.animOut || 'none'; const parts = []; if (i !== 'none') parts.push(`cft-in-${i} 450ms ease-out both`); if (o !== 'none') parts.push(`cft-out-${o} 450ms ease-in 1.6s both`); return parts.join(', ') || undefined; })(),
                     color: branding.autoTitle.color || '#ffffff',
-                    fontSize: `${Math.round(hookFontPx(hookLines(branding.autoTitle.title || clipTitle || 'THE VIRAL TRUTH', branding.autoTitle.lines || 2), scrW, branding.autoTitle.size))}px`,
+                    fontSize: `${Math.round(hookFontPx(hookLines(branding.autoTitle.title || clipTitle || 'THE VIRAL TRUTH', branding.autoTitle.lines || 2), scrW, branding.autoTitle.size) / fontCell(branding.autoTitle.fontFamily || 'Montserrat Black') * 10) / 10}px`,
                     fontFamily: getFontFamily(branding.autoTitle.fontFamily),
                     width: 'max-content', maxWidth: `${Math.round(scrW * 0.86)}px`, whiteSpace: 'normal', overflowWrap: 'break-word',
                     textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.7)'
@@ -897,8 +901,8 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
 
                 {branding.bannerShowBackground !== false ? (
                   <div
-                    style={{ backgroundColor: branding.hookBgColor || '#bef264', color: branding.hookTextColor || '#000000', fontFamily: cssFont(branding.hookFontFamily || 'Montserrat Black') }}
-                    className="px-2 py-0.5 rounded font-extrabold text-[8px] uppercase text-center shadow-md border border-black/20 whitespace-nowrap"
+                    style={{ backgroundColor: branding.hookBgColor || '#bef264', color: branding.hookTextColor || '#000000', fontFamily: cssFont(branding.hookFontFamily || 'Montserrat Black'), fontSize: `${54 * scrW / 1080 / fontCell(branding.hookFontFamily || 'Montserrat Black')}px`, padding: `${scrW * 0.004}px ${scrW * 0.02}px` }}
+                    className="rounded font-extrabold uppercase text-center shadow-md border border-black/20 whitespace-nowrap"
                   >
                     {branding.hookTitle}
                   </div>
@@ -908,9 +912,10 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                       color: branding.hookTextColor || '#ffffff',
                       fontFamily: cssFont(branding.hookFontFamily || 'Montserrat Black'),
                       WebkitTextStroke: `1px ${branding.hookBgColor || '#bef264'}`,
+                      fontSize: `${54 * scrW / 1080 / fontCell(branding.hookFontFamily || 'Montserrat Black')}px`,
                       textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8)'
                     }}
-                    className="px-1 font-black text-[9px] uppercase tracking-wide text-center whitespace-nowrap drop-shadow"
+                    className="px-1 font-black uppercase tracking-wide text-center whitespace-nowrap drop-shadow"
                   >
                     {branding.hookTitle}
                   </div>
@@ -930,7 +935,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
           ===================================================================== */}
           {captions.enabled && captions.fontSize > 0 && getDyn(captions.style)?.behind && (
             <div className="absolute z-20 pointer-events-none select-none" style={{ left: `${captions.positionX}%`, top: '35%', transform: 'translate(-50%, -50%)', width: '96%' }} title="In the exported video this word goes behind the speaker">
-              <DynCaption tpl={getDyn(captions.style)!} part="behind" words={words} currentTime={currentTime} base={scaledFontSize * 1.15 * getDyn(captions.style)!.sizeMul} fitW={scrW} />
+              <DynCaption tpl={getDyn(captions.style)!} part="behind" words={words} currentTime={currentTime} base={assCap * 1.15 * getDyn(captions.style)!.sizeMul} fitW={scrW} ass />
             </div>
           )}
           {captions.enabled && captions.fontSize > 0 && currentChunk.length > 0 && (
@@ -984,7 +989,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                     - Emoji scales proportionally down with font size!
                 ============================================================= */}
                 {getDyn(captions.style) && (
-                  <DynCaption tpl={getDyn(captions.style)!} part={getDyn(captions.style)!.behind ? 'front' : 'all'} words={words} currentTime={currentTime} base={scaledFontSize * 1.15 * getDyn(captions.style)!.sizeMul} />
+                  <DynCaption tpl={getDyn(captions.style)!} part={getDyn(captions.style)!.behind ? 'front' : 'all'} words={words} currentTime={currentTime} base={assCap * 1.15 * getDyn(captions.style)!.sizeMul} ass />
                 )}
 
                 {captions.style === 'capcut-emoji' && (
@@ -1300,7 +1305,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                     src={branding.watermarkImage.dataUrl}
                     alt=""
                     draggable={false}
-                    style={{ width: `${(branding.watermarkImageSize ?? 20) * 1.55}px`, opacity: (branding.watermarkOpacity ?? 100) / 100 }}
+                    style={{ width: `${scrW * (branding.watermarkImageSize ?? 20) / 100}px`, opacity: (branding.watermarkOpacity ?? 100) / 100 }}
                     className="block select-none pointer-events-none"
                   />
                 ) : (
@@ -1308,7 +1313,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                     style={{
                       color: branding.watermarkColor || '#ffffff',
                       fontFamily: cssFont(branding.watermarkFontFamily || 'Arial'),
-                      fontSize: `${(branding.watermarkFontSize ?? 40) * 0.2}px`,
+                      fontSize: `${(branding.watermarkFontSize ?? 40) * scrW / 1080 / fontCell(branding.watermarkFontFamily || 'Arial')}px`,
                       textShadow: '0 1px 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.8)'
                     }}
                     className="font-bold tracking-wide select-none whitespace-nowrap"

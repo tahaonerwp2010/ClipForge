@@ -334,7 +334,7 @@ ipcMain.handle('owner-grant', async (e, a) => LIC.owner.grant(a.pw, a.id, a.plan
 ipcMain.handle('owner-remove', async (e, a) => LIC.owner.remove(a.pw, a.id));
 // ---- Fonts & images chosen by the user ----
 const Fonts = require('./engine/fonts.cjs');
-ipcMain.handle('list-user-fonts', async () => Fonts.userFonts().map(f => ({ ...f, url: require('url').pathToFileURL(path.join(Fonts.userDir(), f.file)).toString() })));
+ipcMain.handle('list-user-fonts', async () => Fonts.userFonts().map(f => ({ ...f, cell: f.cell || (() => { try { return Fonts.readCell(fs.readFileSync(path.join(Fonts.userDir(), f.file))); } catch { return null; } })(), url: require('url').pathToFileURL(path.join(Fonts.userDir(), f.file)).toString() })));
 ipcMain.handle('import-font', async () => {
   const r = await dialog.showOpenDialog(mainWindow, { properties: ['openFile', 'multiSelections'], filters: [{ name: 'Fonts', extensions: ['ttf', 'otf'] }] });
   if (r.canceled) return [];
@@ -345,7 +345,7 @@ ipcMain.handle('import-font', async () => {
     const family = Fonts.readFamily(buf) || path.basename(src, path.extname(src));
     const file = path.basename(src);
     fs.writeFileSync(path.join(Fonts.userDir(), file), buf);
-    if (!list.some(f => f.family === family)) list.push({ family, file });
+    if (!list.some(f => f.family === family)) list.push({ family, file, cell: Fonts.readCell(buf) });
   }
   fs.writeFileSync(path.join(Fonts.userDir(), 'fonts.json'), JSON.stringify(list));
   return Fonts.userFonts().map(f => ({ ...f, url: require('url').pathToFileURL(path.join(Fonts.userDir(), f.file)).toString() }));

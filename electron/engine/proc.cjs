@@ -1,3 +1,10 @@
+// The end of ffmpeg's log is usually only the knock-on errors; the first real error line ("Invalid argument", "Missing ')'"...) is kept too
+function errTail(e) {
+  const lines = String(e).split(/\r?\n/).filter(Boolean);
+  const key = lines.filter(l => /error|invalid|undefined|missing|no such|cannot|unable|could not|failed to/i.test(l) && !/fc#0|aost#|vost#|out#0|Terminating thread/i.test(l)).slice(0, 3).map(l => l.slice(0, 260));
+  const tail = String(e).slice(-700);
+  return key.length && !key.every(k => tail.includes(k.slice(0, 80))) ? key.join('\n') + '\n...\n' + tail : String(e).slice(-1200);
+}
 const { spawn } = require('child_process');
 const live = new Set();
 let cancelled = false;
@@ -13,7 +20,7 @@ function run(cmd, args, { cwd, onStderr, onStdout } = {}) {
     child.on('close', code => {
       live.delete(child);
       if (child.__cancelled || cancelled) return reject(new Error('CANCELLED'));
-      code === 0 ? resolve({ stdout: out, stderr: err }) : reject(new Error(`${cmd} exited ${code}: ${err.slice(-1200)}`));
+      code === 0 ? resolve({ stdout: out, stderr: err }) : reject(new Error(`${cmd} exited ${code}: ${errTail(err)}`));
     });
   });
 }
