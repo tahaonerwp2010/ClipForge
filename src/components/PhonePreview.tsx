@@ -16,6 +16,7 @@ import {
 } from '../types/clipper';
 import { SplitPreview } from './SplitPreview';
 import { DynCaption } from './DynCaption';
+import { ClassicCaption, getClassic } from './ClassicCaption';
 import { getDyn } from '../utils/dynCaptions';
 import { SECONDARY_FOOTAGE } from '../data/sampleVideos';
 import { getContextualEmoji, CAPCUT_DYNAMIC_COLORS, hookLines, hookFontPx, hookWordTokens } from '../utils/captionHelpers';
@@ -1251,6 +1252,12 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                     })}
                   </div>
                 )}
+
+                {getClassic(captions.style) && (() => {
+                  const sp = getClassic(captions.style)!;
+                  const ai = Math.max(0, currentChunk.findIndex(w => words[activeWordIndex]?.word === w.word));
+                  return <ClassicCaption spec={sp} words={currentChunk.map(w => w.word)} active={activeWordIndex >= 0 ? ai : 0} colorIdx={Math.max(0, activeWordIndex)} size={scaledFontSize} uppercase={captions.uppercase} fontOverride={captions.fontFamily} />;
+                })()}
 
               </div>
             </div>

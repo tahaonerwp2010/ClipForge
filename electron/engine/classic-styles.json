@@ -1,0 +1,356 @@
+{
+ "styles": [
+  {
+   "id": "bubblegum",
+   "name": "Bubble Gum",
+   "tagline": "Soft bubbly letters with a hot pink outline, the spoken word bounces in yellow.",
+   "font": "Fredoka Bold",
+   "base": "#FFFFFF",
+   "active": [
+    "#FFE14D"
+   ],
+   "outline": 8,
+   "outlineColor": "#FF3D81",
+   "sample": [
+    "so",
+    "much",
+    "FUN"
+   ],
+   "upper": true,
+   "anim": "bounce"
+  },
+  {
+   "id": "typewriter",
+   "name": "Typewriter Mono",
+   "tagline": "Hacker-style monospace, the spoken word lights up lime.",
+   "font": "JetBrains Mono ExtraBold",
+   "base": "#E5E7EB",
+   "active": [
+    "#A3E635"
+   ],
+   "outline": 4,
+   "outlineColor": "#000000",
+   "sample": [
+    "type",
+    "THIS",
+    "now"
+   ],
+   "upper": false,
+   "anim": "none"
+  },
+  {
+   "id": "retrowave",
+   "name": "Retro Wave",
+   "tagline": "Synthwave purple outline, mint-cyan glow on the spoken word.",
+   "font": "Righteous",
+   "base": "#FFD6FF",
+   "active": [
+    "#00F5D4"
+   ],
+   "outline": 7,
+   "outlineColor": "#5B0FD0",
+   "sample": [
+    "NIGHT",
+    "DRIVE",
+    "mode"
+   ],
+   "upper": true,
+   "anim": "pop",
+   "glow": true
+  },
+  {
+   "id": "horror",
+   "name": "Horror Night",
+   "tagline": "Creepy dripping letters in blood red that shake when spoken.",
+   "font": "Creepster",
+   "base": "#FFE4E4",
+   "active": [
+    "#FF2A2A"
+   ],
+   "outline": 6,
+   "outlineColor": "#4A0000",
+   "sample": [
+    "do",
+    "not",
+    "LOOK"
+   ],
+   "upper": true,
+   "anim": "shake",
+   "sizeMul": 1.1
+  },
+  {
+   "id": "handwritten",
+   "name": "Handwritten Note",
+   "tagline": "Casual handwriting, like a note someone scribbled for you.",
+   "font": "Caveat Bold",
+   "base": "#FFFFFF",
+   "active": [
+    "#FFE14D"
+   ],
+   "outline": 4,
+   "outlineColor": "#000000",
+   "sample": [
+    "this",
+    "is",
+    "personal"
+   ],
+   "upper": false,
+   "anim": "wobble",
+   "sizeMul": 1.25
+  },
+  {
+   "id": "breaking-news",
+   "name": "Breaking News",
+   "tagline": "Bold news caps, the spoken word sits in a red box.",
+   "font": "Oswald Bold",
+   "base": "#FFFFFF",
+   "active": [
+    "#FFFFFF"
+   ],
+   "outline": 4,
+   "outlineColor": "#000000",
+   "sample": [
+    "BREAKING",
+    "NEWS",
+    "today"
+   ],
+   "upper": true,
+   "anim": "pop",
+   "box": {
+    "color": "#E11D48",
+    "text": "#FFFFFF",
+    "pad": 12
+   }
+  },
+  {
+   "id": "gold-luxury",
+   "name": "Gold Luxury",
+   "tagline": "Elegant serif capitals in champagne with a shining gold word.",
+   "font": "Cinzel Bold",
+   "base": "#F5E6B8",
+   "active": [
+    "#FFD54A"
+   ],
+   "outline": 4,
+   "outlineColor": "#3A2A00",
+   "sample": [
+    "PURE",
+    "GOLD",
+    "LIFE"
+   ],
+   "upper": true,
+   "anim": "pop",
+   "glow": true,
+   "sizeMul": 0.9
+  },
+  {
+   "id": "ice-cold",
+   "name": "Ice Cold",
+   "tagline": "Frosty sci-fi letters with an icy blue glow.",
+   "font": "Orbitron ExtraBold",
+   "base": "#E6F9FF",
+   "active": [
+    "#38BDF8"
+   ],
+   "outline": 4,
+   "outlineColor": "#07334D",
+   "sample": [
+    "STAY",
+    "ICE",
+    "COLD"
+   ],
+   "upper": true,
+   "anim": "pop",
+   "glow": true,
+   "sizeMul": 0.85
+  },
+  {
+   "id": "fire-starter",
+   "name": "Fire Starter",
+   "tagline": "Tall flame-coloured caps, the spoken word burns orange.",
+   "font": "Anton",
+   "base": "#FFF1D6",
+   "active": [
+    "#FF6A00",
+    "#FFB000"
+   ],
+   "outline": 6,
+   "outlineColor": "#4A0E00",
+   "sample": [
+    "THIS",
+    "IS",
+    "FIRE"
+   ],
+   "upper": true,
+   "anim": "bounce",
+   "glow": true
+  },
+  {
+   "id": "candy-pop",
+   "name": "Candy Pop",
+   "tagline": "Every spoken word pops in a new candy colour.",
+   "font": "Baloo 2 ExtraBold",
+   "base": "#FFFFFF",
+   "active": [
+    "#FF6B9D",
+    "#FFD93D",
+    "#6BCB77",
+    "#4D96FF"
+   ],
+   "outline": 8,
+   "outlineColor": "#1A1A2E",
+   "sample": [
+    "sweet",
+    "candy",
+    "POP"
+   ],
+   "upper": true,
+   "anim": "bounce"
+  },
+  {
+   "id": "podcast-clean",
+   "name": "Podcast Clean",
+   "tagline": "Calm, readable sentence-case subtitles with a lime highlight.",
+   "font": "Inter ExtraBold",
+   "base": "#FFFFFF",
+   "active": [
+    "#A3E635"
+   ],
+   "outline": 4,
+   "outlineColor": "#000000",
+   "sample": [
+    "Clean",
+    "and",
+    "clear"
+   ],
+   "upper": false,
+   "anim": "none"
+  },
+  {
+   "id": "black-box",
+   "name": "Black Box",
+   "tagline": "White words, the spoken word jumps into a white box with black text.",
+   "font": "Montserrat Black",
+   "base": "#FFFFFF",
+   "active": [
+    "#000000"
+   ],
+   "outline": 5,
+   "outlineColor": "#000000",
+   "sample": [
+    "READ",
+    "THIS",
+    "FAST"
+   ],
+   "upper": true,
+   "anim": "pop",
+   "box": {
+    "color": "#FFFFFF",
+    "text": "#000000",
+    "pad": 12
+   }
+  },
+  {
+   "id": "pixel-quest",
+   "name": "Pixel Quest",
+   "tagline": "8-bit pixel letters like an old arcade game, yellow active word.",
+   "font": "Press Start 2P",
+   "base": "#FFFFFF",
+   "active": [
+    "#FFE14D"
+   ],
+   "outline": 5,
+   "outlineColor": "#1E1B4B",
+   "sample": [
+    "LEVEL",
+    "UP",
+    "NOW"
+   ],
+   "upper": true,
+   "anim": "shake",
+   "sizeMul": 0.6
+  },
+  {
+   "id": "sunset-vibes",
+   "name": "Sunset Vibes",
+   "tagline": "Warm retro script with a coral spoken word.",
+   "font": "Shrikhand",
+   "base": "#FFE4D6",
+   "active": [
+    "#FF7A59"
+   ],
+   "outline": 6,
+   "outlineColor": "#5A1A3A",
+   "sample": [
+    "golden",
+    "hour",
+    "vibes"
+   ],
+   "upper": false,
+   "anim": "pop",
+   "sizeMul": 0.95
+  },
+  {
+   "id": "graffiti",
+   "name": "Street Graffiti",
+   "tagline": "Tilted marker-style street letters, spoken word in toxic lime.",
+   "font": "Knewave",
+   "base": "#FFFFFF",
+   "active": [
+    "#BEF264"
+   ],
+   "outline": 7,
+   "outlineColor": "#000000",
+   "sample": [
+    "STREET",
+    "ART",
+    "vibes"
+   ],
+   "upper": false,
+   "anim": "wobble",
+   "rot": -3,
+   "sizeMul": 1.05
+  },
+  {
+   "id": "block-3d",
+   "name": "3D Block",
+   "tagline": "Fat block letters with a deep blue outline, spoken word turns sun yellow.",
+   "font": "Bowlby One",
+   "base": "#FFFFFF",
+   "active": [
+    "#FDE047"
+   ],
+   "outline": 9,
+   "outlineColor": "#1D4ED8",
+   "sample": [
+    "BIG",
+    "BLOCK",
+    "TIME"
+   ],
+   "upper": true,
+   "anim": "bounce",
+   "sizeMul": 0.9
+  },
+  {
+   "id": "love-script",
+   "name": "Love Script",
+   "tagline": "Romantic flowing script with a soft pink glow.",
+   "font": "Pacifico",
+   "base": "#FFFFFF",
+   "active": [
+    "#FFB3D1"
+   ],
+   "outline": 5,
+   "outlineColor": "#7A1244",
+   "sample": [
+    "love",
+    "your",
+    "life"
+   ],
+   "upper": false,
+   "anim": "pop",
+   "glow": true,
+   "sizeMul": 0.9
+  }
+ ]
+}

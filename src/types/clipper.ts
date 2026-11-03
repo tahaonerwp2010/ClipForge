@@ -18,7 +18,8 @@ export type CaptionPresetStyle =
   | 'cinematic'    // Cinematic: Minimalist clean typography for thought leadership
   | 'comic-pop'    // Comic Pop: Chunky retro bubble font with tilted action pop
   | 'glitch'       // Cyber Glitch: High energy digital glitch with split chromatics
-  | `dyn-${string}`; // Dynamic captions (own locked fonts, metallic highlights) - see utils/dynCaptions.ts
+  | `dyn-${string}` // Dynamic captions (own locked fonts, metallic highlights) - see utils/dynCaptions.ts
+  | (string & {});   // extra classic styles from electron/engine/classic-styles.json
 
 export interface CaptionConfig {
   enabled: boolean;          // Master On / Off switch

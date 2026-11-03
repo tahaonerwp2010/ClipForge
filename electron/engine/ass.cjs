@@ -11,6 +11,7 @@ const PRESETS = {
   'comic-pop':    { font: 'Comic Sans MS',    base: '#FFFFFF', active: ['#FDE047'], outline: 7 },
   glitch:         { font: 'Consolas',         base: '#FFFFFF', active: ['#22D3EE', '#F43F5E'], outline: 4 },
 };
+for (const c of require('./classic-styles.json').styles) PRESETS[c.id] = { font: c.font, base: c.base, active: c.active, outline: c.outline, outlineColor: c.outlineColor, upper: c.upper, anim: c.anim, glow: !!c.glow, box: c.box, rot: c.rot || 0, sizeMul: c.sizeMul || 1 };   // more classic styles (same list the app uses for previews)
 const USER_COLOR_STYLES = new Set(['capcut-emoji', 'hormozi', 'karaoke']);
 const bgr = hex => { const h = hex.replace('#', ''); return `&H${h.slice(4, 6)}${h.slice(2, 4)}${h.slice(0, 2)}&`; };
 const esc = t => String(t).replace(/[{}\\]/g, '');
@@ -52,7 +53,7 @@ function hookColored(lines, at) {
 function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hookText, part = 'all', keywords, behindBox }) {
   const preset = PRESETS[captions.style] || PRESETS['capcut-emoji'];
   const k = W / 1080;
-  const size = Math.round(captions.fontSize * 3.4 * k);
+  const size = Math.round(captions.fontSize * 3.4 * k * (preset.sizeMul || 1));
   const outline = Math.round((captions.outlineWidth || 3) * (preset.outline / 4) * k);
   const actives = (USER_COLOR_STYLES.has(captions.style) && captions.highlightColor) ? [captions.highlightColor, ...preset.active.slice(1)] : preset.active;
   const at = branding.autoTitle || {};
@@ -62,7 +63,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
     '[Script Info]', 'ScriptType: v4.00+', `PlayResX: ${W}`, `PlayResY: ${H}`, 'WrapStyle: 2', '',
     '[V4+ Styles]',
     'Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding',
-    `Style: Cap,${capFont},${size},${bgr(preset.base)},&H000000&,&H000000&,&H64000000,${FONTS.boldFlag(capFont)},0,0,0,100,100,0,0,1,${outline},2,5,40,40,40,1`,
+    `Style: Cap,${capFont},${size},${bgr(preset.base)},&H000000&,${bgr(preset.outlineColor || '#000000')},&H64000000,${FONTS.boldFlag(capFont)},0,0,0,100,100,0,0,1,${outline},2,5,40,40,40,1`,
     `Style: Title,${titleFont},${Math.round((at.fontSize || 16) * 4.5 * k)},${bgr(at.color || '#FFFFFF')},&H000000&,&H000000&,&H64000000,${FONTS.boldFlag(titleFont)},0,0,0,100,100,0,0,1,${Math.round(5 * k)},2,5,60,60,40,1`,
     `Style: Hook,${hookFont},${Math.round(54 * k)},${bgr(branding.hookTextColor || (branding.bannerShowBackground ? '#000000' : '#FFFFFF'))},&H000000&,${bgr(branding.hookBgColor || '#BEF264')},&H000000&,${FONTS.boldFlag(hookFont)},0,0,0,100,100,0,0,${branding.bannerShowBackground ? 3 : 1},${Math.round(14 * k)},0,5,60,60,40,1`,
     `Style: Mark,${markFont},${Math.round((branding.watermarkFontSize || 40) * k)},&HCC${bgr(branding.watermarkColor || '#FFFFFF').slice(2)},&H000000&,&H000000&,&H64000000,${FONTS.boldFlag(markFont)},0,0,0,100,100,0,0,1,${Math.round(3 * k)},1,5,40,40,40,1`,
@@ -71,6 +72,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
   const sw = t => { const f = FONTS.scriptFont(t); return f ? `{\\fn${f}\\b0\\fs${Math.round(size * 1.25)}}${t}{\\fn${capFont}\\b${FONTS.boldFlag(capFont)}\\fs${size}}` : t; };   // script font for Urdu / Arabic / Hindi words
   const dur = clipEnd - clipStart;
   const pos = (x, y) => `{\\pos(${Math.round(x / 100 * W)},${Math.round(y / 100 * H)})}`;
+  const cpos = (x, y) => `{\\pos(${Math.round(x / 100 * W)},${Math.round(y / 100 * H)})${preset.rot ? '\\frz' + preset.rot : ''}}`;
   const tShow = (at.showSeconds > 0) ? Math.min(dur, at.showSeconds) : dur;
   if (at.enabled && title && part !== 'behind') {
     const ai = at.animIn || 'none', ao = at.animOut || 'none', ms = Math.round(tShow * 1000);
@@ -94,6 +96,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
   } else if (captions.enabled && part !== 'behind') {
     const off = Math.max(-0.5, Math.min(0.5, Number(captions.syncOffset) || 0));
     const cw = words.filter(w => w.start >= clipStart && w.start < clipEnd).map(w => (off ? { ...w, start: w.start + off, end: w.end + off } : w));
+    const up = preset.upper === true ? true : preset.upper === false ? false : !!captions.uppercase;
     const n = preset.single ? 1 : Math.max(1, captions.maxWordsPerBeat || 2);
     let ci = 0;
     // Timing: a word appears when it is spoken (tiny lead) and never overlaps the next one.
@@ -111,18 +114,22 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
         const s = tS[i + j], e = tE[i + j];
         const col = bgr(actives[ci++ % actives.length]);
         const txt = g.map((x, q) => {
-          const t = sw(esc(captions.uppercase ? x.word.toUpperCase() : x.word));
-          return q === j ? (preset.single ? `{\\c${col}}${t}` : `{\\c${col}\\fscx82\\fscy82\\t(0,110,\\fscx114\\fscy114)}${t}{\\c${bgr(preset.base)}\\fscx100\\fscy100}`) : t;
+          const t = sw(esc(up ? x.word.toUpperCase() : x.word));
+          if (q !== j) return t;
+          if (preset.single) return `{\\c${col}}${t}`;
+          const rot = preset.rot || 0, an = preset.anim === 'none' ? '' : (preset.anim && preset.anim !== 'pop' && DYN.ANIMS[preset.anim]) ? DYN.ANIMS[preset.anim].replace(/\\frz(-?\d+)/g, (_, n) => '\\frz' + (+n + rot)) : '\\fscx82\\fscy82\\t(0,110,\\fscx114\\fscy114)';
+          const bx = preset.box ? `\\1c${bgr(preset.box.text)}\\3c${bgr(preset.box.color)}\\bord${Math.round(preset.box.pad * k)}` : `\\c${col}`;
+          return `{${bx}${an}}${t}{\\c${bgr(preset.base)}\\3c${bgr(preset.outlineColor || '#000000')}\\bord${outline}\\fscx100\\fscy100\\fsp0\\blur0\\frz${rot}}`;
         }).join(' ');
         if (preset.glow && captions.glow !== false) {          // neon glow under the active word (2 blurred layers)
           const ghost = (bord, blur, alpha) => g.map((x, q) => {
-            const t = sw(esc(captions.uppercase ? x.word.toUpperCase() : x.word));
+            const t = sw(esc(up ? x.word.toUpperCase() : x.word));
             return q === j ? `{\\alpha&H${alpha}&\\1c${col}\\3c${col}\\bord${Math.round(bord * k)}\\blur${Math.round(blur * k)}\\fscx82\\fscy82\\t(0,110,\\fscx114\\fscy114)}${t}{\\alpha&HFF&\\fscx100\\fscy100}` : `{\\alpha&HFF&}${t}`;
           }).join(' ');
           L.push(`Dialogue: 0,${ts(s)},${ts(e)},Cap,,0,0,0,,${pos(captions.positionX, captions.positionY)}${ghost(22, 26, '70')}`);
           L.push(`Dialogue: 0,${ts(s)},${ts(e)},Cap,,0,0,0,,${pos(captions.positionX, captions.positionY)}${ghost(9, 10, '20')}`);
         }
-        L.push(`Dialogue: 1,${ts(s)},${ts(e)},Cap,,0,0,0,,${pos(captions.positionX, captions.positionY)}${txt}`);
+        L.push(`Dialogue: 1,${ts(s)},${ts(e)},Cap,,0,0,0,,${cpos(captions.positionX, captions.positionY)}${txt}`);
       });
     }
   }

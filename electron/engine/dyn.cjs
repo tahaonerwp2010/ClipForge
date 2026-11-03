@@ -143,4 +143,4 @@ function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', k
   });
   return L;
 }
-module.exports = { isDyn, get, build, fontsOf, templates: DATA.templates };
+module.exports = { isDyn, get, build, fontsOf, ANIMS, templates: DATA.templates };

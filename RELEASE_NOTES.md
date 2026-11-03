@@ -1,6 +1,6 @@
 ## What's new
-- 19 new caption styles: 13 Dynamic styles with their own animations (bounce, slam, stretch, flip, wobble, shake, glow and more) and 6 new Behind-the-person styles.
-- One clean "Caption style" button now opens a picker with every caption style in one place, with a green outline on the one you chose.
-- Behind-the-person styles now show a preview with the big word behind a person and the small caption in front.
+- 36 new caption styles: 17 new Classic styles (Bubble Gum, Breaking News, Retro Wave, Horror Night, Handwritten Note, Pixel Quest and more), 13 new Dynamic styles with their own animations, and 6 new Behind-the-person styles.
+- One "Caption style" button opens a picker with every style, with a green outline on the selected one. Every preview now shows a person so you can see how the caption looks on a speaker.
+- Fixed: Crimson Punch Outline now shows in the phone preview, and Cyber Glitch Split now shows its preview.
 - Your project now continues after a crash or power cut instead of starting again from step 1.
 - Fixes for video downloads, projects deleting each other's clips, and the Open folder button.

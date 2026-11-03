@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Sparkles, X, ChevronRight } from 'lucide-react';
+import { Check, Captions, X, ChevronRight } from 'lucide-react';
 import { CaptionConfig } from '../../types/clipper';
 import { DynCaption } from '../DynCaption';
 import { DYN_TEMPLATES, getDyn, DynTemplate } from '../../utils/dynCaptions';
 import { POPULAR_CAPTION_PRESETS } from '../../utils/captionHelpers';
 import { ProTag } from '../common/ProTag';
+import { CLASSIC_EXTRA, ClassicCaption, getClassic, ClassicSpec } from '../ClassicCaption';
 import personUrl from '../../assets/behind-person.png';
 
 type Preset = typeof POPULAR_CAPTION_PRESETS[number];
@@ -107,22 +108,28 @@ const ClassicPreview: React.FC<{ preset: Preset }> = ({ preset }) => (
             UNREAL ACTION LEVEL
           </div>
         )}
+
+        {/* Cyber Glitch Split */}
+        {preset.id === 'glitch' && (
+          <div className="font-mono text-xs font-bold tracking-wider uppercase flex items-center gap-1">
+            <span className="text-pink-500 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">SYSTEM</span>
+            <span className="text-cyan-400 drop-shadow-[0_2px_6px_rgba(6,182,212,0.8)]">CRACK</span>
+          </div>
+        )}
   </div>
 );
 
-/** A stand-in person (face hidden by a question mark) so the card shows how the big word sits behind the speaker */
-const PersonSilhouette: React.FC = () => (
-  <img src={personUrl} alt="" draggable={false} className="absolute left-1/2 -translate-x-1/2 bottom-0 h-[80%] w-auto z-10 select-none pointer-events-none" />
-);
-
-/** Behind-the-person preview: big word behind the person, small caption in front below, like the rendered clip */
-const BehindPreview: React.FC<{ tpl: DynTemplate }> = ({ tpl }) => (
+/** A stand-in person (face hidden by a question mark) so every card shows how the caption sits on a speaker.
+ *  behind: the big word of a Behind-the-person style is drawn behind the person, exactly like the rendered clip. */
+const PersonFrame: React.FC<{ tpl?: DynTemplate; children?: React.ReactNode; small?: boolean }> = ({ tpl, children, small }) => (
   <div className="relative w-full h-full overflow-hidden bg-gradient-to-b from-[#34414f] to-[#141a22]">
-    <div className="absolute inset-x-0 top-[6%] flex justify-center z-0 px-1"><DynCaption tpl={tpl} base={11} sample part="behind" fitW={150} /></div>
-    <PersonSilhouette />
-    <div className="absolute inset-x-0 bottom-[7%] flex justify-center z-20"><DynCaption tpl={tpl} base={14} sample part="front" /></div>
+    {tpl && isBehind(tpl) && <div className="absolute inset-x-0 top-[6%] flex justify-center z-0 px-1"><DynCaption tpl={tpl} base={small ? 7 : 11} sample part="behind" fitW={small ? 70 : 150} /></div>}
+    <img src={personUrl} alt="" draggable={false} className="absolute left-1/2 -translate-x-1/2 bottom-0 h-[88%] w-auto z-10 select-none pointer-events-none" />
+    <div className={`absolute inset-x-0 ${tpl && isBehind(tpl) ? 'bottom-[6%]' : 'bottom-[8%]'} flex justify-center z-20 px-1`}>{children}</div>
   </div>
 );
+
+const ExtraPreview: React.FC<{ spec: ClassicSpec; size?: number }> = ({ spec, size = 15 }) => <ClassicCaption spec={spec} words={spec.sample} active={spec.sample.length - 1} colorIdx={spec.sample.length} size={size} />;
 
 const NOTE = 'No live preview for Dynamic and Behind-the-person captions: the phone preview only shows a simple sample. The real animation, fonts and the big word behind the speaker appear after the clip is rendered (Generate clips). These captions are font locked, so the font can not be changed.';
 
@@ -141,15 +148,17 @@ export const CaptionStylePicker: React.FC<{ captions: CaptionConfig; onCaptionsC
   const cur = captions.style as string;
   const curDyn = getDyn(cur);
   const curPreset = POPULAR_CAPTION_PRESETS.find(p => p.id === cur);
-  const curName = curDyn ? curDyn.name : curPreset?.name || 'Pick a style';
+  const curExtra = getClassic(cur);
+  const curName = curDyn ? curDyn.name : curPreset?.name || curExtra?.name || 'Pick a style';
   const curKind = curDyn ? (isBehind(curDyn) ? 'Behind the person' : 'Dynamic') : 'Classic';
 
   const pickPreset = (p: Preset) => onCaptionsChange({ ...captions, style: p.id, highlightColor: p.highlight });
+  const pickExtra = (c: ClassicSpec) => onCaptionsChange({ ...captions, style: c.id as any });
   const pickDyn = (t: DynTemplate) => onCaptionsChange({ ...captions, style: t.id as any, fontFamily: undefined });
 
   const showClassic = cat === 'all' || cat === 'classic';
   const dyn = DYN_TEMPLATES.filter(t => cat === 'all' || (cat === 'behind' ? isBehind(t) : cat === 'dynamic' ? !isBehind(t) : false));
-  const total = POPULAR_CAPTION_PRESETS.length + DYN_TEMPLATES.length;
+  const total = POPULAR_CAPTION_PRESETS.length + CLASSIC_EXTRA.length + DYN_TEMPLATES.length;
   const cards = 'grid grid-cols-2 lg:grid-cols-3 gap-3';
   const card = (sel: boolean) => `relative rounded-2xl border-2 p-2.5 cursor-pointer transition-all text-left ${sel ? 'border-[#bef264] bg-[#12231a] shadow-[0_0_0_3px_rgba(190,242,100,0.18)]' : 'border-[#1d3128] bg-[#0d1813] hover:border-[#3a5a49]'}`;
   const tick_ = (sel: boolean) => sel ? <span className="absolute top-2 right-2 z-30 w-5 h-5 rounded-full bg-[#bef264] text-black flex items-center justify-center shadow"><Check className="w-3.5 h-3.5 stroke-[3]" /></span> : null;
@@ -159,11 +168,11 @@ export const CaptionStylePicker: React.FC<{ captions: CaptionConfig; onCaptionsC
       <button type="button" onClick={() => setOpen(true)}
         className="group w-full text-left rounded-2xl p-[1.5px] bg-gradient-to-r from-[#bef264] via-[#3f9a5a] to-[#8fd0a4] hover:shadow-[0_0_24px_rgba(190,242,100,0.25)] transition-shadow cursor-pointer">
         <div className="rounded-[15px] bg-[#0b1410] p-3.5 flex items-center gap-3.5">
-          <div className="w-20 h-14 rounded-xl border border-[#1c3127] bg-black/50 overflow-hidden shrink-0 flex items-center justify-center">
-            {curDyn ? (isBehind(curDyn) ? <BehindPreview tpl={curDyn} /> : <DynCaption tpl={curDyn} base={9} sample />) : curPreset ? <div className="w-full h-full"><ClassicPreview preset={curPreset} /></div> : null}
+          <div className="w-24 h-20 rounded-xl border border-[#1c3127] bg-black/50 overflow-hidden shrink-0">
+            <PersonFrame tpl={curDyn} small>{curDyn ? (isBehind(curDyn) ? <DynCaption tpl={curDyn} base={7} sample part="front" /> : <DynCaption tpl={curDyn} base={8} sample />) : curExtra ? <ExtraPreview spec={curExtra} size={8} /> : curPreset ? <div className="scale-[.55] origin-center"><ClassicPreview preset={curPreset} /></div> : null}</PersonFrame>
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2"><Sparkles className="w-3.5 h-3.5 text-[#bef264]" /><span className="text-[10px] font-mono uppercase tracking-widest text-[#8fd0a4]">Caption style</span>{curDyn && <ProTag />}</div>
+            <div className="flex items-center gap-2"><Captions className="w-4 h-4 text-[#bef264]" /><span className="text-[10px] font-mono uppercase tracking-widest text-[#8fd0a4]">Caption style</span>{curDyn && <ProTag />}</div>
             <div className="text-sm font-extrabold text-white truncate mt-0.5">{curName}</div>
             <div className="text-[10px] text-neutral-400">{curKind}{curDyn ? ' · font locked' : ''} · tap to browse all {total} styles</div>
           </div>
@@ -195,11 +204,17 @@ export const CaptionStylePicker: React.FC<{ captions: CaptionConfig; onCaptionsC
                   {POPULAR_CAPTION_PRESETS.map(p => { const sel = cur === p.id; return (
                     <div key={p.id} onClick={() => pickPreset(p)} className={card(sel)}>
                       {tick_(sel)}
-                      <div className="h-24 rounded-xl bg-black/60 border border-[#1c3127] overflow-hidden mb-2"><ClassicPreview preset={p} /></div>
+                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><PersonFrame><ClassicPreview preset={p} /></PersonFrame></div>
                       <div className="text-xs font-extrabold text-white truncate">{p.name}</div>
                       <p className="text-[10px] text-neutral-400 mt-0.5 line-clamp-2">{p.tagline}</p>
                     </div>); })}
-                </div>
+                  {CLASSIC_EXTRA.map(c => { const sel = cur === c.id; return (
+                    <div key={c.id} onClick={() => pickExtra(c)} className={card(sel)}>
+                      {tick_(sel)}
+                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><PersonFrame><ExtraPreview key={tick} spec={c} size={15} /></PersonFrame></div>
+                      <div className="text-xs font-extrabold text-white truncate">{c.name}</div>
+                      <p className="text-[10px] text-neutral-400 mt-0.5 line-clamp-2">{c.tagline}</p>
+                    </div>); })}                </div>
               </div>}
               {dyn.length > 0 && <div className="space-y-2">
                 {cat === 'all' && <div className="text-[10px] font-mono uppercase tracking-widest text-neutral-500 flex items-center gap-2">Dynamic and behind the person <ProTag /></div>}
@@ -207,9 +222,7 @@ export const CaptionStylePicker: React.FC<{ captions: CaptionConfig; onCaptionsC
                   {dyn.map(t => { const sel = cur === t.id; const b = isBehind(t); return (
                     <div key={t.id} onClick={() => pickDyn(t)} className={card(sel)}>
                       {tick_(sel)}
-                      <div className={`${b ? 'h-40' : 'h-24'} rounded-xl border border-[#1c3127] overflow-hidden mb-2 ${b ? '' : 'bg-gradient-to-b from-[#2a3440] to-[#0d1117] flex items-center justify-center'}`}>
-                        {b ? <BehindPreview key={tick} tpl={t} /> : <DynCaption key={tick} tpl={t} base={14} sample />}
-                      </div>
+                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><PersonFrame tpl={t}><DynCaption key={tick} tpl={t} base={b ? 11 : 13} sample part={b ? 'front' : 'all'} /></PersonFrame></div>
                       <div className="flex items-center justify-between gap-2"><span className="text-xs font-extrabold text-white truncate">{t.name}</span><span className="text-[8px] text-neutral-500 uppercase tracking-wider shrink-0">{b ? 'behind person' : 'dynamic'} · locked</span></div>
                       <p className="text-[10px] text-neutral-400 mt-0.5 line-clamp-2">{t.tagline}</p>
                     </div>); })}

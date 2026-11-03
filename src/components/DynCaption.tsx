@@ -14,7 +14,7 @@ const ring = (r: number, color: string) => {
 };
 
 // the same arrivals as electron/engine/dyn.cjs (ANIMS), so the preview moves like the exported clip
-const ANIM_CSS = `
+export const ANIM_CSS = `
 @keyframes dynA-bounce{0%{transform:scale(.55)}40%{transform:scale(1.28)}73%{transform:scale(.92)}100%{transform:scale(1)}}
 @keyframes dynA-slam{0%{transform:scale(2.3)}100%{transform:scale(1)}}
 @keyframes dynA-stretch{0%{transform:scale(2.6,.65)}100%{transform:scale(1)}}
@@ -24,7 +24,7 @@ const ANIM_CSS = `
 @keyframes dynA-shake{0%{transform:rotate(4deg)}25%{transform:rotate(-4deg)}50%{transform:rotate(3deg)}75%{transform:rotate(-2deg)}100%{transform:rotate(0)}}
 @keyframes dynA-track{0%{letter-spacing:.35em}100%{letter-spacing:0}}
 @keyframes dynA-glow{0%{filter:blur(8px);transform:scale(1.18)}100%{filter:blur(0);transform:scale(1)}}`;
-const ANIM_MS: Record<string, number> = { bounce: 300, slam: 130, stretch: 150, squash: 180, flip: 240, wobble: 290, shake: 210, track: 240, glow: 230 };
+export const ANIM_MS: Record<string, number> = { bounce: 300, slam: 130, stretch: 150, squash: 180, flip: 240, wobble: 290, shake: 210, track: 240, glow: 230 };
 
 function Word({ it, tpl, base, cur, vis, ecol }: { it: DynWord; tpl: DynTemplate; base: number; cur: boolean; vis: boolean; ecol: string[] }) {
   const st = tpl[it.cls] as any;

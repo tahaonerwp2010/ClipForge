@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "8.0.3",
+  "version": "8.0.4",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
