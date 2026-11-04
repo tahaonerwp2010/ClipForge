@@ -181,7 +181,7 @@ export const CaptionStylePicker: React.FC<{ captions: CaptionConfig; onCaptionsC
       </button>
 
       {open && createPortal(
-        <div className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" onMouseDown={e => { if (e.target === e.currentTarget) setOpen(false); }}>
+        <div className="fixed inset-0 z-[400] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" onMouseDown={e => { if (e.target === e.currentTarget) setOpen(false); }}>
           <div className="w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl bg-[#0a120e] border border-[#20322a] shadow-2xl overflow-hidden">
             <div className="flex items-start justify-between gap-3 p-5 pb-3 border-b border-[#172820]">
               <div>

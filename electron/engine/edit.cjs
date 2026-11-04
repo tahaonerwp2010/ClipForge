@@ -9,6 +9,7 @@ const ASS = require('./ass.cjs');
 const EMOJI = require('./emoji.cjs');
 const FX = require('./fx.cjs');
 const BH = require('./behind.cjs');
+const HK = require('./hook.cjs');
 
 const stateFile = (outDir) => path.join(outDir, '.clipforge-edit.json');
 function saveState(outDir, st) {
@@ -22,6 +23,18 @@ function loadState(outDir) { try { return JSON.parse(fs.readFileSync(stateFile(o
 const nn = i => String(i + 1).padStart(2, '0');
 const editDir = (outDir) => { const d = path.join(outDir, '.edit'); fs.mkdirSync(d, { recursive: true }); return d; };
 
+// Colour rule of the hook the user coloured in the editor -> word colours for ANOTHER clip's hook, by line and word position:
+// a whole line coloured -> that line in every clip (however many words it has); first N words coloured -> the first N words of that line.
+function ruleColors(text, nLines, rule) {
+  if (!Array.isArray(rule) || !rule.length) return null;
+  const lines = HK.hookLines(text, '', nLines).split('\n');
+  const out = []; 
+  lines.forEach((l, li) => {
+    const n = l.split(' ').filter(t => t !== '').length, r = rule.find(x => x.line === li);
+    for (let j = 0; j < n; j++) out.push(r ? (r.whole || (r.words && r.words[j]) || null) : null);
+  });
+  return out.some(Boolean) ? out : null;
+}
 // Everything renderClip needs for clip i (same rules as the main pipeline), with the user's caption/hook changes applied.
 async function ctxFor(st, i, ov = {}, work, extra = {}) {
   const shorts = st.kind === 'shorts';
@@ -29,7 +42,7 @@ async function ctxFor(st, i, ov = {}, work, extra = {}) {
   const hookText0 = ov.hookText != null ? ov.hookText : (st.clips[i].hookText || st.clips[i].title);
   const ovb = ov.branding || {};
   const branding = { ...(st.branding || {}), ...ovb, autoTitle: { ...((st.branding || {}).autoTitle || {}), ...(ovb.autoTitle || {}), ...(ov.autoTitle || {}), title: hookText0,
-    wordColors: ov.hookText != null ? ((ov.autoTitle || {}).wordColors || null) : (st.clips[i].hookColors || null) } };       // single-word hook colours belong to ONE clip
+    wordColors: ov.hookText != null ? ((ov.autoTitle || {}).wordColors || null) : Array.isArray(ov.hookRule) ? ruleColors(hookText0, (ov.autoTitle || {}).lines || ((st.branding || {}).autoTitle || {}).lines, ov.hookRule) : (st.clips[i].hookColors || null) } };       // single-word hook colours belong to ONE clip
   const quality = +st.quality || 1080;
   const [Wd, Ht] = R.dimsFor(st.ratio || '9:16', quality);
   const c = st.clips[i];
@@ -103,6 +116,7 @@ async function rerender(outDir, i, ov, onProgress, deps) {
   // remember the edit so the next editor session starts from it
   st.captions = x.captions; st.branding = { ...x.branding, autoTitle: { ...x.branding.autoTitle, title: '', wordColors: undefined } };
   if (ov.hookText != null) { st.clips[i].hookText = ov.hookText; const wc = (ov.autoTitle || {}).wordColors; if (Array.isArray(wc) && wc.some(Boolean)) st.clips[i].hookColors = wc; else delete st.clips[i].hookColors; }
+  if (ov.hookText == null && Array.isArray(ov.hookRule)) { const wc = ruleColors(st.clips[i].hookText || st.clips[i].title, (ov.autoTitle || {}).lines || ((x.branding || {}).autoTitle || {}).lines, ov.hookRule); if (wc) st.clips[i].hookColors = wc; else delete st.clips[i].hookColors; }
   saveState(outDir, st);
   return { outputPath: out, thumbnailUrl: thumb };
 }

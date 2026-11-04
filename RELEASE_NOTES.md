@@ -1,4 +1,7 @@
 ## What's new
-- Hook size maximum now fills the whole screen width: the slider goes up to the biggest size that still fits from edge to edge, measured from the real font. The Edit Clip window and the Branding step use the same maximum, and the exported video matches.
+- Edit Clip: the Caption style picker now opens on top of the editor, so it is always visible.
+- Edit Clip → "Apply to all clips": hook colours now follow the same pattern in every clip. A whole coloured line colours that line in every hook, and colouring the first words colours the first words of that line in every hook, whatever the hook says or how long it is.
+- Edit Clip: Apply now opens a progress window that lists only the parts you changed (captions, hook, banner, watermark, music, effects) with Pause pipeline and Cancel pipeline buttons. The main generation progress is unchanged.
+- Hook size maximum fills the full screen width (Edit Clip and Branding use the same maximum).
 - "What's new" in the update window shows only the changes of the new version.
-- YouTube downloader hardened: tries every YouTube route and network mode (and your browser's sign-in as a last resort) before giving up, and shows an accurate reason instead of a false "slow internet".
+- YouTube downloader hardened with more routes, nightly yt-dlp and accurate error messages.

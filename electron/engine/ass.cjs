@@ -148,7 +148,7 @@ function titleEmojis({ title, branding = {}, W, H, dur = 9999 }) {
   const hk = HK.hookTwoLines(title), { emojis } = EM.splitTitle(String(title));
   const list = emojis.map(EM.pngForChar).filter(Boolean).slice(0, 3);
   if (!list.length) return [];
-  const k = W / 1080, size = HK.hookFontPx(hk, W, undefined, hookMeasure(String(at.fontFamily || 'Montserrat Black')));
+  const k = W / 1080, size = HK.hookFontPx(hk, W, undefined, hookMeasure(fam(at.fontFamily || 'Montserrat Black')));
   const em = Math.round(size * 1.1), gap = Math.round(em * 0.1);
   const total = list.length * em + (list.length - 1) * gap;
   const cx = (at.positionX ?? 50) / 100 * W, cy = (at.positionY ?? 10) / 100 * H;

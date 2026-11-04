@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Loader2, Save, Type, Sparkles, PanelTop, Stamp, Music, ListChecks, Zap } from 'lucide-react';
+import { X, Loader2, Save, Pause, Play, Check, Square, Type, Sparkles, PanelTop, Stamp, Music, ListChecks, Zap } from 'lucide-react';
 import { PhonePreview } from './PhonePreview';
 import { CaptionsTab } from './tabs/CaptionsTab';
 import { BrandingTab } from './tabs/BrandingTab';
@@ -48,6 +48,12 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
   const [saving, setSaving] = useState(false);
   const [pct, setPct] = useState(0);
   const [job, setJob] = useState('');
+  const [paused, setPaused] = useState(false);
+  const [steps, setSteps] = useState<string[]>([]);
+  const snapPending = useRef(false);
+  const ctl = useRef<{ paused: boolean; cancel: boolean; wake: (() => void) | null }>({ paused: false, cancel: false, wake: null });
+  const snap = useRef('');
+  const snapOf = (c: any, b: any, f: any) => { const { autoTitle, ...rest } = b || {}; const { title: _t, wordColors: _w, ...hk } = autoTitle || {}; return { cap: c, hook: { ...hk, w: (autoTitle || {}).wordColors, t: (autoTitle || {}).title }, ban: { s: rest.showHookTitle, h: rest.hookTitle, bg: rest.bannerShowBackground, bx: rest.bannerPositionX, by: rest.bannerPositionY, bc: rest.hookBgColor, bt: rest.hookTextColor, bf: rest.hookFontFamily }, wm: { s: rest.showWatermark, h: rest.creatorHandle, t: rest.watermarkType, i: rest.watermarkImage?.path, x: rest.watermarkPositionX, y: rest.watermarkPositionY, z: rest.watermarkFontSize, c: rest.watermarkColor, f: rest.watermarkFontFamily }, mu: { m: rest.bgMusic, v: rest.musicVolume }, fx: f }; };
   const cur = useRef(0), doneBefore = useRef(0), span = useRef(1);
   const [t, setT] = useState(0);
   const [dur, setDur] = useState(clip.duration || 0);
@@ -57,6 +63,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
     grading: { ...fallback.grading, brightness: 100, contrast: 100, saturation: 100, warmth: 100, grain: false, vignette: false, speedBoost: 1, fx: undefined } as any,
     framing: { ...fallback.framing, mode: 'fill-crop', panX: 0, autoReframing: false } as any,
   });
+  useEffect(() => { if (state === 'ready' && snapPending.current) { snapPending.current = false; snap.current = JSON.stringify(snapOf(captions, branding, fx)); } }, [state, captions, branding, fx]);
   const hook = branding.autoTitle || ({} as any);
   const hookText = hook.title || clip.hookText || clip.title || '';
 
@@ -75,6 +82,8 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
         const r = await api.editPrepare(outDir, index);
         if (!r?.ok) throw new Error(r?.error || 'Could not prepare the preview.');
         setUrl(r.url); setState('ready');
+        snapPending.current = true;
+
       } catch (e: any) { setErr(String(e.message || e)); setState('error'); }
     })();
     off = api?.onEditProgress?.((d: any) => { if (d.index === cur.current) { const f = d.p <= 1 ? d.p : d.p / 100; setPct(Math.round((doneBefore.current + f) / span.current * 100)); } });
@@ -97,18 +106,53 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
     delete b.autoTitle;
     return b;
   };
+  // which parts the user changed (only these are listed in the progress window)
+  const changedParts = () => {
+    let o: any = null; try { o = snap.current && snap.current !== 'pending' ? JSON.parse(snap.current) : null; } catch {}
+    const n: any = JSON.parse(JSON.stringify(snapOf(captions, branding, fx)));
+    const lab: Record<string, string> = { cap: 'Captions', hook: 'Hook', ban: 'Banner', wm: 'Watermark', mu: 'Music', fx: 'Effects' };
+    if (!o) return Object.values(lab);
+    return Object.keys(lab).filter(k => JSON.stringify(o[k]) !== JSON.stringify(n[k])).map(k => lab[k]);
+  };
+  const waitResume = () => new Promise<void>(res => { ctl.current.wake = res; });
+  const pauseNow = () => { ctl.current.paused = true; setPaused(true); try { api?.editCancel?.(); } catch {} };
+  const resumeNow = () => { ctl.current.paused = false; setPaused(false); const w = ctl.current.wake; ctl.current.wake = null; w && w(); };
+  const cancelNow = () => { ctl.current.cancel = true; ctl.current.paused = false; setPaused(false); try { api?.editCancel?.(); } catch {} const w = ctl.current.wake; ctl.current.wake = null; w && w(); };
   const save = async (all: boolean) => {
     if (LicenseService.blockIfLocked({ dynamicCaptions: isDynStyle(captions.style), fx: !!fx.enabled })) return;
+    ctl.current = { paused: false, cancel: false, wake: null }; setPaused(false);
+    setSteps(changedParts());
     setSaving(true); setPct(0); setErr('');
     const idx = all ? allIdx : [index];
     span.current = idx.length;
     const at = { ...branding.autoTitle, enabled: true };
     const bo = brandingOut();
+    // colours the user gave to words of THIS hook -> a rule by line / word position, so every other clip gets the same lines / first words coloured
+    const wcs = (at as any).wordColors as (string | null)[] | undefined;
+    const hookRule: any[] = [];
+    if (all && wcs && wcs.some(Boolean)) {
+      let p = 0;
+      hookLines(hookText, (at as any).lines || 2).forEach((l: string, li: number) => {
+        const n = hookWordTokens(l).length, cs = wcs.slice(p, p + n); p += n;
+        if (!cs.some(Boolean)) return;
+        if (n > 0 && cs.every(c => c && c === cs[0])) hookRule.push({ line: li, whole: cs[0] });
+        else { const words: any = {}; cs.forEach((c, j) => { if (c) words[j] = c; }); hookRule.push({ line: li, words }); }
+      });
+    }
     for (let n = 0; n < idx.length; n++) {
       const i = idx[n]; cur.current = i; doneBefore.current = n; setJob(all ? `Clip ${n + 1} of ${idx.length}` : '');
       const own = i === index;
       const { title: _t, wordColors: _wc, ...atNoTitle } = at as any;
-      const r = await api.editRender(outDir, i, own ? { captions, hookText, autoTitle: at, branding: bo, fx } : { captions, autoTitle: atNoTitle, branding: bo, fx });
+      let r: any;
+      for (;;) {
+        if (ctl.current.cancel) break;
+        if (ctl.current.paused) await waitResume();
+        if (ctl.current.cancel) break;
+        r = await api.editRender(outDir, i, own ? { captions, hookText, autoTitle: at, branding: bo, fx } : { captions, autoTitle: atNoTitle, branding: bo, fx, hookRule });
+        if (r?.cancelled && !ctl.current.cancel) { if (!ctl.current.paused) ctl.current.paused = true; continue; }       // paused: this clip is redone from its start after Resume
+        break;
+      }
+      if (ctl.current.cancel || r?.cancelled) { setSaving(false); onClose(); return; }
       if (!r?.ok) { setSaving(false); setErr(r?.error || 'Render failed.'); setState('error'); return; }
       onSaved(i, { outputPath: r.outputPath, thumbnailUrl: r.thumbnailUrl });
       setPct(Math.round((n + 1) / idx.length * 100));
@@ -217,10 +261,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
         {state === 'ready' && (
           <div className="px-5 py-3 border-t border-[#13211a] flex items-center justify-between gap-3 flex-wrap">
             {saving ? (
-              <div className="flex-1 flex items-center gap-3">
-                <div className="flex-1 h-2 rounded-full bg-[#13211a] overflow-hidden"><div className="h-full bg-[#bef264] transition-all" style={{ width: pct + '%' }} /></div>
-                <span className="text-xs text-[#8fd0a4] font-mono whitespace-nowrap">{job ? job + ' · ' : ''}Rendering {pct}%</span>
-              </div>
+              <div className="flex-1 text-xs text-[#8fd0a4]">Applying your changes…</div>
             ) : (<>
               <span className="text-[10px] text-neutral-500 max-w-xs">Applying to all keeps each clip's own hook text; style, banner, watermark and music are shared.</span>
               <div className="flex gap-2">
@@ -228,6 +269,33 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
                 {total > 1 && <button onClick={() => save(true)} className="px-4 py-2 rounded-lg bg-[#bef264] text-black text-xs font-black cursor-pointer">Apply to all clips ({total})</button>}
               </div>
             </>)}
+          </div>
+        )}
+        {saving && (
+          <div className="fixed inset-0 z-[320] bg-[#050b08] flex items-center justify-center p-4">
+            <div className="w-full max-w-md rounded-2xl bg-[#0a130f] border border-[#172820] p-6">
+              <div className="text-[11px] font-black uppercase tracking-wider text-[#8fd0a4] mb-1">Updating your clips</div>
+              <div className="text-white text-lg font-black mb-1">{paused ? 'Paused' : (job || 'Rendering this clip')}</div>
+              <div className="h-2 rounded-full bg-[#13211a] overflow-hidden mb-1"><div className="h-full bg-[#bef264] transition-all" style={{ width: pct + '%' }} /></div>
+              <div className="text-[11px] text-neutral-400 font-mono mb-4">{pct}%</div>
+              <div className="space-y-2 mb-5">
+                {['Preparing the clip', ...steps.map(x => 'Applying ' + x.toLowerCase()), 'Rendering ' + (job ? 'clips' : 'the clip'), 'Saving'].map((lab, i, arr) => {
+                  const last = i === arr.length - 1, render = i === arr.length - 2;
+                  const done = i === 0 ? true : render ? false : last ? false : pct > 0 || !paused;
+                  return (
+                    <div key={lab} className="flex items-center gap-3 text-sm">
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center ${done ? 'bg-[#bef264] text-black' : render && !paused ? 'bg-[#12201a] border border-[#3f9a5a]' : 'bg-[#12201a] border border-[#20322a]'}`}>{done ? <Check className="w-3 h-3" /> : render && !paused ? <Loader2 className="w-3 h-3 animate-spin text-[#8fd0a4]" /> : null}</span>
+                      <span className={done ? 'text-neutral-300' : render ? 'text-white font-bold' : 'text-neutral-500'}>{lab}{render ? ` · ${pct}%` : ''}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={paused ? resumeNow : pauseNow} className="flex-1 py-2.5 rounded-lg bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] text-xs font-black flex items-center justify-center gap-2 cursor-pointer">{paused ? <><Play className="w-4 h-4" /> Resume pipeline</> : <><Pause className="w-4 h-4" /> Pause pipeline</>}</button>
+                <button type="button" onClick={cancelNow} className="flex-1 py-2.5 rounded-lg bg-[#2a1414] border border-[#6b2a2a] text-[#f3a0a0] text-xs font-black flex items-center justify-center gap-2 cursor-pointer"><Square className="w-4 h-4" /> Cancel pipeline</button>
+              </div>
+              <p className="text-[10px] text-neutral-500 mt-3">Clips that are already finished keep their new look. Pausing restarts the clip that is being rendered when you resume.</p>
+            </div>
           </div>
         )}
         {showTx && (
