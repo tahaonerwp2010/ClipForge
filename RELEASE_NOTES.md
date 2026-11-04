@@ -5,4 +5,3 @@
 - **Progress bar:** an optional bar that fills along the clip (Branding > Watermark).
 - **Clean voice:** optional noise reduction and even loudness (Video).
 - Caption translation: more reliable when the AI answers badly, and Chinese / Japanese / Thai captions are now split into readable pieces.
-- Fixed: caption sounds could fail on the Android app (phone engine has no Unicode property support).
