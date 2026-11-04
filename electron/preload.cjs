@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ownerRemove: (pw, id) => ipcRenderer.invoke('owner-remove', { pw, id }),
   editLoad: (outDir) => ipcRenderer.invoke('edit-load', outDir),
   editPrepare: (outDir, index) => ipcRenderer.invoke('edit-prepare', { outDir, index }),
+  stockTest: (provider, key) => ipcRenderer.invoke('stock-test', { provider, key }),
   editCancel: () => ipcRenderer.invoke('edit-cancel'),
   editRender: (outDir, index, overrides) => ipcRenderer.invoke('edit-render', { outDir, index, overrides }),
   onEditProgress: (cb) => { const h = (e, d) => cb(d); ipcRenderer.on('edit-progress', h); return () => ipcRenderer.removeListener('edit-progress', h); },

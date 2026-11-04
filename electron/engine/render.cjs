@@ -141,6 +141,12 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
   let base, note = null;
   if (splitArgs) {
     base = splitBase(splitArgs);
+  } else if (mode === 'fill-crop' && track && track.duo && !behind && srcAspect >= 1.3 && H > W) {
+    // two speakers in one wide shot: each one gets half of the screen (full source height, so the people keep their natural proportions), the left person on top
+    const PH = Math.floor(H / 2 / 2) * 2, d = track.duo;
+    const half = (cx, nm) => `[${nm}]crop=w='min(iw,ih*${W}/${PH})':h=ih:x='max(0,min(iw-ow,${Number(cx).toFixed(4)}*iw-ow/2))':y=0,scale=${W}:${PH}:flags=lanczos,setsar=1`;
+    base = `[0:v]split[da][db];${half(d.a, 'da')}[pa];${half(d.b, 'db')}[pb];[pa][pb]vstack=inputs=2,pad=${W}:${H}:0:(oh-ih)/2:black[v0]`;
+    note = 'two speakers: stacked layout';
   } else if (mode === 'fill-crop') {
     const pan = Math.max(-50, Math.min(50, f.panX || 0));
     const xExpr = track && track.expr
@@ -250,7 +256,7 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
   return { graph, note };
 }
 
-async function renderClip({ quality = 1080, input, start, end, out, assText, ratio, framing, grading, workDir, hasAudio = true, track, emojis = [], emojiBox, onProgress, srcAspect, fontFamilies = [], watermark, music, split, fx, fps = 30, behind = null, assBehind = '', broll = [], hw = 'cpu' }) {
+async function renderClip({ quality = 1080, input, start, end, out, assText, ratio, framing, grading, workDir, hasAudio = true, track, emojis = [], emojiBox, onProgress, srcAspect, fontFamilies = [], watermark, music, split, fx, fps = 30, behind = null, assBehind = '', broll = [], hw = 'cpu', capSfx = [] }) {
   const [W, H] = dimsFor(ratio, quality);
   fs.mkdirSync(workDir, { recursive: true });
   if (assText) fs.writeFileSync(path.join(workDir, 'captions.ass'), assText, 'utf8');
@@ -312,7 +318,7 @@ async function renderClip({ quality = 1080, input, start, end, out, assText, rat
     splitArgs = { W, H, split, secIdx, fcMaskIdx, fps, dur, lead };
   }
   // ---- auto effects: sound-effect inputs ----
-  const sfxList = (fx && hasAudio && Array.isArray(fx.sfx) ? fx.sfx : []).filter(e => e.file && fs.existsSync(e.file)).slice(0, 48);
+  const sfxList = (hasAudio ? [...(fx && Array.isArray(fx.sfx) ? fx.sfx : []), ...(Array.isArray(capSfx) ? capSfx : [])] : []).filter(e => e.file && fs.existsSync(e.file)).slice(0, 48);
   const sfxInputs = [];
   sfxList.forEach(e => { e.idx = nextIdx++; sfxInputs.push('-i', e.file); });          // one input per event (an ffmpeg input can feed only one filter)
   let behindIdx = null, behindInputs = [];
@@ -332,6 +338,9 @@ async function renderClip({ quality = 1080, input, start, end, out, assText, rat
     if (split.audio === 'game') graph += `;[${secIdx}:a]${fm}${delay}[amain]`;
     else graph += `;[0:a]${fm}[x0];[${secIdx}:a]${fm}${delay}[x1];[x0][x1]amix=inputs=2:duration=first:dropout_transition=0,volume=2[amain]`;
     aSrc = 'amain'; aMap = '[amain]';
+  }
+  if (hasAudio && grading && grading.cleanAudio) {            // voice clean-up: rumble filter, noise reduction, even loudness
+    graph += `;[${aSrc}]highpass=f=70,afftdn=nf=-30:nr=12,loudnorm=I=-16:TP=-1.5:LRA=11[aclean]`; aSrc = 'aclean'; aMap = '[aclean]';
   }
   if (sfxList.length) {                                     // mix the sound effects over the voice
     const fm = 'aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo';

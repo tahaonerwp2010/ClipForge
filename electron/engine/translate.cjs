@@ -89,20 +89,41 @@ async function translate(words, language, g, onProgress) {
   if (isHinglish(language) && words.some(w => SCRIPT_RE.test(String(w.word)))) return toRoman(words, g, onProgress);
   if (isHinglish(language)) language = 'Hinglish (Hindi/Urdu written in English letters, the way people type in chat, e.g. "kaise ho, ye bohot important hai")';
   const segs = segments(words), res = [], B = 25;
-  for (let i = 0; i < segs.length; i += B) {
-    const part = segs.slice(i, i + B).map(s => s.map(k => words[k].word).join(' '));
+  // one batch; if the AI answers with the wrong number of lines it is asked again, then the batch is split in halves (down to single lines)
+  const askLines = async (part, depth = 0) => {
     const prompt = `Translate each line into ${language}. Keep the meaning and a natural spoken tone, keep every line short.
 Return ONLY a JSON array of exactly ${part.length} strings, same order.
 ${JSON.stringify(part)}`;
-    let r = null;
-    for (let t = 0; t < 2 && !r; t++) { const x = await ask(g, prompt); if (x.length === part.length) r = x; }
+    for (let t = 0; t < (depth ? 1 : 2); t++) { const x = await ask(g, prompt); if (x.length === part.length && x.every(v => typeof v === 'string')) return x; }
+    if (part.length === 1) return null;
+    const h = part.length >> 1, a = await askLines(part.slice(0, h), depth + 1), b = await askLines(part.slice(h), depth + 1);
+    return [...(a || part.slice(0, h).map(() => null)), ...(b || part.slice(h).map(() => null))];
+  };
+  for (let i = 0; i < segs.length; i += B) {
+    const part = segs.slice(i, i + B).map(s => s.map(k => words[k].word).join(' '));
+    let r = null; try { r = await askLines(part); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; }
     part.forEach((orig, j) => res.push(r && typeof r[j] === 'string' && r[j].trim() ? r[j].trim() : orig));
     onProgress && onProgress(Math.min(1, (i + B) / segs.length));
   }
+  // Chinese / Japanese / Thai are written without spaces: cut them into short readable pieces, not one giant word
+  const NOSPACE = /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\u0e00-\u0e7f\u0e80-\u0eff\u1000-\u109f\u1780-\u17ff]/;
+  const pieces = (txt) => {
+    const sp = txt.split(/\s+/).filter(Boolean);
+    if (!(sp.length === 1 && sp[0].length > 4 && NOSPACE.test(sp[0])) && !(sp.length <= 2 && sp.some(x => x.length > 8 && NOSPACE.test(x)))) return sp;
+    const out = [];
+    for (const chunk of sp) {
+      if (!NOSPACE.test(chunk) || chunk.length <= 4) { out.push(chunk); continue; }
+      let got = null;
+      try { const seg = new Intl.Segmenter(undefined, { granularity: 'word' }); got = [...seg.segment(chunk)].filter(x => x.isWordLike !== false).map(x => x.segment); } catch {}
+      if (!got || got.length < 2) { got = []; for (let k = 0; k < chunk.length; k += 3) got.push(chunk.slice(k, k + 3)); }
+      let cur = ''; got.forEach(x => { if ((cur + x).length > 4 && cur) { out.push(cur); cur = x; } else cur += x; }); if (cur) out.push(cur);
+    }
+    return out;
+  };
   const out = [];
   segs.forEach((idx, si) => {
     const start = words[idx[0]].start, end = words[idx[idx.length - 1]].end;
-    const tw = res[si].split(/\s+/).filter(Boolean);
+    const tw = pieces(res[si]);
     const tot = tw.reduce((a, w) => a + w.length + 2, 0) || 1;
     let t = start;
     tw.forEach(w => { const d = (end - start) * (w.length + 2) / tot; out.push({ word: w, start: +t.toFixed(2), end: +(t + d).toFixed(2) }); t += d; });

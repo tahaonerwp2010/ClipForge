@@ -643,6 +643,29 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
       </>)}
 
       {show('watermark') && (<>
+      <section className="p-4 rounded-xl bg-[#0b1410] border border-[#172820] space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wider text-neutral-300">Progress bar</div>
+            <p className="text-[10px] text-neutral-400 mt-0.5">A thin bar that fills along the clip. It keeps people watching to the end.</p>
+          </div>
+          <button type="button" onClick={() => onBrandingChange({ ...branding, barOverlay: { color: '#bef264', position: 'bottom', height: 8, ...(branding.barOverlay || {}), enabled: !branding.barOverlay?.enabled } })}
+            className={`w-11 h-6 rounded-full p-0.5 transition-all cursor-pointer shrink-0 ${branding.barOverlay?.enabled ? 'bg-[#bef264]' : 'bg-[#1d3228]'}`}>
+            <div className={`w-5 h-5 rounded-full bg-black transition-transform ${branding.barOverlay?.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
+        </div>
+        {branding.barOverlay?.enabled && (
+          <div className="flex items-center gap-2 flex-wrap text-[11px]">
+            {(['bottom', 'top'] as const).map(pz => (
+              <button key={pz} type="button" onClick={() => onBrandingChange({ ...branding, barOverlay: { ...branding.barOverlay!, position: pz } })}
+                className={`px-3 py-1 rounded-full cursor-pointer ${(branding.barOverlay?.position || 'bottom') === pz ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] font-bold' : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400'}`}>{pz === 'top' ? 'Top' : 'Bottom'}</button>
+            ))}
+            {['#bef264', '#ffffff', '#facc15', '#38bdf8', '#f43f5e'].map(c => (
+              <button key={c} type="button" title={c} onClick={() => onBrandingChange({ ...branding, barOverlay: { ...branding.barOverlay!, color: c } })} className="w-6 h-6 rounded-full cursor-pointer border-2" style={{ background: c, borderColor: (branding.barOverlay?.color || '#bef264') === c ? '#fff' : 'transparent' }} />
+            ))}
+          </div>
+        )}
+      </section>
       {/* ========================================================
           3. CREATOR WATERMARK / HANDLE
       ======================================================== */}

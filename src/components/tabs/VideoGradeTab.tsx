@@ -268,6 +268,15 @@ export const VideoGradeTab: React.FC<VideoGradeTabProps> = ({
             />
           </label>
 
+          {/* Voice clean-up */}
+          <label className="flex items-center justify-between p-3 rounded-xl bg-[#0b1410] border border-[#1a2c24] hover:border-[#273d32] cursor-pointer transition-colors">
+            <div>
+              <div className="text-xs font-bold text-white">Clean voice (noise reduction)</div>
+              <p className="text-[10px] text-neutral-400 mt-0.5">Removes background hiss and rumble and evens out the loudness. Runs locally, free.</p>
+            </div>
+            <input type="checkbox" checked={Boolean((grading as any).cleanAudio)} onChange={(e) => onGradingChange({ ...grading, cleanAudio: e.target.checked } as any)} className="w-4 h-4 accent-[#bef264] rounded cursor-pointer" />
+          </label>
+
           {/* 1.05x Speed Ramping */}
           <label className="flex items-center justify-between p-3 rounded-xl bg-[#0b1410] border border-[#1a2c24] hover:border-[#273d32] cursor-pointer transition-colors">
             <div>

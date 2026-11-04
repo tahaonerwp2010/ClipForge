@@ -14,6 +14,7 @@ import { AutoReframeEngine, SpeakerKeyframe } from './autoReframeEngine';
 import { ViralDetectorEngine } from './viralDetectorEngine';
 import { SoftwareLogEvent, SoftwareManager } from './softwareManager';
 import { GeminiService } from './geminiService';
+import { StockService } from './stockService';
 import { AiService } from './aiService';
 import { getHardware } from './hardwareMode';
 
@@ -155,7 +156,8 @@ export class PipelineRunner {
         split: config.split ? { ...config.split, frame: undefined, secondUrl: undefined } : undefined,
         framing, captions, grading, branding,
         hardware: getHardware(),
-        gemini: AiService.forJob()
+        gemini: AiService.forJob(),
+        stockKeys: StockService.keys()
       });
 
       const toUrl = (p: string) => fileUrl(p);

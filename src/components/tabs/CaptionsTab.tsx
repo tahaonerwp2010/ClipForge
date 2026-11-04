@@ -113,6 +113,16 @@ export const CaptionsTab: React.FC<CaptionsTabProps> = ({
             <p className="text-[10px] text-neutral-500 mt-2">Pick any font for your captions. "Style default" keeps the font that comes with the caption style.</p>
           </section>}
 
+<section className="rounded-xl bg-[#0b1410] border border-[#172820] p-4 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-black uppercase tracking-wider text-white">Caption sounds</div>
+              <p className="text-[10px] text-neutral-400 mt-0.5">A soft whoosh when the hook appears and quiet pops on the strong words. Free, built in, mixed under the voice.</p>
+            </div>
+            <button type="button" onClick={() => onCaptionsChange({ ...captions, sfx: captions.sfx === false })} className={`w-11 h-6 rounded-full p-0.5 transition-all cursor-pointer shrink-0 ${captions.sfx !== false ? 'bg-[#bef264]' : 'bg-[#1d3228]'}`}>
+              <div className={`w-5 h-5 rounded-full bg-black transition-transform ${captions.sfx !== false ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </section>
+
 {!hideLanguage && <section className="rounded-xl bg-[#0b1410] border border-[#172820] overflow-hidden shadow-md">
             <button type="button" onClick={() => setOpenLang(!openLang)} className="w-full p-4 flex items-center justify-between cursor-pointer">
               <span className="text-xs font-black uppercase tracking-wider text-white">Language {(captions.translateTo || captions.romanScript) && <span className="ml-2 text-[10px] text-[#8fd0a4]">ON</span>}</span>

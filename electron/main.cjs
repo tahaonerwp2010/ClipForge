@@ -260,6 +260,7 @@ ipcMain.handle('open-folder', async (e, p, projectId) => {
   }
   try { fs.mkdirSync(p, { recursive: true }); } catch {} return shell.openPath(p);
 });
+ipcMain.handle('stock-test', async (e, a) => require('./engine/stock.cjs').test(a.provider, a.key));
 ipcMain.handle('ai-test', async (e, a) => AI.test(a));
 ipcMain.handle('ai-ping', async (e, a) => AI.ping(a));
 ipcMain.handle('ai-list-models', async (e, a) => AI.listModels(a));

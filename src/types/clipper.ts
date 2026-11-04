@@ -36,6 +36,7 @@ export interface CaptionConfig {
   fontFamily?: string;       // overrides the style's default font
   translateTo?: string;      // '' = off; e.g. 'English'
   romanScript?: boolean;     // Urdu/Hindi -> Roman letters
+  sfx?: boolean;             // caption sounds (whoosh on the hook, soft pops on strong words); on unless false
 }
 
 export interface VideoGradingConfig {
@@ -46,6 +47,7 @@ export interface VideoGradingConfig {
   grain: boolean;
   vignette: boolean;
   speedBoost: number; // 1.0 or 1.05
+  cleanAudio?: boolean; // voice clean-up: noise reduction + even loudness
   fx?: AutoFxConfig;
   broll?: BRollConfig;
 }
@@ -83,6 +85,7 @@ export interface InnerFramingConfig {
   innerShadow: boolean;
   autoReframing?: boolean; // AI Active Speaker & Face Focus auto-tracking (Unlocked for fill-crop)
   trackingStyle?: 'smart-cut' | 'smooth-pan';
+  multiSpeaker?: boolean;  // two people side by side in a wide video -> stacked layout, one half of the screen each
 }
 
 export interface AutoTitleConfig {
@@ -103,6 +106,7 @@ export interface AutoTitleConfig {
 }
 
 export interface BrandingConfig {
+  barOverlay?: { enabled: boolean; color?: string; position?: 'top' | 'bottom'; height?: number };
   // 1. AI Auto Title
   autoTitle: AutoTitleConfig;
 

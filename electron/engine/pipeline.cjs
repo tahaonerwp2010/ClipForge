@@ -106,18 +106,26 @@ async function cutFx(fx, R2, input, s, dur, broll, hasAudio, outDir, idx, log) {
 }
 async function planBroll(job, words, s, e, seed, log, work, outDir, idx) {
   const o = job.grading && job.grading.broll;
-  if (!o || !o.enabled || !(o.files || []).length) return undefined;
+  if (!o || !o.enabled || (!(o.files || []).length && !o.auto)) return undefined;
   if (job.split && job.split.mode && job.split.mode !== 'single') { if (idx === 0) log('B-roll', 'B-roll is not used together with split screen', 'warn'); return undefined; }
   try {
     const BR = require('./broll.cjs');
     if (!_brPrep || _brPrep.job !== job) _brPrep = { job, p: BR.prepare(o.files, job.gemini, work, (src, m, k) => log(src, m, k)) };
-    const list = await _brPrep.p;
+    let list = await _brPrep.p;
+    if (o.auto) {                                                      // auto stock b-roll: stock videos found for THIS clip join the user's own videos
+      const BRm = BR; const ST = require('./stock.cjs');
+      if (!_brPrep.seen) _brPrep.seen = { q: new Map(), used: new Set() };
+      const segs = BRm.segmentsOf(words, s, e).filter(g => g.t >= 1.7 && g.t <= (e - s) - 3); segs.forEach((g, i) => { g.i = i; });
+      const extra = (e - s) >= 8 ? await ST.forClip({ segs, dur: e - s, cfg: o, gemini: job.gemini, log: (src, m, k) => log(src, m, k), keys: job.stockKeys, seen: _brPrep.seen }) : [];
+      list = [...(list || []), ...extra];
+    }
     const plan = await BR.plan(words, s, e, o, seed, job.gemini, (src, m, k) => log(src, m, k), list);
     try { const d = path.join(outDir, '.edit'); fs.mkdirSync(d, { recursive: true }); const f = path.join(d, `broll_${String(idx + 1).padStart(2, '0')}.json`); if (plan) fs.writeFileSync(f, JSON.stringify(plan)); else fs.rmSync(f, { force: true }); } catch {}
     return plan;
   } catch (err) { if (String(err.message) === 'CANCELLED') throw err; log('B-roll', 'B-roll skipped: ' + (err && err.message), 'warn'); return undefined; }
 }
 const { checkCancel } = require('./proc.cjs');
+const CAPSFX = require('./capsfx.cjs');
 // Each project gets its own folder; a different project with the same name gets _2, _3 ...
 function uniqueDir(base, id) {
   for (let i = 1; i < 200; i++) {
@@ -208,7 +216,7 @@ async function runInner(job, emit, deps = {}) {
   const info = await R.probe(job.filePath);
   const isCustom = job.framing?.mode === 'custom-scale';
   const vf = isCustom ? Math.min(1, 100 / Math.max(30, job.framing.customScale || 100)) : (Wd / Ht) / (info.width / info.height);
-  wantTrack = !job.split && !!((job.framing?.mode === 'fill-crop' || isCustom) && job.framing?.autoReframing && vf < 0.98 && deps.detectFaces);
+  wantTrack = !job.split && !!((job.framing?.mode === 'fill-crop' || isCustom) && (job.framing?.autoReframing || (job.framing?.multiSpeaker && job.framing?.mode === 'fill-crop')) && vf < 0.98 && deps.detectFaces);
   // split screen: describe both sources for the renderer
   let split = null;
   if (job.split) {
@@ -301,7 +309,7 @@ async function runInner(job, emit, deps = {}) {
       checkCancel();
       const c = clips[i]; tracks[i] = null;
       const cache = readJson(`track_${i}.json`);
-      if (cache) { tracks[i] = cache.expr ? cache : null; if (cache.expr) trackedClips++; setPct(7, (i + 1) / clips.length); continue; }
+      if (cache) { tracks[i] = (cache.expr || cache.duo) ? cache : null; if (cache.expr || cache.duo) trackedClips++; setPct(7, (i + 1) / clips.length); continue; }
       if (wantTrack) {
         try {
           const fps = 3, frames = await R.extractFrames(job.filePath, c.start, c.end - c.start, path.join(work, `fr${i}`), fps);
@@ -314,8 +322,10 @@ async function runInner(job, emit, deps = {}) {
             catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('AutoReframe', `Clip ${i + 1}: could not locate "${c.subject}" (${String(e.message).slice(0, 80)}), using normal tracking`, 'warn'); }
           }
           const speech = frames.map((_, k) => { const t = c.start + k / fps; return words.some(w => t >= w.start - 0.1 && t <= w.end + 0.15); });   // who talks only matters while someone talks
-          const kf = RF.buildPath(dets, { fps, vf, style: job.framing.trackingStyle || 'smooth-pan', hints, speech, cutTimes });
-          if (kf) { tracks[i] = { expr: RF.centerExpr(kf) }; trackedClips++; }
+          const kf = job.framing.autoReframing ? RF.buildPath(dets, { fps, vf, style: job.framing.trackingStyle || 'smooth-pan', hints, speech, cutTimes }) : null;
+          const duo = job.framing.multiSpeaker && job.framing.mode === 'fill-crop' ? RF.duoLayout(dets) : null;
+          if (duo) log('AutoReframe', `Clip ${i + 1}: two speakers found - stacked layout`, 'success');
+          if (kf || duo) { tracks[i] = { ...(kf ? { expr: RF.centerExpr(kf) } : {}), ...(duo ? { duo } : {}) }; trackedClips++; }
           else log('AutoReframe', `Clip ${i + 1}: no face found, using centre crop`, 'warn');
           fs.rmSync(path.join(work, `fr${i}`), { recursive: true, force: true });
         } catch (e) {
@@ -329,7 +339,7 @@ async function runInner(job, emit, deps = {}) {
     end(7, wantTrack ? `face tracking on ${trackedClips}/${clips.length} clips (${job.framing.trackingStyle || 'smooth-pan'})`
                      : (job.framing?.mode === 'fill-crop' ? 'manual crop (AI reframing off)' : `layout: ${job.framing?.mode || 'fit-blur'}`));
   }
-  for (let i = 0; i < clips.length; i++) { const c = readJson(`track_${i}.json`); tracks[i] = c && c.expr ? c : null; }
+  for (let i = 0; i < clips.length; i++) { const c = readJson(`track_${i}.json`); tracks[i] = c && (c.expr || c.duo) ? c : null; }
 
   // 9 render each clip (each finished clip is a checkpoint)
   startWork(); begin(8);
@@ -373,7 +383,7 @@ async function runInner(job, emit, deps = {}) {
     const fx = await planFx(job, capWords, c.start, c.end, i + 1, log);
     const broll = await planBroll(job, capWords, c.start, c.end, i + 1, log, path.join(work, 'broll'), outDir, i);
     const fxC = await cutFx(fx, R, job.filePath, c.start, c.end - c.start, broll, info.hasAudio !== false, outDir, i, log);
-    const { note } = await R.renderClip({ hw, broll, behind: bh, assBehind, quality, fx: fxC, input: job.filePath, start: c.start, end: c.end, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
+    const { note } = await R.renderClip({ capSfx: CAPSFX.build({ words: capWords, clipStart: c.start, clipEnd: c.end, captions: job.captions, branding: job.branding, seed: i + 1 }), hw, broll, behind: bh, assBehind, quality, fx: fxC, input: job.filePath, start: c.start, end: c.end, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
       workDir: path.join(work, `c${n}`), track: tracks[i], emojis, emojiBox, srcAspect: info.width / info.height, fontFamilies, watermark, music, split, fps: Math.round(info.fps || 30) || 30, onProgress: p => setPct(8, (doneN + p * 0.97) / clips.length) });
     if (note && i === 0) log('FFmpeg', note, 'warn');
     let thumb; try { thumb = await R.thumbnail(out, path.join(work, `t${n}.jpg`)); } catch {}
@@ -459,7 +469,7 @@ async function runShortsInner(job, emit, deps = {}) {
   }
   const isCustom = job.framing?.mode === 'custom-scale';
   const vfs = infos.map(info => isCustom ? Math.min(1, 100 / Math.max(30, job.framing.customScale || 100)) : (Wd / Ht) / (info.width / info.height));
-  const wantTrack = infos.map((_, i) => !!((job.framing?.mode === 'fill-crop' || isCustom) && job.framing?.autoReframing && vfs[i] < 0.98 && deps.detectFaces));
+  const wantTrack = infos.map((_, i) => !!((job.framing?.mode === 'fill-crop' || isCustom) && (job.framing?.autoReframing || (job.framing?.multiSpeaker && job.framing?.mode === 'fill-crop')) && vfs[i] < 0.98 && deps.detectFaces));
   wantTrackAny = wantTrack.some(Boolean);
   end(0, `${N} clip${N > 1 ? 's' : ''}, ${infos.reduce((a, b) => a + b.duration, 0).toFixed(0)}s total`);
   checkCancel();
@@ -555,7 +565,7 @@ async function runShortsInner(job, emit, deps = {}) {
     for (let i = 0; i < N; i++) {
       checkCancel();
       const cache = readJson(`track_${i}.json`);
-      if (cache) { tracks[i] = cache.expr ? cache : null; if (cache.expr) tracked++; setPct(7, (i + 1) / N); continue; }
+      if (cache) { tracks[i] = (cache.expr || cache.duo) ? cache : null; if (cache.expr || cache.duo) tracked++; setPct(7, (i + 1) / N); continue; }
       if (wantTrack[i]) {
         try {
           const fps = 3, frames = await R.extractFrames(files[i].path, 0, infos[i].duration, path.join(work, `fr${i}`), fps);
@@ -563,8 +573,9 @@ async function runShortsInner(job, emit, deps = {}) {
           const dets = await deps.detectFaces(frames);
           let cutTimes = []; try { cutTimes = await R.detectCuts(files[i].path, 0, infos[i].duration); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; }
           const speech = frames.map((_, k) => { const t = k / fps; return words[i].some(w => t >= w.start - 0.1 && t <= w.end + 0.15); });
-          const kf = RF.buildPath(dets, { fps, vf: vfs[i], style: job.framing.trackingStyle || 'smooth-pan', hints: null, speech, cutTimes });
-          if (kf) { tracks[i] = { expr: RF.centerExpr(kf) }; tracked++; }
+          const kf = job.framing.autoReframing ? RF.buildPath(dets, { fps, vf: vfs[i], style: job.framing.trackingStyle || 'smooth-pan', hints: null, speech, cutTimes }) : null;
+          const duo = job.framing.multiSpeaker && job.framing.mode === 'fill-crop' ? RF.duoLayout(dets) : null;
+          if (kf || duo) { tracks[i] = { ...(kf ? { expr: RF.centerExpr(kf) } : {}), ...(duo ? { duo } : {}) }; tracked++; }
           else log('AutoReframe', `Clip ${i + 1}: no face found, using centre crop`, 'warn');
           fs.rmSync(path.join(work, `fr${i}`), { recursive: true, force: true });
         } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('AutoReframe', `Clip ${i + 1}: face tracking failed, using centre crop`, 'warn'); }
@@ -574,7 +585,7 @@ async function runShortsInner(job, emit, deps = {}) {
     }
     end(7, `face tracking on ${tracked}/${N} non-vertical clips`);
   }
-  for (let i = 0; i < N; i++) { const c = readJson(`track_${i}.json`); tracks[i] = c && c.expr ? c : null; }
+  for (let i = 0; i < N; i++) { const c = readJson(`track_${i}.json`); tracks[i] = c && (c.expr || c.duo) ? c : null; }
 
   // 9 render
   startWork(); begin(8);
@@ -616,7 +627,7 @@ async function runShortsInner(job, emit, deps = {}) {
     const fx = await planFx(job, cw, 0, dur, i + 1, log);
     const broll = await planBroll(job, cw, 0, dur, i + 1, log, path.join(work, 'broll'), outDir, i);
     const fxC = await cutFx(fx, R, files[i].path, 0, dur, broll, infos[i].hasAudio !== false, outDir, i, log);
-    const { note } = await R.renderClip({ hw, broll, behind: bh, assBehind, quality, fx: fxC, input: files[i].path, start: 0, end: dur, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
+    const { note } = await R.renderClip({ capSfx: CAPSFX.build({ words: cw, clipStart: 0, clipEnd: dur, captions: job.captions, branding: job.branding, seed: i + 1 }), hw, broll, behind: bh, assBehind, quality, fx: fxC, input: files[i].path, start: 0, end: dur, out, assText: ass, ratio, framing: job.framing, grading: job.grading,
       workDir: path.join(work, `c${n}`), track: tracks[i], emojis, emojiBox, srcAspect: infos[i].width / infos[i].height, hasAudio: infos[i].hasAudio, fontFamilies, watermark, music, onProgress: p => setPct(8, (doneN + p * 0.97) / N) });
     if (note && i === 0) log('FFmpeg', note, 'warn');
     let thumb; try { thumb = await R.thumbnail(out, path.join(work, `t${n}.jpg`)); } catch {}

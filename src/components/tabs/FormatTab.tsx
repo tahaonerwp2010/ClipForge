@@ -104,6 +104,25 @@ const AutoReframeControls: React.FC<{ framing: InnerFramingConfig; onFramingChan
   );
 };
 
+const MultiSpeakerControl: React.FC<{ framing: InnerFramingConfig; onFramingChange: (f: InnerFramingConfig) => void }> = ({ framing, onFramingChange }) => {
+  const on = Boolean((framing as any).multiSpeaker);
+  return (
+    <div className="space-y-1 text-[11px]" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-white font-semibold flex items-center gap-1.5"><UserCheck className="w-3.5 h-3.5 text-[#8fd0a4]" />Multi-speaker layout</div>
+          <div className="text-neutral-400">When two people sit side by side in a wide video (podcast), each one gets half of the screen, stacked top and bottom, with their natural proportions. Normal single-person videos are not changed.</div>
+        </div>
+        <button type="button" onClick={() => onFramingChange({ ...framing, multiSpeaker: !on } as any)}
+          className={`w-11 h-6 rounded-full p-0.5 transition-all cursor-pointer shrink-0 ${on ? 'bg-[#bef264]' : 'bg-[#1d3228]'}`} title={on ? 'Turn off multi-speaker layout' : 'Turn on multi-speaker layout'}>
+          <div className={`w-5 h-5 rounded-full bg-black transition-transform ${on ? 'translate-x-5' : 'translate-x-0'}`} />
+        </button>
+      </div>
+      {on && <p className="text-[10px] text-amber-300/90">Preview shows the normal crop; the stacked layout is applied when the clips are rendered, only on videos where two people are found.</p>}
+    </div>
+  );
+};
+
 export const FormatTab: React.FC<FormatTabProps> = ({
   canvasRatio,
   onCanvasRatioChange,
@@ -360,6 +379,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
               {framing.mode === 'fill-crop' && (
                 <div className="mt-3 pt-2.5 border-t border-[#1d3228] space-y-3">
                   <AutoReframeControls framing={framing} onFramingChange={onFramingChange} />
+                  <MultiSpeakerControl framing={framing} onFramingChange={onFramingChange} />
                   {!framing.autoReframing && (
                     <SliderRow label="Horizontal Pan" value={framing.panX} unit="%" min={-50} max={50}
                       onChange={(v) => onFramingChange({ ...framing, panX: v })} />

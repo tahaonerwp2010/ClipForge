@@ -10,6 +10,7 @@ const EMOJI = require('./emoji.cjs');
 const FX = require('./fx.cjs');
 const BH = require('./behind.cjs');
 const HK = require('./hook.cjs');
+const CAPSFX = require('./capsfx.cjs');
 
 const stateFile = (outDir) => path.join(outDir, '.clipforge-edit.json');
 function saveState(outDir, st) {
@@ -106,7 +107,7 @@ async function rerender(outDir, i, ov, onProgress, deps) {
     try { cuts = JSON.parse(fs.readFileSync(path.join(outDir, '.edit', `cuts_${nn(i)}.json`), 'utf8')); } catch { cuts = await CF.find(R, x.input, x.start, x.end - x.start); }
     fx = CF.apply(fx, cuts, broll, x.info.hasAudio !== false, x.end - x.start);
   } catch {}
-  await R.renderClip({ broll, behind: x.behind, assBehind: x.assBehind, quality: x.quality, fx, input: x.input, start: x.start, end: x.end, out: tmp, assText: x.ass, ratio: st.ratio || '9:16', framing: st.framing, grading: st.grading,
+  await R.renderClip({ capSfx: CAPSFX.build({ words: x.cw, clipStart: x.start, clipEnd: x.end, captions: x.captions, branding: x.branding, seed: i + 1 }), broll, behind: x.behind, assBehind: x.assBehind, quality: x.quality, fx, input: x.input, start: x.start, end: x.end, out: tmp, assText: x.ass, ratio: st.ratio || '9:16', framing: st.framing, grading: st.grading,
     workDir: w, track: (st.tracks || [])[i] || null, emojis: x.emojis, emojiBox: x.emojiBox, srcAspect: x.info.width / x.info.height, hasAudio: x.info.hasAudio !== false, fontFamilies: x.fontFamilies,
     watermark: x.watermark, music: x.music, split: st.split || undefined, fps: Math.round(x.info.fps || 30) || 30, onProgress });
   try { fs.unlinkSync(out); } catch {}

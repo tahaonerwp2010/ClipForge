@@ -179,4 +179,21 @@ function balanceExpr(expr) {
     return treeExpr(leaves, fin[1]);
   } catch { return String(expr || ''); }
 }
-module.exports = { buildPath, centerExpr, balanceExpr, pickSubjects };
+// Two people in one wide shot (podcast table): where each of them sits (0..1 of the width), or null when it is not a steady two-person scene.
+// Needs two clearly separate faces in most sampled frames and few camera cuts, so a normal talking-head video is never changed.
+function duoLayout(dets) {
+  const area = f => f.w * f.h, A = [], B = []; let two = 0, valid = 0, cutsN = 0;
+  for (const d of dets || []) {
+    if ((d.diff || 0) > 22) cutsN++;
+    const faces = (d.faces || []).filter(f => f.score >= 0.5); valid++;
+    if (faces.length < 2) continue;
+    const big = Math.max(...faces.map(area)), fs = faces.filter(f => area(f) >= big * 0.4).sort((a, b) => a.cx - b.cx);
+    if (fs.length < 2 || fs.length > 3) continue;
+    const l = fs[0], r = fs[fs.length - 1];
+    if (r.cx - l.cx < 0.22 || r.cx - l.cx > 0.8) continue;
+    two++; A.push(l.cx); B.push(r.cx);
+  }
+  if (valid < 4 || two / valid < 0.55 || cutsN / valid > 0.12) return null;
+  return { a: +median(A).toFixed(4), b: +median(B).toFixed(4) };
+}
+module.exports = { duoLayout, buildPath, centerExpr, balanceExpr, pickSubjects };

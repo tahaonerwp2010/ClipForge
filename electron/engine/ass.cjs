@@ -93,6 +93,12 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
     const hs = HK.hookFontPx(hk.join('\n'), W, at.size, hookMeasure(titleFont));
     L.push(`Dialogue: 2,${ts(0)},${ts(tShow)},Title,,0,0,0,,${place}{\\fs${hs}}${fx ? '{' + fx + '}' : ''}${hookColored(hk, at)}`);
   }
+  const pb = branding.barOverlay;                                   // a thin bar that fills along the clip (watch-time booster)
+  if (pb && pb.enabled && part !== 'behind' && dur > 1) {
+    const bh = Math.max(4, Math.round((pb.height || 8) * k)), y = pb.position === 'top' ? Math.round(H * 0.035) : H - bh - Math.round(H * 0.012);
+    const col = bgr(/^#[0-9a-f]{6}$/i.test(pb.color || '') ? pb.color : '#BEF264');
+    L.push(`Dialogue: 0,${ts(0)},${ts(dur)},Mark,,0,0,0,,{\\an7\\pos(0,${y})\\bord0\\shad0\\1c${col}\\1a&H00&\\fscx1\\t(0,${Math.round(dur * 1000)},\\fscx100)\\p1}m 0 0 l ${W} 0 ${W} ${bh} 0 ${bh}{\\p0}`);
+  }
   if (branding.showHookTitle && branding.hookTitle && part !== 'behind')
     L.push(`Dialogue: 2,${ts(0)},${ts(dur)},Hook,,0,0,0,,${pos(branding.bannerPositionX ?? 50, branding.bannerPositionY ?? 8)}${wrap(esc(plain(branding.hookTitle).toUpperCase()), Math.round(54 * k), W)}`);
   if (branding.showWatermark && branding.watermarkType !== 'image' && branding.creatorHandle && part !== 'behind')

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Film, X, Plus } from 'lucide-react';
+import { Film, X, Plus, Wand2 } from 'lucide-react';
+import { StockService } from '../../services/stockService';
 
-export interface BRollState { enabled: boolean; files: Array<{ path: string; name: string }>; pct?: number }
+export interface BRollState { enabled: boolean; files: Array<{ path: string; name: string }>; pct?: number; auto?: boolean }
 const DEFAULT: BRollState = { enabled: false, files: [], pct: 20 };
 
 export const BRollCard: React.FC<{ broll?: BRollState; setBroll: (b: BRollState) => void }> = ({ broll, setBroll }) => {
@@ -37,7 +38,15 @@ export const BRollCard: React.FC<{ broll?: BRollState; setBroll: (b: BRollState)
               </li>
             ))}
           </ul>
-        ) : <p className="text-[11px] text-amber-300/90">No videos added yet. B-roll stays off until you add at least one.</p>}
+        ) : !b.auto && <p className="text-[11px] text-amber-300/90">No videos added yet. B-roll stays off until you add at least one (or turn on Auto stock below).</p>}
+        <div className="rounded-lg border border-[#1d3228] bg-[#0f1c16] p-3 space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-bold text-neutral-200 flex items-center gap-1.5"><Wand2 className="w-3.5 h-3.5 text-[#bef264]" />Auto stock footage</div>
+            <button type="button" onClick={() => set({ auto: !b.auto })} className={`px-3 py-1 rounded-lg text-[11px] font-bold border cursor-pointer ${b.auto ? 'bg-[#3f9a5a] border-[#3f9a5a] text-black' : 'bg-[#111e18] border-[#20322a] text-neutral-300'}`}>{b.auto ? 'ON' : 'OFF'}</button>
+          </div>
+          <p className="text-[10px] text-neutral-400">The AI reads what is said, searches the stock websites for the best matching video and adds it as b-roll, together with your own videos above. It uses the same share slider below.</p>
+          {b.auto && <p className={`text-[10px] font-semibold ${StockService.hasAny() ? 'text-[#8fd0a4]' : 'text-amber-300'}`}>{StockService.hasAny() ? 'Stock keys found in Settings.' : 'Auto stock does NOT work without an API key. Add a free Pexels or Pixabay key in Settings > Stock footage.'}</p>}
+        </div>
         <div className="space-y-1">
           <div className="flex justify-between text-[11px] text-neutral-300"><span>Share of each clip for b-roll (about)</span><span className="font-mono text-[#8fd0a4]">{b.pct ?? 20}%</span></div>
           <input type="range" min={10} max={25} step={1} value={b.pct ?? 20} onChange={e => set({ pct: parseInt(e.target.value) })} className="w-full h-1.5 bg-[#1d3228] rounded-lg appearance-none accent-[#bef264] cursor-pointer" />

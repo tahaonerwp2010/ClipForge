@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Sparkles, Mic, FolderOpen, Cpu, Eye, EyeOff, Download, ShieldCheck, Trash2, Check, Loader2, CheckCircle2, AlertTriangle, RotateCw, Plus, Lock } from 'lucide-react';
+import { Sparkles, Mic, FolderOpen, Cpu, Eye, EyeOff, Download, ShieldCheck, Trash2, Check, Loader2, CheckCircle2, AlertTriangle, RotateCw, Plus, Lock, Film } from 'lucide-react';
+import { StockService, STOCK_PROVIDERS } from '../services/stockService';
 import { SpeechModelItem } from '../types/clipper';
 import { ProTag } from './common/ProTag';
 import { SoftwareManager } from '../services/softwareManager';
 import { AiService, AiConfig, AiProviderCfg, KeyStatus, PROVIDERS, PROVIDER_ORDER } from '../services/aiService';
 
-type Tab = 'ai' | 'models' | 'folders' | 'system';
+type Tab = 'ai' | 'stock' | 'models' | 'folders' | 'system';
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'ai', label: 'AI Boost', icon: <Sparkles className="w-4 h-4" /> },
+  { id: 'stock', label: 'Stock footage', icon: <Film className="w-4 h-4" /> },
   { id: 'models', label: 'Speech Models', icon: <Mic className="w-4 h-4" /> },
   { id: 'folders', label: 'Folders', icon: <FolderOpen className="w-4 h-4" /> },
   { id: 'system', label: 'System', icon: <Cpu className="w-4 h-4" /> },
@@ -30,6 +32,38 @@ const Btn: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: 'pr
       : tone === 'danger' ? 'bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30'
       : 'bg-[#172820] hover:bg-[#21332a] text-neutral-200 border border-[#263b31]'} ${className}`} />
 );
+
+// ---------------- Stock footage keys ----------------
+const StockTab: React.FC = () => {
+  const [keys, setKeys] = useState<Record<string, string>>(StockService.keys());
+  const [show, setShow] = useState<Record<string, boolean>>({});
+  const [res, setRes] = useState<Record<string, { ok: boolean; text: string } | 'busy'>>({});
+  const save = (id: string, v: string) => setKeys(StockService.setKey(id, v));
+  const test = async (id: string) => { setRes(r => ({ ...r, [id]: 'busy' })); const x = await StockService.test(id, keys[id] || ''); setRes(r => ({ ...r, [id]: { ok: x.ok, text: x.message } })); };
+  return (
+    <div className="space-y-4">
+      <Card title="Stock footage keys" hint="Used by Auto stock b-roll (Video > B-Roll). The AI searches these websites for videos that match what is said. Auto stock does not work without at least one key. Keys stay on this computer.">
+        <p className="text-[11px] text-amber-300/90">Tip: a free Pexels or Pixabay key is enough. Several keys can be added; they are tried in this order.</p>
+      </Card>
+      {STOCK_PROVIDERS.map(p => {
+        const r = res[p.id];
+        return (
+          <Card key={p.id} title={`${p.name} · ${p.paid ? 'Paid' : 'Free'}`} hint={p.hint}>
+            <div className="flex gap-2">
+              <input type={show[p.id] ? 'text' : 'password'} value={keys[p.id] || ''} onChange={e => save(p.id, e.target.value)} placeholder={p.placeholder} spellCheck={false}
+                className="flex-1 bg-[#09100d] border border-[#20322a] rounded-lg px-3 py-2 text-xs font-mono text-white outline-none focus:border-[#3f9a5a]/60" />
+              <Btn onClick={() => setShow(s => ({ ...s, [p.id]: !s[p.id] }))}>{show[p.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}</Btn>
+              <Btn onClick={() => test(p.id)} disabled={!keys[p.id] || r === 'busy'}>{r === 'busy' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCw className="w-3.5 h-3.5" />} Test</Btn>
+            </div>
+            {r && r !== 'busy' && <p className={`text-[11px] ${r.ok ? 'text-[#8fd0a4]' : 'text-red-300'}`}>{r.text}</p>}
+            <a href={p.url} target="_blank" rel="noreferrer" className="text-[10px] text-[#8fd0a4] underline">Get a key: {p.url}</a>
+            {p.paid && <p className="text-[10px] text-neutral-500">Paid providers are experimental: they follow the official API documents but were not tested with a real paid account.</p>}
+          </Card>
+        );
+      })}
+    </div>
+  );
+};
 
 // ---------------- AI Boost ----------------
 const STATUS: Record<KeyStatus, { text: string; cls: string }> = {
@@ -414,6 +448,7 @@ export const SettingsView: React.FC = () => {
       </div>
       <div className="p-4 md:p-8 max-w-3xl">
         {tab === 'ai' && <AiTab />}
+        {tab === 'stock' && <StockTab />}
         {tab === 'models' && <ModelsTab />}
         {tab === 'folders' && <FoldersTab />}
         {tab === 'system' && <SystemTab />}

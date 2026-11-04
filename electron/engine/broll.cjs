@@ -168,4 +168,4 @@ async function plan(words, s, e, cfg, seed, gemini, log, prepared) {
   else log('B-roll', 'No good moment found for b-roll in this clip', 'info');
   return out.length ? out : undefined;
 }
-module.exports = { prepare, plan };
+module.exports = { prepare, plan, segmentsOf };
