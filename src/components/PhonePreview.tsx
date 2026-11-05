@@ -19,7 +19,7 @@ import { DynCaption } from './DynCaption';
 import { ClassicCaption, getClassic } from './ClassicCaption';
 import { getDyn } from '../utils/dynCaptions';
 import { SECONDARY_FOOTAGE } from '../data/sampleVideos';
-import { getContextualEmoji, CAPCUT_DYNAMIC_COLORS, hookLines, placeHook, hookWordTokens, wmImg, type FootageBand } from '../utils/captionHelpers';
+import { getContextualEmoji, CAPCUT_DYNAMIC_COLORS, hookLines, placeHook, hookWordTokens, wmImg, splitHookEmoji, type FootageBand } from '../utils/captionHelpers';
 
 interface PhonePreviewProps {
   videoUrl: string;
@@ -826,9 +826,11 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
               1. AI AUTO TITLE (DRAGGABLE & RESIZABLE DIRECTLY ON SCREEN)
           ===================================================================== */}
           {branding.autoTitle?.enabled && (() => {
-            const hkText = branding.autoTitle.title || clipTitle || 'THE VIRAL TRUTH';
+            const hkFull = splitHookEmoji(branding.autoTitle.title || clipTitle || 'THE VIRAL TRUTH');
+            const hkText = hkFull.text || 'THE VIRAL TRUTH';
+            const hkEmojis = branding.autoTitle.showEmoji !== false ? hkFull.emojis : [];   // the emoji option on = a row of emojis above the hook, off = none
             const hkLines = hookLines(hkText, branding.autoTitle.lines || 2);
-            const pl = placeHook({ lines: hkLines, userSize: branding.autoTitle.size, px: (branding.autoTitle.positionX ?? 50) / 100 * 1080, py: (branding.autoTitle.positionY ?? 10) / 100 * 1920, family: branding.autoTitle.fontFamily, footage: footageRect !== undefined ? footageRect : measuredBand, emoji: branding.autoTitle.showEmoji !== false && /\p{Extended_Pictographic}/u.test(hkText) });
+            const pl = placeHook({ lines: hkLines, userSize: branding.autoTitle.size, px: (branding.autoTitle.positionX ?? 50) / 100 * 1080, py: (branding.autoTitle.positionY ?? 10) / 100 * 1920, family: branding.autoTitle.fontFamily, footage: footageRect !== undefined ? footageRect : measuredBand, emoji: hkEmojis.length > 0 });
             const kk = scrW / 1080;
             return (
             <div
@@ -870,6 +872,11 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                   </div>
                 )}
 
+                {hkEmojis.length > 0 && (
+                  <div className="absolute left-1/2 flex items-center pointer-events-none select-none" style={{ bottom: '100%', transform: 'translateX(-50%)', gap: `${pl.fs * 0.1 * kk}px`, fontSize: `${Math.round(pl.fs * 1.1 * kk * 100) / 100}px`, lineHeight: 1, marginBottom: `${pl.fs * 0.05 * kk}px` }}>
+                    {hkEmojis.map((e, i) => <span key={i}>{e}</span>)}
+                  </div>
+                )}
                 <div
                   key={`at-${branding.autoTitle.animIn || 'none'}-${branding.autoTitle.animOut || 'none'}`}
                   style={{

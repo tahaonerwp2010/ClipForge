@@ -359,3 +359,10 @@ export function footageRectFor(framing: any, srcAspect: number): FootageBand {
 export const wmImg = (b: any) => b.watermarkType === 'both'
   ? { x: b.watermarkImgX ?? 80, y: b.watermarkImgY ?? 92, op: b.watermarkImgOpacity ?? 100 }
   : { x: b.watermarkPositionX ?? 20, y: b.watermarkPositionY ?? 92, op: b.watermarkOpacity ?? 100 };
+
+const EMOJI_RE = /(?:\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*)/gu;
+/** The hook text as the video draws it: emojis are taken out of the words and shown as their own row above the text (when the emoji option is on). */
+export function splitHookEmoji(text: string): { text: string; emojis: string[] } {
+  const raw = String(text || ''); const emojis = raw.match(EMOJI_RE) || [];
+  return { text: raw.replace(EMOJI_RE, '').replace(/[ \t]+\n/g, '\n').replace(/[ \t]{2,}/g, ' ').trim(), emojis: emojis.slice(0, 3) };
+}

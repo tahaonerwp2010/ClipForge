@@ -226,15 +226,30 @@ const hasEmoji = t => EM.splitTitle(t).emojis.length > 0;
 
 // Title step (required): Gemini first; if it fails -> local AI (Ollama) -> built-in heuristic. Every title ends up with >= 1 emoji.
 const HOOK_LEN = { 1: '3 to 5 words, ONE short line', 2: '6 to 9 words, written as TWO balanced short lines', 3: '9 to 13 words, written as THREE short lines' };
-const META_BASE = `You are a professional YouTube Shorts metadata writer for a creator targeting English-speaking viewers, especially in the United States. Based ONLY on the clip analysis and shared context given, generate one strong title, a concise description, a small number (3-6) of highly relevant hashtags (always include the # symbol), and relevant discovery keywords. Rules: natural American English; the title must accurately represent the clip and create genuine curiosity without being misleading, include 1-2 well-placed relevant emojis to make it feel lively, avoid ALL CAPS and excessive punctuation; no fake claims; no keyword stuffing; do not add generic filler like "VIRAL" or "USA" or "FYP" unless truly relevant; do not invent facts not present in the analysis/context. Return only the structured JSON. The hashtags you generate should EXIST ON YOUTUBE and should be HIGHLY US BASED since the user wants US views; at most 3 hashtags.`;
+const META_BASE = `You are a top YouTube Shorts / TikTok / Reels packaging expert writing for creators who want VIEWS from English-speaking viewers, especially in the United States. Using the clip transcript and the context of the whole video, write for each clip: a title, an on-screen hook, a description and hashtags, plus discovery keywords.
+TITLE: built to win the click. Open a curiosity gap or promise a payoff: a specific number, a surprising claim, a contradiction, a warning, a confession, "the real reason…", "what nobody tells you about…". Use the clip's own concrete details (names, numbers, stakes, the twist) instead of vague words. 5 to 11 words, natural American English, emotional and specific, include 1-2 fitting emojis. It must be TRUE to the clip (never promise something the clip does not deliver, no invented facts) but it should feel like something people cannot scroll past. Never use a plain topic label ("Thoughts on money"), never start with "Watch" / "This video", no generic filler like VIRAL / FYP / USA, avoid ALL CAPS sentences and excessive punctuation.
+DESCRIPTION: 2 short punchy sentences (max 250 characters): the first one repeats the promise of the title in different words and the second one gives a reason to watch to the end or to follow; plain text, no hashtags inside it, no emojis spam (0-1 emoji).
+HASHTAGS: 3 relevant hashtags (always with #) that EXIST on YouTube and are US based; no generic spam.
+Use the VIDEO CONTEXT only to understand who is speaking and what the story is, but write each item about its OWN clip. Return only the structured JSON.`;
 const hookRules = (n) => `
-HOOK (field "hookText") is the text shown on screen in the first seconds. Its only job is to make a scrolling viewer stop and keep watching. Length: ${HOOK_LEN[n] || HOOK_LEN[2]}. Write it as EITHER (a) a curiosity question that this exact clip answers, or (b) a bold, specific statement that creates an open loop (a surprising claim, a number, a warning, a contradiction, "nobody tells you…" style). Never a plain summary or a topic label. It must be true to what is said in the clip and make the viewer need the payoff. Use the clip's own strongest words/numbers. Good examples: "Why do 90% of startups die in year one?", "This one habit made him a millionaire", "Stop doing this before it costs you everything", "She lost everything. Then this happened.". Bad examples: "A talk about startups", "Interesting thoughts on money", "Watch this video". Add one fitting emoji at the end. Do not use hashtags in the hook.`;
+HOOK (field "hookText") is the text shown on screen in the first seconds. Its only job is to make a scrolling viewer stop and keep watching. Length: ${HOOK_LEN[n] || HOOK_LEN[2]}. Write it as EITHER (a) a curiosity question that this exact clip answers, or (b) a bold, specific statement that creates an open loop (a surprising claim, a number, a warning, a contradiction, "nobody tells you…" style). Never a plain summary or a topic label. It must be true to what is said in the clip and make the viewer need the payoff. Use the clip's own strongest words/numbers. Make the very first word count (a number, \"Stop\", \"Nobody\", \"Why\", \"He\"/\"She\" + a shock) and pick the single most surprising or emotional thing said in this clip. Good examples: "Why do 90% of startups die in year one?", "This one habit made him a millionaire", "Stop doing this before it costs you everything", "She lost everything. Then this happened.", "Nobody warned him about this". Bad examples: "A talk about startups", "Interesting thoughts on money", "Watch this video". Add one fitting emoji at the end. Do not use hashtags in the hook.`;
 const metaSystem = (n) => META_BASE + hookRules(n) + `
 Output format: a JSON array with one object per clip, in the same order, each with "n" = the clip number given as #n in the input: {"n":0,"title":"...","hookText":"...","description":"...","hashtags":["#a","#b","#c"],"keywords":["..."]}.` + (n === 1 ? '' : ` Separate the hook lines with a \\n character.`);
 
+// A short digest of the WHOLE video (start + evenly spread pieces), so the writer knows the story without reading a full transcript (keeps the request small).
+function videoContext(words, max = 3200) {
+  try {
+    const all = words.map(w => w.word).join(' ');
+    if (all.length <= max) return all;
+    const head = all.slice(0, 900), rest = max - head.length, pieces = 6, each = Math.floor(rest / pieces), out = [head];
+    for (let i = 1; i <= pieces; i++) { const st = Math.floor(all.length * i / (pieces + 1)); out.push(all.slice(st, st + each)); }
+    return out.join(' … ');
+  } catch { return ''; }
+}
 async function geminiTitles(clips, words, g, log, n = 2) {
-  const items = clips.map((c, i) => `#${i} (${Math.round(c.end - c.start)}s): ${clipText(c, words).slice(0, 1100)}`).join('\n\n');
-  const prompt = `Clip analysis and context for each clip (write metadata for EACH one, same order):\n\n${items}`;
+  const items = clips.map((c, i) => `#${i} (${Math.round(c.end - c.start)}s): ${clipText(c, words).slice(0, 1800)}`).join('\n\n');
+  const ctx = videoContext(words);
+  const prompt = `${ctx ? `VIDEO CONTEXT (the whole video, shortened; only to understand the story):\n${ctx}\n\n` : ''}Clip transcripts (write metadata for EACH one, same order):\n\n${items}`;
   const r = await G.generate(g, { system: metaSystem(n), prompt, json: true });
   const out = G.parseJson(r.text);
   const arr = Array.isArray(out) ? out : (out.titles || out.clips || []);

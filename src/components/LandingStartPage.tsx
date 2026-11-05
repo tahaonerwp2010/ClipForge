@@ -1,5 +1,5 @@
 import { ProTag } from './common/ProTag';
-import { fileUrl as toFileUrl } from '../utils/fileUrl';
+import { fileUrl as toFileUrl, playableUrl } from '../utils/fileUrl';
 import React, { useState, useRef, useEffect } from 'react';
 import { VideoSource, SplitConfig, Rect01 } from '../types/clipper';
 import { FacecamEditor } from './FacecamEditor';
@@ -103,7 +103,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       const realPath = window.electronAPI?.getPathForFile?.(file) || '';
       if (realPath && (shortFiles.some(x => x.path === realPath) || added.some(x => x.path === realPath))) { dup++; continue; }
       if (added.length >= room) { over++; continue; }
-      const url = URL.createObjectURL(file);
+      const url = await playableUrl(realPath, URL.createObjectURL(file));
       let meta: Awaited<ReturnType<typeof readVideoMeta>>;
       try { meta = await readVideoMeta(url); } catch { URL.revokeObjectURL(url); warns.push(`“${file.name}” could not be read.`); continue; }
       if (meta.duration > MAX_SHORT_SEC + 0.5) {
@@ -146,7 +146,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       if (r.error === 'Cancelled') { setYtState('idle'); setYtProg(null); return; }
       setYtState('error'); setYtError(r.error || 'Download failed.'); return;
     }
-    const fileUrl = toFileUrl(r.path);
+    const fileUrl = await playableUrl(r.path, toFileUrl(r.path));
     let duration = 0, w = 0, h = 0;
     try { const pr = await window.electronAPI.probeVideo?.(r.path); if (pr) { duration = pr.duration; w = pr.width; h = pr.height; } } catch { /* ignore */ }
     const meta = await readVideoMeta(fileUrl);
@@ -169,6 +169,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
   const [spSecond, setSpSecond] = useState<SplitFile | null>(null);
   const [spFrame, setSpFrame] = useState('');
   const [spRect, setSpRect] = useState<Rect01 | null>(null);
+  const [prepBusy, setPrepBusy] = useState(false);
   const [spDetect, setSpDetect] = useState<'idle' | 'detecting' | 'found' | 'notfound' | 'error'>('idle');
   const [spMsg, setSpMsg] = useState('');
   const [spEditor, setSpEditor] = useState(false);
@@ -176,9 +177,10 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
   const [spSync, setSpSync] = useState<{ state: 'idle' | 'working' | 'done' | 'error'; text: string }>({ state: 'idle', text: '' });
 
   const readSplitFile = async (file: File): Promise<SplitFile> => {
-    const url = URL.createObjectURL(file);
+    const rp = window.electronAPI?.getPathForFile?.(file) || '';
+    const url = await playableUrl(rp, URL.createObjectURL(file));
     const m = await readVideoMeta(url, 960);
-    return { name: file.name.replace(/\.[^/.]+$/, ''), path: window.electronAPI?.getPathForFile?.(file) || '', url, duration: m.duration, thumb: m.thumb, w: m.w, h: m.h };
+    return { name: file.name.replace(/\.[^/.]+$/, ''), path: rp, url, duration: m.duration, thumb: m.thumb, w: m.w, h: m.h };
   };
   const runDetect = async (f: SplitFile) => {
     setSpRect(null); setSpFrame(f.thumb); setSpMsg('');
@@ -237,8 +239,12 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    const objectUrl = URL.createObjectURL(file);
-    const meta = await readVideoMeta(objectUrl);
+    const realPath = window.electronAPI?.getPathForFile?.(file) || undefined;
+    setPrepBusy(true);
+    let objectUrl = await playableUrl(realPath, URL.createObjectURL(file));
+    let meta = await readVideoMeta(objectUrl);
+    if (!meta.w && realPath) { objectUrl = await playableUrl(realPath, objectUrl, true); meta = await readVideoMeta(objectUrl); }   // the window could not even open it: always use the preview copy
+    setPrepBusy(false);
     onSelectVideo({
       id: `local-${Date.now()}`,
       title: file.name.replace(/\.[^/.]+$/, ''),
@@ -248,7 +254,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       type: 'upload',
       author: 'Local File',
       originalAspect: meta.vertical ? '9:16 vertical' : '16:9 widescreen',
-      filePath: window.electronAPI?.getPathForFile?.(file) || undefined
+      filePath: realPath
     });
   };
 
@@ -258,6 +264,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
 
   return (
     <div className="flex flex-col items-stretch w-full select-none text-neutral-200">
+      {prepBusy && <div className="mb-3 px-3 py-2 rounded-lg bg-[#16271f] border border-[#2a4a39] text-[12px] text-[#bef264]">Preparing the preview for this video format… this can take a moment for long videos.</div>}
       <input 
         ref={fileInputRef}
         type="file"

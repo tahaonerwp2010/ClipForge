@@ -48,6 +48,7 @@ declare global {
       ownerRemove?: (pw: string, id: string) => Promise<{ ok: boolean; error?: string }>;
       openExternal?: (url: string) => Promise<boolean>;
       editLoad?: (outDir: string) => Promise<{ ok: boolean; captions?: any; branding?: any; framing?: any; grading?: any; ratio?: string; clips?: { hookText: string; title: string }[] }>;
+      makePreview?: (path: string, force?: boolean) => Promise<{ ok: boolean; path: string | null; error?: string }>;
       editPrepare?: (outDir: string, index: number) => Promise<{ ok: boolean; url?: string; dims?: [number, number]; error?: string }>;
       editRender?: (outDir: string, index: number, overrides: any) => Promise<{ ok: boolean; outputPath?: string; thumbnailUrl?: string; error?: string }>;
       onEditProgress?: (cb: (d: { index: number; p: number }) => void) => () => void;

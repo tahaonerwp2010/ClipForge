@@ -1,4 +1,7 @@
 ## What's new
+- **More video formats in the preview:** videos the window cannot play (HEVC / 10-bit / MKV / AC3 sound …) now get a small preview copy automatically, so the preview plays; the clips are still cut from your original file.
+- **Better AI titles, hooks and descriptions:** the writer now also reads a short digest of the whole video, uses stronger click-driven patterns (curiosity gap, specifics, first-word punch) and writes tighter two-sentence descriptions. It stays true to the clip.
+- **Hook emoji option checked:** on = emojis in a row above the hook (preview and video), off = none. The preview now shows the same row.
 - **Watermark: text + image together.** Pick "Text + image" to show both at once; each has its own position, opacity and size, and you can drag each one on the preview. Text opacity is now adjustable (the video and the preview match).
 - **New caption style "Viral Duo Emoji":** two-line bold captions, the spoken word flips between red, green and yellow, with a contextual emoji under the text.
 - The caption style picker's green outline now moves instantly; F12 no longer opens the inspector in the installed app.

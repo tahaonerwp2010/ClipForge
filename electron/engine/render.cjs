@@ -15,7 +15,7 @@ async function probe(file) {
   const j = JSON.parse(stdout);
   const v = j.streams.find(s => s.codec_type === 'video'), a = j.streams.find(s => s.codec_type === 'audio');
   const [n, d] = (v?.r_frame_rate || '0/1').split('/').map(Number);
-  return { duration: +j.format.duration, width: v?.width, height: v?.height, fps: d ? +(n / d).toFixed(2) : 0, vcodec: v?.codec_name, acodec: a?.codec_name, hasAudio: !!a };
+  return { duration: +j.format.duration, width: v?.width, height: v?.height, fps: d ? +(n / d).toFixed(2) : 0, pixfmt: v?.pix_fmt, vcodec: v?.codec_name, acodec: a?.codec_name, hasAudio: !!a };
 }
 const extractAudio = (video, wav) => run(ffmpeg(), ['-y', '-i', video, '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', wav]);
 const sliceAudio = (wav, start, dur, out) => run(ffmpeg(), ['-y', '-ss', String(start), '-t', String(dur), '-i', wav, '-c:a', 'pcm_s16le', out]);
@@ -386,4 +386,19 @@ async function extractFrames(input, start, dur, outDir, fps = 2) {
   return fs.readdirSync(outDir).filter(f => f.endsWith('.jpg')).sort().map(f => path.join(outDir, f));
 }
 const dimsFor = (ratio, quality = 1080) => { const [w, h] = ASPECT[ratio] || ASPECT['9:16']; const s = Math.max(480, quality) / 1080; const ev = n => Math.max(2, Math.round(n * s / 2) * 2); return [ev(w), ev(h)]; };
-module.exports = { brollRect, dimsFor, detectCuts, sliceAudio, extractFrames, probe, extractAudio, renderClip, thumbnail, ASPECT, filterGraph };
+// Videos the app window cannot play (HEVC / 10-bit / ProRes / AC3 sound / odd containers) get a small H.264 copy just for the preview; the real work always uses the original file.
+const PLAYABLE_V = new Set(['h264', 'vp8', 'vp9', 'av1']), PLAYABLE_A = new Set(['aac', 'mp3', 'opus', 'vorbis', 'flac', 'pcm_s16le', 'pcm_s24le']);
+async function previewProxy(src, outDir, force = false) {
+  const info = await probe(src);
+  const ext = path.extname(src).toLowerCase();
+  const ok = PLAYABLE_V.has(info.vcodec) && (!info.pixfmt || /^yuvj?420p$/.test(info.pixfmt)) && (!info.hasAudio || PLAYABLE_A.has(info.acodec)) && ['.mp4', '.m4v', '.webm', '.mov'].includes(ext) && info.width && info.height;
+  if (ok && !force) return null;
+  const crypto = require('crypto'), st = fs.statSync(src);
+  const out = path.join(outDir, `preview_${crypto.createHash('md5').update(src + st.size + st.mtimeMs).digest('hex').slice(0, 12)}.mp4`);
+  if (fs.existsSync(out) && fs.statSync(out).size > 2000) return out;
+  fs.mkdirSync(outDir, { recursive: true });
+  const tmp = out + '.part.mp4';
+  await run(ffmpeg(), ['-y', '-i', src, '-map', '0:v:0', '-map', '0:a:0?', '-vf', "scale=-2:'min(720,ih)'", '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '96k', '-ac', '2', '-movflags', '+faststart', tmp]);
+  fs.renameSync(tmp, out); return out;
+}
+module.exports = { previewProxy, brollRect, dimsFor, detectCuts, sliceAudio, extractFrames, probe, extractAudio, renderClip, thumbnail, ASPECT, filterGraph };
