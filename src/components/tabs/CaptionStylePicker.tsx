@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, startTransition } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Captions, X, ChevronRight } from 'lucide-react';
 import { CaptionConfig } from '../../types/clipper';
@@ -131,6 +131,11 @@ const PersonFrame: React.FC<{ tpl?: DynTemplate; children?: React.ReactNode; sma
 
 const ExtraPreview: React.FC<{ spec: ClassicSpec; size?: number }> = ({ spec, size = 15 }) => <ClassicCaption spec={spec} words={spec.sample} active={spec.sample.length - 1} colorIdx={spec.sample.length} size={size} />;
 
+// the 60+ previews never change when another style is picked, so they are drawn once per animation tick instead of on every click
+const PrevClassic = React.memo(({ p }: { p: Preset }) => <PersonFrame><ClassicPreview preset={p} /></PersonFrame>);
+const PrevExtra = React.memo(({ c, tick }: { c: ClassicSpec; tick: number }) => <PersonFrame><ExtraPreview key={tick} spec={c} size={15} /></PersonFrame>);
+const PrevDyn = React.memo(({ t, tick }: { t: DynTemplate; tick: number }) => { const b = isBehind(t); return <PersonFrame tpl={t}><DynCaption key={tick} tpl={t} base={b ? 11 : 13} sample part={b ? 'front' : 'all'} /></PersonFrame>; });
+
 const NOTE = 'No live preview for Dynamic and Behind-the-person captions: the phone preview only shows a simple sample. The real animation, fonts and the big word behind the speaker appear after the clip is rendered (Generate clips). These captions are font locked, so the font can not be changed.';
 
 export const CaptionStylePicker: React.FC<{ captions: CaptionConfig; onCaptionsChange: (c: CaptionConfig) => void }> = ({ captions, onCaptionsChange }) => {
@@ -145,22 +150,26 @@ export const CaptionStylePicker: React.FC<{ captions: CaptionConfig; onCaptionsC
     return () => { clearInterval(t); window.removeEventListener('keydown', k); };
   }, [open]);
 
-  const cur = captions.style as string;
+  // the green outline moves at once (own state); the heavy update of the whole studio follows right after, without blocking it
+  const [selId, setSelId] = useState(captions.style as string);
+  useEffect(() => { setSelId(captions.style as string); }, [captions.style]);
+  const cur = selId;
   const curDyn = getDyn(cur);
   const curPreset = POPULAR_CAPTION_PRESETS.find(p => p.id === cur);
   const curExtra = getClassic(cur);
   const curName = curDyn ? curDyn.name : curPreset?.name || curExtra?.name || 'Pick a style';
   const curKind = curDyn ? (isBehind(curDyn) ? 'Behind the person' : 'Dynamic') : 'Classic';
 
-  const pickPreset = (p: Preset) => onCaptionsChange({ ...captions, style: p.id, highlightColor: p.highlight });
-  const pickExtra = (c: ClassicSpec) => onCaptionsChange({ ...captions, style: c.id as any });
-  const pickDyn = (t: DynTemplate) => onCaptionsChange({ ...captions, style: t.id as any, fontFamily: undefined });
+  const apply = (id: string, c: CaptionConfig) => { setSelId(id); startTransition(() => onCaptionsChange(c)); };
+  const pickPreset = (p: Preset) => apply(p.id, { ...captions, style: p.id, highlightColor: p.highlight });
+  const pickExtra = (c: ClassicSpec) => apply(c.id, { ...captions, style: c.id as any });
+  const pickDyn = (t: DynTemplate) => apply(t.id, { ...captions, style: t.id as any, fontFamily: undefined });
 
   const showClassic = cat === 'all' || cat === 'classic';
   const dyn = DYN_TEMPLATES.filter(t => cat === 'all' || (cat === 'behind' ? isBehind(t) : cat === 'dynamic' ? !isBehind(t) : false));
   const total = POPULAR_CAPTION_PRESETS.length + CLASSIC_EXTRA.length + DYN_TEMPLATES.length;
   const cards = 'grid grid-cols-2 lg:grid-cols-3 gap-3';
-  const card = (sel: boolean) => `relative rounded-2xl border-2 p-2.5 cursor-pointer transition-all text-left ${sel ? 'border-[#bef264] bg-[#12231a] shadow-[0_0_0_3px_rgba(190,242,100,0.18)]' : 'border-[#1d3128] bg-[#0d1813] hover:border-[#3a5a49]'}`;
+  const card = (sel: boolean) => `relative rounded-2xl border-2 p-2.5 cursor-pointer transition-[border-color,background-color,box-shadow] duration-100 text-left ${sel ? 'border-[#bef264] bg-[#12231a] shadow-[0_0_0_3px_rgba(190,242,100,0.18)]' : 'border-[#1d3128] bg-[#0d1813] hover:border-[#3a5a49]'}`;
   const tick_ = (sel: boolean) => sel ? <span className="absolute top-2 right-2 z-30 w-5 h-5 rounded-full bg-[#bef264] text-black flex items-center justify-center shadow"><Check className="w-3.5 h-3.5 stroke-[3]" /></span> : null;
 
   return (
@@ -204,14 +213,14 @@ export const CaptionStylePicker: React.FC<{ captions: CaptionConfig; onCaptionsC
                   {POPULAR_CAPTION_PRESETS.map(p => { const sel = cur === p.id; return (
                     <div key={p.id} onClick={() => pickPreset(p)} className={card(sel)}>
                       {tick_(sel)}
-                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><PersonFrame><ClassicPreview preset={p} /></PersonFrame></div>
+                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><PrevClassic p={p} /></div>
                       <div className="text-xs font-extrabold text-white truncate">{p.name}</div>
                       <p className="text-[10px] text-neutral-400 mt-0.5 line-clamp-2">{p.tagline}</p>
                     </div>); })}
                   {CLASSIC_EXTRA.map(c => { const sel = cur === c.id; return (
                     <div key={c.id} onClick={() => pickExtra(c)} className={card(sel)}>
                       {tick_(sel)}
-                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><PersonFrame><ExtraPreview key={tick} spec={c} size={15} /></PersonFrame></div>
+                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><PrevExtra c={c} tick={tick} /></div>
                       <div className="text-xs font-extrabold text-white truncate">{c.name}</div>
                       <p className="text-[10px] text-neutral-400 mt-0.5 line-clamp-2">{c.tagline}</p>
                     </div>); })}                </div>
@@ -222,7 +231,7 @@ export const CaptionStylePicker: React.FC<{ captions: CaptionConfig; onCaptionsC
                   {dyn.map(t => { const sel = cur === t.id; const b = isBehind(t); return (
                     <div key={t.id} onClick={() => pickDyn(t)} className={card(sel)}>
                       {tick_(sel)}
-                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><PersonFrame tpl={t}><DynCaption key={tick} tpl={t} base={b ? 11 : 13} sample part={b ? 'front' : 'all'} /></PersonFrame></div>
+                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><PrevDyn t={t} tick={tick} /></div>
                       <div className="flex items-center justify-between gap-2"><span className="text-xs font-extrabold text-white truncate">{t.name}</span><span className="text-[8px] text-neutral-500 uppercase tracking-wider shrink-0">{b ? 'behind person' : 'dynamic'} · locked</span></div>
                       <p className="text-[10px] text-neutral-400 mt-0.5 line-clamp-2">{t.tagline}</p>
                     </div>); })}

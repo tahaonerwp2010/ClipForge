@@ -39,11 +39,13 @@ function createWindow() {
     }
   });
 
-  // Enable F12 or Ctrl+Shift+I to inspect console if needed
+  // The inspector (F12 / Ctrl+Shift+I) is for development only. In the installed app it stays closed, unless it is started with --devtools.
+  const allowDev = !app.isPackaged || process.argv.includes('--devtools');
+  if (!allowDev) { try { require('electron').Menu.setApplicationMenu(null); } catch {} }   // the default menu would also open it
   mainWindow.webContents.on('before-input-event', (event, input) => {
-    if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
-      mainWindow.webContents.toggleDevTools();
-    }
+    const isDev = input.key === 'F12' || (input.control && input.shift && String(input.key).toLowerCase() === 'i');
+    if (!isDev) return;
+    if (allowDev) mainWindow.webContents.toggleDevTools(); else event.preventDefault();
   });
 
   // If the window freezes or its process dies, offer a reload instead of leaving the app stuck (progress is kept in the project files)
