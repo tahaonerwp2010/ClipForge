@@ -1,4 +1,7 @@
 ## What's new
+- **Watermark: text + image together.** Pick "Text + image" to show both at once; each has its own position, opacity and size, and you can drag each one on the preview. Text opacity is now adjustable (the video and the preview match).
+- **New caption style "Viral Duo Emoji":** two-line bold captions, the spoken word flips between red, green and yellow, with a contextual emoji under the text.
+- The caption style picker's green outline now moves instantly; F12 no longer opens the inspector in the installed app.
 - **Auto Hook now has a supervisor:** every clip's hook keeps your size and position as far as possible and only changes what is needed so it stays inside the screen, above (or below) the footage the way you placed it, and with the emoji not touching the text. The Studio / Edit Clip preview now keeps the chosen number of lines and uses the same placement as the render; the size slider maximum also respects the free space next to the footage.
 - **Android app layout:** the app no longer scrolls sideways; headers, the Pro badge and the clips page fit the screen. The graphics-card / processor choice is hidden on the phone, and texts say "phone" and "Save clips to gallery" instead of "computer" and "folder". Heavy speech models are marked "Heavy for a phone".
 - **Auto stock b-roll** (Video > B-Roll) with free Pexels / Pixabay keys (and paid Shutterstock / Storyblocks) in Settings > Stock footage.

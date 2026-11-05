@@ -19,7 +19,7 @@ import { DynCaption } from './DynCaption';
 import { ClassicCaption, getClassic } from './ClassicCaption';
 import { getDyn } from '../utils/dynCaptions';
 import { SECONDARY_FOOTAGE } from '../data/sampleVideos';
-import { getContextualEmoji, CAPCUT_DYNAMIC_COLORS, hookLines, placeHook, hookWordTokens, type FootageBand } from '../utils/captionHelpers';
+import { getContextualEmoji, CAPCUT_DYNAMIC_COLORS, hookLines, placeHook, hookWordTokens, wmImg, type FootageBand } from '../utils/captionHelpers';
 
 interface PhonePreviewProps {
   videoUrl: string;
@@ -134,6 +134,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
   const [isDraggingWatermark, setIsDraggingWatermark] = useState(false);
   const [isHoveringWatermark, setIsHoveringWatermark] = useState(false);
 
+  const wmPart = useRef<'text' | 'img'>('text');
   const watermarkDragStartRef = useRef<{ mouseX: number; mouseY: number; startX: number; startY: number }>({
     mouseX: 0,
     mouseY: 0,
@@ -350,23 +351,24 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
   // =========================================================================
   // WATERMARK DRAG DIRECTLY ON THE MOBILE PHONE PREVIEW
   // =========================================================================
-  const handleWatermarkMouseDown = (e: React.MouseEvent) => {
+  const handleWatermarkMouseDown = (e: React.MouseEvent, part: 'text' | 'img' = 'text') => {
     e.stopPropagation();
     if (!onBrandingChange) return;
+    wmPart.current = part;
 
     setIsDraggingWatermark(true);
     watermarkDragStartRef.current = {
       mouseX: e.clientX,
       mouseY: e.clientY,
-      startX: branding.watermarkPositionX ?? 20,
-      startY: branding.watermarkPositionY ?? 92
+      startX: part === 'img' ? wmImg(branding).x : branding.watermarkPositionX ?? 20,
+      startY: part === 'img' ? wmImg(branding).y : branding.watermarkPositionY ?? 92
     };
   };
 
   // CapCut-style guides: while an element is being dragged its centre / edges snap to the screen centre, the screen edges and the
   // centre lines of the other elements; the blue lines are drawn only during the drag.
   const [guides, setGuides] = useState<{ x: number | null; y: number | null }>({ x: null, y: null });
-  const snapPos = (id: 'caption' | 'title' | 'banner' | 'mark', x: number, y: number) => {
+  const snapPos = (id: 'caption' | 'title' | 'banner' | 'mark' | 'mark2', x: number, y: number) => {
     const scr = phoneScreenRef.current;
     if (!scr) return { x, y };
     const sr = scr.getBoundingClientRect();
@@ -378,6 +380,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
     if (branding.autoTitle?.enabled) others.push(['title', branding.autoTitle.positionX ?? 50, branding.autoTitle.positionY ?? 10]);
     if (branding.showHookTitle) others.push(['banner', branding.bannerPositionX ?? 50, branding.bannerPositionY ?? 8]);
     if (branding.showWatermark) others.push(['mark', branding.watermarkPositionX ?? 20, branding.watermarkPositionY ?? 92]);
+    if (branding.showWatermark && branding.watermarkType === 'both') others.push(['mark2', wmImg(branding).x, wmImg(branding).y]);
     const TH = 2;                                                       // % of the screen (about 5 px)
     const axis = (v: number, size: number, targets: number[]) => {
       let best: { d: number; val: number; line: number } | null = null;
@@ -484,13 +487,10 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
 
         const rawX = Math.round(Math.max(0, Math.min(100, watermarkDragStartRef.current.startX + deltaX)));
         const rawY = Math.round(Math.max(0, Math.min(100, watermarkDragStartRef.current.startY + deltaY)));
-        const { x: newX, y: newY } = snapPos('mark', rawX, rawY);
+        const isImg = wmPart.current === 'img' && branding.watermarkType === 'both';
+        const { x: newX, y: newY } = snapPos(isImg ? 'mark2' : 'mark', rawX, rawY);
 
-        onBrandingChange({
-          ...branding,
-          watermarkPositionX: newX,
-          watermarkPositionY: newY
-        });
+        onBrandingChange(isImg ? { ...branding, watermarkImgX: newX, watermarkImgY: newY } : { ...branding, watermarkPositionX: newX, watermarkPositionY: newY });
       }
     };
 
@@ -1288,7 +1288,13 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                 {getClassic(captions.style) && (() => {
                   const sp = getClassic(captions.style)!;
                   const ai = Math.max(0, currentChunk.findIndex(w => words[activeWordIndex]?.word === w.word));
-                  return <ClassicCaption spec={sp} words={currentChunk.map(w => w.word)} active={activeWordIndex >= 0 ? ai : 0} colorIdx={Math.max(0, activeWordIndex)} size={scaledFontSize} uppercase={captions.uppercase} fontOverride={captions.fontFamily} />;
+                  return (
+                    <div className="flex flex-col items-center">
+                      <ClassicCaption spec={sp} words={currentChunk.map(w => w.word)} active={activeWordIndex >= 0 ? ai : 0} colorIdx={Math.max(0, activeWordIndex)} size={scaledFontSize} uppercase={captions.uppercase} fontOverride={captions.fontFamily} />
+                      {sp.emoji && captions.showEmoji && capcutEmoji && scaledFontSize > 0 && (
+                        <div style={{ fontSize: `${Math.max(0, Math.round(scaledFontSize * 1.1))}px`, lineHeight: 1 }} className="animate-bounce mt-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] select-none">{capcutEmoji}</div>
+                      )}
+                    </div>);
                 })()}
 
               </div>
@@ -1298,59 +1304,47 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
           {/* =====================================================================
               3. WATERMARK / CREATOR HANDLE (DRAGGABLE DIRECTLY ON SCREEN)
           ===================================================================== */}
-          {branding.showWatermark && (branding.watermarkType === 'image' ? !!branding.watermarkImage : !!branding.creatorHandle.trim()) && (
+          {([['text', branding.watermarkType !== 'image' && !!branding.creatorHandle.trim()], ['img', branding.watermarkType === 'image' || branding.watermarkType === 'both' ? !!branding.watermarkImage : false]] as Array<['text' | 'img', boolean]>).map(([part, on]) => {
+            if (!branding.showWatermark || !on) return null;
+            const isImg = part === 'img', both = branding.watermarkType === 'both';
+            const ip = wmImg(branding);
+            const px = isImg ? ip.x : branding.watermarkPositionX ?? 20, py = isImg ? ip.y : branding.watermarkPositionY ?? 92;
+            const hot = (isHoveringWatermark || isDraggingWatermark) && (!both || wmPart.current === part || !isDraggingWatermark);
+            return (
             <div
-              data-snap="mark" className="absolute z-35 transition-transform select-none max-w-[90%] w-fit"
-              style={{
-                left: `${branding.watermarkPositionX ?? 20}%`,
-                top: `${branding.watermarkPositionY ?? 92}%`,
-                transform: 'translate(-50%, -50%)'
-              }}
-              onMouseEnter={() => setIsHoveringWatermark(true)}
-              onMouseLeave={() => {
-                if (!isDraggingWatermark) setIsHoveringWatermark(false);
-              }}
+              key={part} data-snap={isImg && both ? 'mark2' : 'mark'} className="absolute z-35 transition-transform select-none max-w-[90%] w-fit"
+              style={{ left: `${px}%`, top: `${py}%`, transform: 'translate(-50%, -50%)' }}
+              onMouseEnter={() => { wmPart.current = part; setIsHoveringWatermark(true); }}
+              onMouseLeave={() => { if (!isDraggingWatermark) setIsHoveringWatermark(false); }}
             >
               <div
-                onMouseDown={handleWatermarkMouseDown}
-                className={`relative group/watermark px-1 py-0.5 rounded cursor-move transition-all ${
-                  isDraggingWatermark || isHoveringWatermark
-                    ? 'ring-1 ring-cyan-400'
-                    : 'hover:ring-1 hover:ring-white/40'
-                }`}
+                onMouseDown={(e) => handleWatermarkMouseDown(e, part)}
+                className={`relative group/watermark px-1 py-0.5 rounded cursor-move transition-all ${hot && wmPart.current === part ? 'ring-1 ring-cyan-400' : 'hover:ring-1 hover:ring-white/40'}`}
               >
-                {/* Tooltip HUD */}
-                {(isHoveringWatermark || isDraggingWatermark) && (
+                {hot && wmPart.current === part && (
                   <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-black/90 px-1.5 py-0.2 rounded border border-cyan-400/40 text-[7px] text-cyan-300 font-mono flex items-center gap-1 shadow-md whitespace-nowrap z-50 pointer-events-none">
                     <Move className="w-2 h-2" />
-                    <span>Handle: X:{branding.watermarkPositionX ?? 20}% Y:{branding.watermarkPositionY ?? 92}%</span>
+                    <span>{isImg ? 'Picture' : 'Text'}: X:{px}% Y:{py}%</span>
                   </div>
                 )}
-
-                {branding.watermarkType === 'image' && branding.watermarkImage ? (
-                  <img
-                    src={branding.watermarkImage.dataUrl}
-                    alt=""
-                    draggable={false}
-                    style={{ width: `${scrW * (branding.watermarkImageSize ?? 20) / 100}px`, opacity: (branding.watermarkOpacity ?? 100) / 100 }}
-                    className="block select-none pointer-events-none"
-                  />
+                {isImg && branding.watermarkImage ? (
+                  <img src={branding.watermarkImage.dataUrl} alt="" draggable={false}
+                    style={{ width: `${scrW * (branding.watermarkImageSize ?? 20) / 100}px`, opacity: ip.op / 100 }} className="block select-none pointer-events-none" />
                 ) : (
                   <span
                     style={{
                       color: branding.watermarkColor || '#ffffff',
                       fontFamily: cssFont(branding.watermarkFontFamily || 'Arial'),
                       fontSize: `${(branding.watermarkFontSize ?? 40) * scrW / 1080 / fontCell(branding.watermarkFontFamily || 'Arial')}px`,
+                      opacity: (branding.watermarkTextOpacity ?? 80) / 100,
                       textShadow: '0 1px 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.8)'
                     }}
                     className="font-bold tracking-wide select-none whitespace-nowrap"
-                  >
-                    {branding.creatorHandle}
-                  </span>
+                  >{branding.creatorHandle}</span>
                 )}
               </div>
-            </div>
-          )}
+            </div>);
+          })}
 
         </div>
       </div>

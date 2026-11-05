@@ -1,5 +1,5 @@
 import { ProTag } from '../common/ProTag';
-import { hookLines, hookFitMax, type FootageBand } from '../../utils/captionHelpers';
+import { hookLines, hookFitMax, wmImg, type FootageBand } from '../../utils/captionHelpers';
 import React, { useEffect, useRef, useState } from 'react';
 import { BrandingConfig } from '../../types/clipper';
 import { 
@@ -164,6 +164,19 @@ const MusicSection: React.FC<{ branding: BrandingConfig; onBrandingChange: (b: B
   );
 };
 
+const PosSliders: React.FC<{ title?: string; x: number; y: number; onX: (v: number) => void; onY: (v: number) => void }> = ({ title, x, y, onX, onY }) => (
+  <div className="space-y-1">
+    {title && <div className="text-[10px] font-semibold text-neutral-300">{title}</div>}
+    <div className="grid grid-cols-2 gap-3 pt-1">
+      {([['Position X:', x, onX], ['Position Y:', y, onY]] as const).map(([l, v, f]) => (
+        <div key={l} className="space-y-1">
+          <div className="flex justify-between text-[11px]"><span className="text-neutral-400">{l}</span><span className="font-mono text-[#8fd0a4] font-bold">{v}%</span></div>
+          <input type="range" min={0} max={100} value={v} onChange={(e) => f(Number(e.target.value))} className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]" />
+        </div>))}
+    </div>
+  </div>
+);
+
 export const BrandingTab: React.FC<BrandingTabProps> = ({
   branding,
   onBrandingChange,
@@ -174,6 +187,7 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
   const show = (k: string) => !only || only === k;
   const isAutoTitleOn = branding.autoTitle?.enabled ?? false;
   const [open, setOpen] = useState<Record<string, boolean>>({});          // every settings block starts collapsed
+  const wmBoth = branding.watermarkType === 'both';
   const OpenBtn = ({ id }: { id: string }) => (
     <button type="button" onClick={() => setOpen(o => ({ ...o, [id]: !o[id] }))}
       className="mt-3 text-[11px] font-bold text-[#8fd0a4] hover:underline cursor-pointer flex items-center gap-1">
@@ -721,18 +735,19 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
         {branding.showWatermark  && open.mark && (
           <div className="mt-4 pt-4 border-t border-[#1a2b16] space-y-4">
             {/* Text or image */}
-            <div className="grid grid-cols-2 gap-2">
-              {(['text', 'image'] as const).map(t => (
+            <div className="grid grid-cols-3 gap-2">
+              {(['text', 'image', 'both'] as const).map(t => (
                 <button key={t} type="button" onClick={() => onBrandingChange({ ...branding, watermarkType: t })}
                   className={`py-1.5 rounded-lg border text-[11px] font-bold cursor-pointer transition-all ${
                     (branding.watermarkType || 'text') === t ? 'bg-[#bef264] text-black border-[#3f9a5a]' : 'bg-[#0d1712] text-neutral-300 border-[#1b2f26] hover:border-[#2c4439]'}`}>
-                  {t === 'text' ? 'Add text' : 'Add image'}
+                  {t === 'text' ? 'Text' : t === 'image' ? 'Image' : 'Text + image'}
                 </button>
               ))}
             </div>
 
-            {(branding.watermarkType || 'text') === 'text' ? (
+            {(branding.watermarkType || 'text') !== 'image' && (
               <>
+                {(branding.watermarkType || 'text') === 'both' && <div className="text-[10px] font-mono uppercase tracking-widest text-neutral-500">Text</div>}
                 <div className="space-y-1">
                   <span className="text-[11px] font-semibold text-neutral-300">Watermark Text:</span>
                   <input
@@ -762,9 +777,21 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                     onChange={(e) => onBrandingChange({ ...branding, watermarkFontSize: Number(e.target.value) })}
                     className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]" />
                 </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-neutral-400">Text opacity:</span>
+                    <span className="font-mono text-[#8fd0a4] font-bold">{branding.watermarkTextOpacity ?? 80}%</span>
+                  </div>
+                  <input type="range" min={10} max={100} value={branding.watermarkTextOpacity ?? 80}
+                    onChange={(e) => onBrandingChange({ ...branding, watermarkTextOpacity: Number(e.target.value) })}
+                    className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]" />
+                </div>
+                <PosSliders title={wmBoth ? 'Text position' : undefined} x={branding.watermarkPositionX ?? 20} y={branding.watermarkPositionY ?? 92} onX={v => onBrandingChange({ ...branding, watermarkPositionX: v })} onY={v => onBrandingChange({ ...branding, watermarkPositionY: v })} />
               </>
-            ) : (
+            )}
+            {(branding.watermarkType || 'text') !== 'text' && (
               <div className="space-y-3">
+                {wmBoth && <div className="text-[10px] font-mono uppercase tracking-widest text-neutral-500 pt-1">Image</div>}
                 {branding.watermarkImage ? (
                   <div className="flex items-center gap-3 p-2 rounded-lg bg-[#09100d] border border-[#1a2c24]">
                     <div className="w-14 h-14 rounded-md bg-[repeating-conic-gradient(#222_0%_25%,#333_0%_50%)] bg-[length:10px_10px] flex items-center justify-center overflow-hidden shrink-0">
@@ -798,57 +825,15 @@ export const BrandingTab: React.FC<BrandingTabProps> = ({
                 <div className="space-y-1">
                   <div className="flex justify-between text-[11px]">
                     <span className="text-neutral-400">Opacity:</span>
-                    <span className="font-mono text-[#8fd0a4] font-bold">{branding.watermarkOpacity ?? 100}%</span>
+                    <span className="font-mono text-[#8fd0a4] font-bold">{wmImg(branding).op}%</span>
                   </div>
-                  <input type="range" min={10} max={100} value={branding.watermarkOpacity ?? 100}
-                    onChange={(e) => onBrandingChange({ ...branding, watermarkOpacity: Number(e.target.value) })}
+                  <input type="range" min={10} max={100} value={wmImg(branding).op}
+                    onChange={(e) => onBrandingChange({ ...branding, [wmBoth ? 'watermarkImgOpacity' : 'watermarkOpacity']: Number(e.target.value) })}
                     className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]" />
                 </div>
+                <PosSliders title={wmBoth ? 'Image position' : undefined} x={wmImg(branding).x} y={wmImg(branding).y} onX={v => onBrandingChange({ ...branding, ...(wmBoth ? { watermarkImgX: v } : { watermarkPositionX: v }) })} onY={v => onBrandingChange({ ...branding, ...(wmBoth ? { watermarkImgY: v } : { watermarkPositionY: v }) })} />
               </div>
             )}
-
-            {/* Position X and Y */}
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-400">Position X:</span>
-                  <span className="font-mono text-[#8fd0a4] font-bold">
-                    {branding.watermarkPositionX ?? 20}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={branding.watermarkPositionX ?? 20}
-                  onChange={(e) => onBrandingChange({
-                    ...branding,
-                    watermarkPositionX: Number(e.target.value)
-                  })}
-                  className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-400">Position Y:</span>
-                  <span className="font-mono text-[#8fd0a4] font-bold">
-                    {branding.watermarkPositionY ?? 92}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={branding.watermarkPositionY ?? 92}
-                  onChange={(e) => onBrandingChange({
-                    ...branding,
-                    watermarkPositionY: Number(e.target.value)
-                  })}
-                  className="w-full h-1.5 bg-[#16271f] rounded-lg appearance-none cursor-pointer accent-[#bef264]"
-                />
-              </div>
-            </div>
 
             <div className="p-2 rounded-lg bg-[#09100d] border border-[#1a2c24] text-[10px] text-neutral-400 flex items-center gap-2">
               <Move className="w-3 h-3 text-[#8fd0a4] shrink-0" />

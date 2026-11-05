@@ -50,9 +50,9 @@ async function ctxFor(st, i, ov = {}, work, extra = {}) {
   const start = shorts ? 0 : c.start, end = shorts ? st.infos[i].duration : c.end, dur = end - start;
   const cw = shorts ? st.capWords[i] : st.capWords, ow = shorts ? st.words[i] : st.words;
   const hookText = ov.hookText != null ? ov.hookText : (c.hookText || c.title);
-  const k = Wd / 1080, capPx = (captions.fontSize || 24) * 3.4 * k, eSize = Math.round(capPx * 1.5);
-  const emojiBox = { size: eSize, x: Math.round((captions.positionX ?? 50) / 100 * Wd - eSize / 2), y: Math.max(0, Math.round((captions.positionY ?? 72) / 100 * Ht - capPx * 0.65 - eSize)) };
-  const useEmoji = captions.enabled && captions.showEmoji && captions.style === 'capcut-emoji';
+  const k = Wd / 1080, capPx = (captions.fontSize || 24) * 3.4 * k, below = ASS.emojiMode(captions.style) === 'below', eSize = Math.round(capPx * (below ? 1.1 : 1.5));
+  const emojiBox = { size: eSize, x: Math.round((captions.positionX ?? 50) / 100 * Wd - eSize / 2), y: below ? Math.min(Ht - eSize, Math.round((captions.positionY ?? 72) / 100 * Ht + capPx * 1.05)) : Math.max(0, Math.round((captions.positionY ?? 72) / 100 * Ht - capPx * 0.65 - eSize)) };
+  const useEmoji = captions.enabled && captions.showEmoji && !!ASS.emojiMode(captions.style);
   const hkRect = st.split ? null : R.brollRect(st.framing, Wd, Ht, (shorts ? st.infos[i] : st.info).width / (shorts ? st.infos[i] : st.info).height);
   const assArgs = { rect: hkRect, words: cw, clipStart: start, clipEnd: end, W: Wd, H: Ht, captions, branding, title: hookText, hookText };
   let behind = null;
@@ -66,8 +66,9 @@ async function ctxFor(st, i, ov = {}, work, extra = {}) {
   const emojis = [...(useEmoji ? EMOJI.plan(ow, start, end, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
     ...ASS.titleEmojis({ title: hookText, branding, W: Wd, H: Ht, dur: dur, rect: hkRect })];
   let watermark = null;
-  if (branding.showWatermark && branding.watermarkType === 'image' && branding.watermarkImage && branding.watermarkImage.path && fs.existsSync(branding.watermarkImage.path)) {
-    watermark = { file: branding.watermarkImage.path, sizePct: branding.watermarkImageSize ?? 20, opacity: branding.watermarkOpacity ?? 100, x: branding.watermarkPositionX ?? 20, y: branding.watermarkPositionY ?? 92 };
+  const wmi = ASS.wmImageOf(branding);
+  if (wmi && fs.existsSync(branding.watermarkImage.path)) {
+    watermark = { file: branding.watermarkImage.path, ...wmi };
   }
   let music = null; const bm = branding.bgMusic;
   if (bm && bm.path && fs.existsSync(bm.path)) {

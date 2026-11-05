@@ -345,16 +345,17 @@ async function runInner(job, emit, deps = {}) {
   startWork(); begin(8);
   const result = [];
   const cap = job.captions || {};
-  const k = Wd / 1080, capPx = (cap.fontSize || 24) * 3.4 * k, eSize = Math.round(capPx * 1.5);
+  const k = Wd / 1080, capPx = (cap.fontSize || 24) * 3.4 * k, below = ASS.emojiMode(cap.style) === 'below', eSize = Math.round(capPx * (below ? 1.1 : 1.5));
   const emojiBox = { size: eSize, x: Math.round((cap.positionX ?? 50) / 100 * Wd - eSize / 2),
-                     y: Math.max(0, Math.round((cap.positionY ?? 72) / 100 * Ht - capPx * 0.65 - eSize)) };
+                     y: below ? Math.min(Ht - eSize, Math.round((cap.positionY ?? 72) / 100 * Ht + capPx * 1.05)) : Math.max(0, Math.round((cap.positionY ?? 72) / 100 * Ht - capPx * 0.65 - eSize)) };
   // watermark image (copied into the work dir; .jfif is just a JPEG)
   let watermark = null;
   const br = job.branding || {};
-  if (br.showWatermark && br.watermarkType === 'image' && br.watermarkImage?.path && fs.existsSync(br.watermarkImage.path)) {
+  const wmi = ASS.wmImageOf(br);
+  if (wmi && fs.existsSync(br.watermarkImage.path)) {
     const ext = path.extname(br.watermarkImage.path).toLowerCase().replace('.jfif', '.jpg').replace('.jpeg', '.jpg');
     const wf = f(`wm${ext || '.png'}`); fs.copyFileSync(br.watermarkImage.path, wf);
-    watermark = { file: wf, sizePct: br.watermarkImageSize ?? 20, opacity: br.watermarkOpacity ?? 100, x: br.watermarkPositionX ?? 20, y: br.watermarkPositionY ?? 92 };
+    watermark = { file: wf, ...wmi };
   }
   // background music
   let music = null;
@@ -365,7 +366,7 @@ async function runInner(job, emit, deps = {}) {
     music = { file: bm.path, startSec: bm.startSec || 0, volumeDb: bm.volumeDb ?? -18, duration: dur, fade: bm.fade !== false };
   }
   const fontFamilies = ASS.fontsUsed({ captions: job.captions, branding: job.branding });
-  const useEmoji = cap.enabled && cap.showEmoji && cap.style === 'capcut-emoji';
+  const useEmoji = cap.enabled && cap.showEmoji && !!ASS.emojiMode(cap.style);
   const slots = []; let doneN = 0;
   await require('./hardware.cjs').pool(clips.length, await renderWorkers(job, log), async (i, hw) => {
     checkCancel();
@@ -592,14 +593,15 @@ async function runShortsInner(job, emit, deps = {}) {
   startWork(); begin(8);
   const result = [];
   const cap = job.captions || {};
-  const k = Wd / 1080, capPx = (cap.fontSize || 24) * 3.4 * k, eSize = Math.round(capPx * 1.5);
-  const emojiBox = { size: eSize, x: Math.round((cap.positionX ?? 50) / 100 * Wd - eSize / 2), y: Math.max(0, Math.round((cap.positionY ?? 72) / 100 * Ht - capPx * 0.65 - eSize)) };
+  const k = Wd / 1080, capPx = (cap.fontSize || 24) * 3.4 * k, below = ASS.emojiMode(cap.style) === 'below', eSize = Math.round(capPx * (below ? 1.1 : 1.5));
+  const emojiBox = { size: eSize, x: Math.round((cap.positionX ?? 50) / 100 * Wd - eSize / 2), y: below ? Math.min(Ht - eSize, Math.round((cap.positionY ?? 72) / 100 * Ht + capPx * 1.05)) : Math.max(0, Math.round((cap.positionY ?? 72) / 100 * Ht - capPx * 0.65 - eSize)) };
   let watermark = null;
   const br = job.branding || {};
-  if (br.showWatermark && br.watermarkType === 'image' && br.watermarkImage?.path && fs.existsSync(br.watermarkImage.path)) {
+  const wmi = ASS.wmImageOf(br);
+  if (wmi && fs.existsSync(br.watermarkImage.path)) {
     const ext = path.extname(br.watermarkImage.path).toLowerCase().replace('.jfif', '.jpg').replace('.jpeg', '.jpg');
     const wf = f(`wm${ext || '.png'}`); fs.copyFileSync(br.watermarkImage.path, wf);
-    watermark = { file: wf, sizePct: br.watermarkImageSize ?? 20, opacity: br.watermarkOpacity ?? 100, x: br.watermarkPositionX ?? 20, y: br.watermarkPositionY ?? 92 };
+    watermark = { file: wf, ...wmi };
   }
   let music = null;
   const bm = br.bgMusic;
@@ -609,7 +611,7 @@ async function runShortsInner(job, emit, deps = {}) {
     music = { file: bm.path, startSec: bm.startSec || 0, volumeDb: bm.volumeDb ?? -18, duration: dur, fade: bm.fade !== false };
   }
   const fontFamilies = ASS.fontsUsed({ captions: job.captions, branding: job.branding });
-  const useEmoji = cap.enabled && cap.showEmoji && cap.style === 'capcut-emoji';
+  const useEmoji = cap.enabled && cap.showEmoji && !!ASS.emojiMode(cap.style);
   const slots = []; let doneN = 0;
   await require('./hardware.cjs').pool(N, await renderWorkers(job, log), async (i, hw) => {
     checkCancel();

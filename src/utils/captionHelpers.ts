@@ -354,3 +354,8 @@ export function footageRectFor(framing: any, srcAspect: number): FootageBand {
   if (y1 - y0 < 8 || (y1 - y0) >= H * 0.97) return null;
   return { y: y0 / H, h: (y1 - y0) / H };
 }
+
+/** Picture watermark settings: with "both" the picture has its own position / opacity, otherwise the single watermark settings are used. */
+export const wmImg = (b: any) => b.watermarkType === 'both'
+  ? { x: b.watermarkImgX ?? 80, y: b.watermarkImgY ?? 92, op: b.watermarkImgOpacity ?? 100 }
+  : { x: b.watermarkPositionX ?? 20, y: b.watermarkPositionY ?? 92, op: b.watermarkOpacity ?? 100 };

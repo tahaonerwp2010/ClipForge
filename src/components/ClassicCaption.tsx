@@ -6,7 +6,7 @@ import { ANIM_CSS, ANIM_MS } from './DynCaption';
 /** Extra classic caption styles (shared with the video engine through electron/engine/classic-styles.json). */
 export interface ClassicSpec {
   id: string; name: string; tagline: string; font: string; base: string; active: string[]; outline: number; outlineColor: string; sample: string[];
-  upper?: boolean; anim?: string; glow?: boolean; box?: { color: string; text: string; pad: number }; rot?: number; sizeMul?: number;
+  upper?: boolean; anim?: string; glow?: boolean; box?: { color: string; text: string; pad: number }; rot?: number; sizeMul?: number; emoji?: boolean; lines?: number;
 }
 export const CLASSIC_EXTRA = (DATA as any).styles as ClassicSpec[];
 // "Crimson Punch" is built into the engine; it only needs a phone-preview spec
@@ -31,17 +31,18 @@ export function ClassicCaption({ spec, words, active, colorIdx = 0, size, upperc
     <div className="flex flex-wrap items-center justify-center text-center" style={{ gap: `${px * 0.04}px ${px * 0.28}px`, transform: spec.rot ? `rotate(${spec.rot}deg)` : undefined }}>
       <style>{ANIM_CSS}</style>
       {words.map((w, i) => {
+        const brk = spec.lines === 2 && words.length >= 3 && i === Math.ceil(words.length / 2);
         const on = i === active, boxed = on && !!spec.box;
         const glow = on && spec.glow ? `, 0 0 ${px * 0.35}px ${col}, 0 0 ${px * 0.7}px ${col}` : '';
         return (
-          <span key={i} style={{
+          <React.Fragment key={i}>{brk && <span style={{ flexBasis: '100%', height: 0 }} />}<span style={{
             fontFamily: `${cssFont(fontOverride || spec.font)}, "Montserrat", Arial, sans-serif`, fontSize: px, lineHeight: 1.1, fontWeight: 400, whiteSpace: 'pre', display: 'inline-block',
             color: boxed ? spec.box!.text : on ? col : spec.base,
             background: boxed ? spec.box!.color : 'transparent', borderRadius: boxed ? px * 0.16 : 0, padding: boxed ? `0 ${px * 0.14}px` : 0,
             textShadow: boxed ? 'none' : ring(ow, spec.outlineColor) + glow,
             transform: on && (!anim || spec.anim === 'pop') ? 'scale(1.1)' : undefined, transition: 'transform .12s',
             animation: on ? anim : undefined,
-          }}>{up ? w.toUpperCase() : w}</span>
+          }}>{up ? w.toUpperCase() : w}</span></React.Fragment>
         );
       })}
     </div>

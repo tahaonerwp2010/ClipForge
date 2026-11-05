@@ -125,7 +125,11 @@ export interface BrandingConfig {
   creatorHandle: string;
   watermarkPositionX?: number;   // 0 to 100 (%)
   watermarkPositionY?: number;   // 0 to 100 (%)
-  watermarkType?: 'text' | 'image';
+  watermarkType?: 'text' | 'image' | 'both';   // 'both' = text and picture at the same time, each with its own position / opacity
+  watermarkTextOpacity?: number; // 10 - 100 (text)
+  watermarkImgX?: number;        // picture position when both are shown (%)
+  watermarkImgY?: number;
+  watermarkImgOpacity?: number;  // picture opacity when both are shown
   watermarkFontFamily?: string;
   watermarkColor?: string;
   watermarkFontSize?: number;    // 20 - 90

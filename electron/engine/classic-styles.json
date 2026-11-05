@@ -351,6 +351,31 @@
    "anim": "pop",
    "glow": true,
    "sizeMul": 0.9
+  },
+  {
+   "id": "viral-duo",
+   "name": "Viral Duo Emoji",
+   "tagline": "Bold white two-line captions, the spoken word flips between red, green and yellow, with a contextual emoji underneath.",
+   "font": "Montserrat Black",
+   "base": "#FFFFFF",
+   "active": [
+    "#EF4444",
+    "#22C55E",
+    "#FACC15"
+   ],
+   "outline": 8,
+   "outlineColor": "#000000",
+   "sample": [
+    "I",
+    "think",
+    "it's",
+    "very"
+   ],
+   "upper": true,
+   "anim": "pop",
+   "emoji": true,
+   "lines": 2,
+   "sizeMul": 1.25
   }
  ]
 }

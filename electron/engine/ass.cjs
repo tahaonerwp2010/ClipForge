@@ -11,7 +11,9 @@ const PRESETS = {
   'comic-pop':    { font: 'Comic Sans MS',    base: '#FFFFFF', active: ['#FDE047'], outline: 7 },
   glitch:         { font: 'Consolas',         base: '#FFFFFF', active: ['#22D3EE', '#F43F5E'], outline: 4 },
 };
-for (const c of require('./classic-styles.json').styles) PRESETS[c.id] = { font: c.font, base: c.base, active: c.active, outline: c.outline, outlineColor: c.outlineColor, upper: c.upper, anim: c.anim, glow: !!c.glow, box: c.box, rot: c.rot || 0, sizeMul: c.sizeMul || 1 };   // more classic styles (same list the app uses for previews)
+for (const c of require('./classic-styles.json').styles) PRESETS[c.id] = { font: c.font, base: c.base, active: c.active, outline: c.outline, outlineColor: c.outlineColor, upper: c.upper, anim: c.anim, glow: !!c.glow, box: c.box, rot: c.rot || 0, sizeMul: c.sizeMul || 1, emoji: !!c.emoji, lines: c.lines || 1 };   // more classic styles (same list the app uses for previews)
+// emoji styles: 'above' = the classic CapCut emoji over the text, 'below' = the emoji sits under the text
+const emojiMode = st => st === 'capcut-emoji' ? 'above' : (PRESETS[st] && PRESETS[st].emoji ? 'below' : null);
 const USER_COLOR_STYLES = new Set(['capcut-emoji', 'hormozi', 'karaoke']);
 const bgr = hex => { const h = hex.replace('#', ''); return `&H${h.slice(4, 6)}${h.slice(2, 4)}${h.slice(0, 2)}&`; };
 const esc = t => String(t).replace(/[{}\\]/g, '');
@@ -72,7 +74,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
     `Style: Cap,${capFont},${size},${bgr(preset.base)},&H000000&,${bgr(preset.outlineColor || '#000000')},&H64000000,${FONTS.boldFlag(capFont)},0,0,0,100,100,0,0,1,${outline},2,5,40,40,40,1`,
     `Style: Title,${titleFont},${Math.round((at.fontSize || 16) * 4.5 * k)},${bgr(at.color || '#FFFFFF')},&H000000&,&H000000&,&H64000000,${FONTS.boldFlag(titleFont)},0,0,0,100,100,0,0,1,${Math.round(5 * k)},2,5,60,60,40,1`,
     `Style: Hook,${hookFont},${Math.round(54 * k)},${bgr(branding.hookTextColor || (branding.bannerShowBackground ? '#000000' : '#FFFFFF'))},&H000000&,${bgr(branding.hookBgColor || '#BEF264')},&H000000&,${FONTS.boldFlag(hookFont)},0,0,0,100,100,0,0,${branding.bannerShowBackground ? 3 : 1},${Math.round(14 * k)},0,5,60,60,40,1`,
-    `Style: Mark,${markFont},${Math.round((branding.watermarkFontSize || 40) * k)},&HCC${bgr(branding.watermarkColor || '#FFFFFF').slice(2)},&H000000&,&H000000&,&H64000000,${FONTS.boldFlag(markFont)},0,0,0,100,100,0,0,1,${Math.round(3 * k)},1,5,40,40,40,1`,
+    `Style: Mark,${markFont},${Math.round((branding.watermarkFontSize || 40) * k)},&H${Math.round(255 * (1 - Math.max(10, Math.min(100, branding.watermarkTextOpacity ?? 80)) / 100)).toString(16).padStart(2, '0').toUpperCase()}${bgr(branding.watermarkColor || '#FFFFFF').slice(2)},&H000000&,&H000000&,&H64000000,${FONTS.boldFlag(markFont)},0,0,0,100,100,0,0,1,${Math.round(3 * k)},1,5,40,40,40,1`,
     '', '[Events]', 'Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text',
   ];
   const sw = t => { const f = FONTS.scriptFont(t); return f ? `{\\fn${f}\\b0\\fs${Math.round(size * 1.25)}}${t}{\\fn${capFont}\\b${FONTS.boldFlag(capFont)}\\fs${size}}` : t; };   // script font for Urdu / Arabic / Hindi words
@@ -126,19 +128,21 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
       g.forEach((w, j) => {
         const s = tS[i + j], e = tE[i + j];
         const col = bgr(actives[ci++ % actives.length]);
-        const txt = g.map((x, q) => {
+        const brk = (preset.lines === 2 && g.length >= 3) ? Math.ceil(g.length / 2) : -1;       // two-line captions: break after half of the words
+        const joinW = a => a.map((t, q) => (q ? (q === brk ? '\\N' : ' ') : '') + t).join('');
+        const txt = joinW(g.map((x, q) => {
           const t = sw(esc(up ? x.word.toUpperCase() : x.word));
           if (q !== j) return t;
           if (preset.single) return `{\\c${col}}${t}`;
           const rot = preset.rot || 0, an = preset.anim === 'none' ? '' : (preset.anim && preset.anim !== 'pop' && DYN.ANIMS[preset.anim]) ? DYN.ANIMS[preset.anim].replace(/\\frz(-?\d+)/g, (_, n) => '\\frz' + (+n + rot)) : '\\fscx82\\fscy82\\t(0,110,\\fscx114\\fscy114)';
           const bx = preset.box ? `\\1c${bgr(preset.box.text)}\\3c${bgr(preset.box.color)}\\bord${Math.round(preset.box.pad * k)}` : `\\c${col}`;
           return `{${bx}${an}}${t}{\\c${bgr(preset.base)}\\3c${bgr(preset.outlineColor || '#000000')}\\bord${outline}\\fscx100\\fscy100\\fsp0\\blur0\\frz${rot}}`;
-        }).join(' ');
+        }));
         if (preset.glow && captions.glow !== false) {          // neon glow under the active word (2 blurred layers)
-          const ghost = (bord, blur, alpha) => g.map((x, q) => {
+          const ghost = (bord, blur, alpha) => joinW(g.map((x, q) => {
             const t = sw(esc(up ? x.word.toUpperCase() : x.word));
             return q === j ? `{\\alpha&H${alpha}&\\1c${col}\\3c${col}\\bord${Math.round(bord * k)}\\blur${Math.round(blur * k)}\\fscx82\\fscy82\\t(0,110,\\fscx114\\fscy114)}${t}{\\alpha&HFF&\\fscx100\\fscy100}` : `{\\alpha&HFF&}${t}`;
-          }).join(' ');
+          }));
           L.push(`Dialogue: 0,${ts(s)},${ts(e)},Cap,,0,0,0,,${pos(captions.positionX, captions.positionY)}${ghost(22, 26, '70')}`);
           L.push(`Dialogue: 0,${ts(s)},${ts(e)},Cap,,0,0,0,,${pos(captions.positionX, captions.positionY)}${ghost(9, 10, '20')}`);
         }
@@ -149,6 +153,12 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
   return L.join('\n');
 }
 // Where the title's emoji go (Twemoji PNG overlays, centred just above the title text)
+// picture watermark: with "both" it has its own position / opacity, otherwise the single watermark settings are used
+function wmImageOf(br) {
+  if (!(br.showWatermark && (br.watermarkType === 'image' || br.watermarkType === 'both') && br.watermarkImage && br.watermarkImage.path)) return null;
+  const both = br.watermarkType === 'both';
+  return { sizePct: br.watermarkImageSize ?? 20, opacity: both ? (br.watermarkImgOpacity ?? 100) : (br.watermarkOpacity ?? 100), x: both ? (br.watermarkImgX ?? 80) : (br.watermarkPositionX ?? 20), y: both ? (br.watermarkImgY ?? 92) : (br.watermarkPositionY ?? 92) };
+}
 function titleEmojis({ title, branding = {}, W, H, dur = 9999, rect = null }) {
   const at = branding.autoTitle || {};
   if (!at.enabled || !title || at.showEmoji === false) return [];
@@ -163,4 +173,4 @@ function titleEmojis({ title, branding = {}, W, H, dur = 9999, rect = null }) {
   const endT = at.showSeconds > 0 ? Math.min(dur, at.showSeconds) : dur;
   return list.map((png, i) => ({ png, size: em, start: 0, end: endT, x: Math.max(0, Math.min(W - em, Math.round(cx - total / 2 + i * (em + gap)))), y }));
 }
-module.exports = { build, fontsUsed, titleEmojis };
+module.exports = { emojiMode, wmImageOf, build, fontsUsed, titleEmojis };
