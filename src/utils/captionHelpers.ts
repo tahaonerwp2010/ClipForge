@@ -297,22 +297,60 @@ export const remapHookColors = (oldText: string, newText: string, colors?: (stri
 export const hookTwoLines = (text: string): string[] => hookLines(text, 2);
 /** font size in px for a screen that is `screenW` px wide (1080 = the real video width). userSize = the size the user chose. */
 const _cv = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
-/** Biggest hook size (video px at 1080 wide) whose longest line still fits edge to edge, from the real glyph widths of the hook font. */
-export function hookFitMax(lines: string[], family?: string): number {
+const _hkEm = (lines: string[], fam: string): number => {
+  if (!_cv) return 0;
+  _cv.font = `900 1000px ${cssFont(fam)}`;      // the preview draws the hook in weight 900, so measure it the same way
+  return Math.max(0, ...lines.map(l => _cv.measureText(l.toUpperCase()).width / 1000));   // the hook is drawn in capitals
+};
+export type FootageBand = { y: number; h: number } | null | undefined;   // footage position as fractions of the screen height
+/** The hook "supervisor" (same maths as electron/engine/hook.cjs placeHook): keeps the user's size/position as far as possible and only changes
+ *  what is needed so the hook fits the screen width, stays above/below the footage the way the user put it, and leaves room for the emoji row.
+ *  Works on a 1080x1920 canvas; returns video px. */
+export function placeHook(o: { lines: string[]; userSize?: number; px: number; py: number; family?: string; footage?: FootageBand; emoji?: boolean }) {
+  const W = 1080, H = 1920, fam = o.family || 'Montserrat Black', n = Math.max(1, o.lines.length), outline = 5;
+  const maxLen = Math.max(4, ...o.lines.map(l => l.length));
+  let em = 0; try { em = _hkEm(o.lines, fam); } catch { /* estimate below */ }
+  const cell = fontCell(fam) || 1.22, sideM = W * 0.02;
+  const fsW = em > 0.1 ? Math.floor((W - 2 * sideM - 2 * outline) * cell / em) : Math.floor(W * 0.9 / (maxLen * 0.62));
+  let size = o.userSize && o.userSize > 0 ? o.userSize : Math.min(124, W * 0.88 / (maxLen * 0.64));
+  size = Math.min(size, fsW);
+  let lo = Math.round(H * 0.04), hi = Math.round(H * 0.94); const gap = Math.round(H * 0.012);
+  const f = o.footage; const fy = f ? f.y * H : 0, fh = f ? f.h * H : H;
+  if (f && fh < H * 0.97) { if (o.py <= fy) hi = Math.max(lo + H * 0.06, fy - gap); else if (o.py >= fy + fh) lo = Math.min(hi - H * 0.06, fy + fh + gap); }
+  const exF = o.emoji ? 1.2 : 0;
+  size = Math.max(20, Math.min(size, (hi - lo - 2 * outline) / (n + exF)));
+  const extra = exF * size, totalH = n * size + 2 * outline + extra;
+  const top = Math.min(hi - totalH, Math.max(lo, o.py - n * size / 2 - outline - extra));
+  const half = em > 0.1 ? em * size / cell / 2 + outline : W * 0.4;
+  return { fs: Math.round(size), px: Math.min(W - sideM - half, Math.max(sideM + half, o.px)), py: top + extra + outline + n * size / 2, top, extra, cell };
+}
+/** Biggest hook size (video px at 1080 wide) that still fits: the width of the longest line (capitals) and, when the footage is known, the free band it sits in. */
+export function hookFitMax(lines: string[], family?: string, py?: number, footage?: FootageBand, emoji?: boolean): number {
   const maxLen = Math.max(4, ...lines.map(l => l.length));
   const est = Math.floor((1080 * 0.94) / (maxLen * 0.55));
   try {
     const fam = family || 'Montserrat Black';
-    if (!_cv) return est;
-    _cv.font = `1000px ${cssFont(fam)}`;
-    const em = Math.max(0.1, ...lines.map(l => _cv.measureText(l).width / 1000));
+    const em = _hkEm(lines, fam);
     if (!(em > 0.1)) return est;
-    return Math.max(30, Math.floor((1080 * 0.985 - 10) * fontCell(fam) / em));
+    let m = Math.floor((1080 * 0.96 - 10) * fontCell(fam) / em);
+    if (py != null && footage && footage.h < 0.97) {
+      const H = 1920, fy = footage.y * H, fh = footage.h * H, n = Math.max(1, lines.length);
+      const band = py <= fy ? fy - 0.012 * H - 0.04 * H : py >= fy + fh ? 0.94 * H - (fy + fh + 0.012 * H) : H * 0.9;
+      m = Math.min(m, Math.floor((band - 10) / (n + (emoji ? 1.2 : 0))));
+    }
+    return Math.max(30, m);
   } catch { return est; }
 }
-export function hookFontPx(lines: string[], screenW: number, userSize?: number, family?: string): number {
-  const maxLen = Math.max(4, ...lines.map(l => l.length));
-  const fit = hookFitMax(lines, family);
-  if (userSize && userSize > 0) return Math.max(24, Math.min(userSize, fit)) * screenW / 1080;
-  return Math.max(52, Math.min(124, (1080 * 0.88) / (maxLen * 0.64))) * screenW / 1080;
+/** Where the footage sits on a 9:16 screen for the chosen framing (same maths as the engine's brollRect), as fractions of the height; null = full screen. */
+export function footageRectFor(framing: any, srcAspect: number): FootageBand {
+  const f = framing || {}, W = 1080, H = 1920, mode = f.mode || 'fit-blur';
+  if (mode === 'fill-crop') return null;
+  const ar = srcAspect || 16 / 9;
+  let fgW: number, fgH: number;
+  if (mode === 'custom-scale') { fgW = W * Math.max(0.3, (f.customScale || 100) / 100); fgH = fgW / ar; }
+  else { fgW = W; fgH = W / ar; if (fgH > H) { fgH = H; fgW = H * ar; } }
+  const y = (H - fgH) / 2 + ((f.offsetY || 0) / 100) * H;
+  const y0 = Math.max(0, y), y1 = Math.min(H, y + fgH);
+  if (y1 - y0 < 8 || (y1 - y0) >= H * 0.97) return null;
+  return { y: y0 / H, h: (y1 - y0) / H };
 }

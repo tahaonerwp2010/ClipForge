@@ -191,22 +191,22 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
     <div className="flex-1 flex flex-col h-full bg-[#050b08] text-neutral-100 overflow-y-auto font-sans select-none">
       
       {/* Top Header Bar */}
-      <div className="h-14 border-b border-[#111e18] bg-[#050b08] px-6 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
+      <div className="min-h-14 border-b border-[#111e18] bg-[#050b08] pl-3 pr-12 md:px-6 py-2 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2 md:gap-4 min-w-0">
           {onBack && (
             <button
               onClick={onBack}
-              className="px-3 py-1.5 rounded-lg bg-[#0c1611] hover:bg-[#15241d] text-neutral-300 hover:text-white border border-[#192c23] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-lg shrink-0 whitespace-nowrap bg-[#0c1611] hover:bg-[#15241d] text-neutral-300 hover:text-white border border-[#192c23] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to My clips</span>
+              <span className="max-md:hidden">Back to My clips</span><span className="md:hidden">Back</span>
             </button>
           )}
 
-          <div>
-            <h1 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+          <div className="min-w-0">
+            <h1 className="text-sm font-bold text-white tracking-tight flex items-center gap-2 min-w-0">
               <Film className="w-4 h-4 text-[#8fd0a4]" />
-              <span className="truncate max-w-md">{projectName}</span>
+              <span className="truncate max-w-[48vw] md:max-w-md">{projectName}</span>
             </h1>
             <div className="text-[10px] text-neutral-400 font-mono-num">
               {clips.length} viral shorts extracted and formatted
@@ -214,7 +214,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-md:hidden">
           <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#3f9a5a]/15 text-[#8fd0a4] border border-[#3f9a5a]/30 font-bold">
             READY TO EXPORT
           </span>
@@ -404,7 +404,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
         <div className="shrink-0 h-12 px-6 border-t border-[#111e18] bg-[#09100d] flex items-center">
           <button type="button" onClick={async () => { const r = await window.electronAPI!.openFolder!(clipsFolder, projectId); if (r === 'MISSING') setSheetMsg('The clips of this project were deleted (the folder no longer exists).'); else if (r === 'OTHER') setSheetMsg('This project\'s folder was removed; the same folder name is now used by another project.'); else setSheetMsg(''); }}
             className="px-3 py-1.5 rounded-lg bg-[#111e18] hover:bg-[#192c23] text-neutral-200 text-xs font-bold flex items-center gap-2 border border-[#1d3228] cursor-pointer transition-colors">
-            <Film className="w-3.5 h-3.5 text-[#8fd0a4]" /> Open clips folder
+            <Film className="w-3.5 h-3.5 text-[#8fd0a4]" /> {(window as any).electronAPI?.isMobile ? 'Save clips to gallery' : 'Open clips folder'}
           </button>
           <button type="button" onClick={saveSheet}
             className="ml-2 px-3 py-1.5 rounded-lg bg-[#111e18] hover:bg-[#192c23] text-neutral-200 text-xs font-bold flex items-center gap-2 border border-[#1d3228] cursor-pointer transition-colors">

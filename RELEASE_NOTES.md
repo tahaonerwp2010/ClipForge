@@ -1,7 +1,8 @@
 ## What's new
-- **Auto stock b-roll:** in Video > B-Roll, turn on "Auto stock footage". The AI reads what is said and adds the best matching stock video, together with your own b-roll, using the same share slider. Needs an API key: add free Pexels / Pixabay keys (or paid Shutterstock / Storyblocks) in Settings > Stock footage.
-- **Multi-speaker layout:** an on/off switch in Preview & setup (Full Crop). When two people sit side by side in a wide video, each gets half of the screen, stacked, with natural proportions. Single-person videos are not changed.
-- **Caption sounds:** a soft whoosh when the hook appears and quiet pops on strong words (on by default, switch in Captions).
-- **Progress bar:** an optional bar that fills along the clip (Branding > Watermark).
-- **Clean voice:** optional noise reduction and even loudness (Video).
-- Caption translation: more reliable when the AI answers badly, and Chinese / Japanese / Thai captions are now split into readable pieces.
+- **Auto Hook now has a supervisor:** every clip's hook keeps your size and position as far as possible and only changes what is needed so it stays inside the screen, above (or below) the footage the way you placed it, and with the emoji not touching the text. The Studio / Edit Clip preview now keeps the chosen number of lines and uses the same placement as the render; the size slider maximum also respects the free space next to the footage.
+- **Android app layout:** the app no longer scrolls sideways; headers, the Pro badge and the clips page fit the screen. The graphics-card / processor choice is hidden on the phone, and texts say "phone" and "Save clips to gallery" instead of "computer" and "folder". Heavy speech models are marked "Heavy for a phone".
+- **Auto stock b-roll** (Video > B-Roll) with free Pexels / Pixabay keys (and paid Shutterstock / Storyblocks) in Settings > Stock footage.
+- **Multi-speaker layout** switch (Preview & setup, Full Crop): two people side by side get half of the screen each.
+- **Caption sounds**, optional **progress bar** and **Clean voice** (noise reduction).
+- Edit Clip: caption picker opens on top, hook colours follow the same line / first words in every clip, and Apply shows its own progress window with Pause / Cancel.
+- Hook size maximum fills the screen width. YouTube downloader made more reliable. "What's new" shows only the new version.

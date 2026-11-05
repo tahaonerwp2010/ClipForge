@@ -386,4 +386,4 @@ async function extractFrames(input, start, dur, outDir, fps = 2) {
   return fs.readdirSync(outDir).filter(f => f.endsWith('.jpg')).sort().map(f => path.join(outDir, f));
 }
 const dimsFor = (ratio, quality = 1080) => { const [w, h] = ASPECT[ratio] || ASPECT['9:16']; const s = Math.max(480, quality) / 1080; const ev = n => Math.max(2, Math.round(n * s / 2) * 2); return [ev(w), ev(h)]; };
-module.exports = { dimsFor, detectCuts, sliceAudio, extractFrames, probe, extractAudio, renderClip, thumbnail, ASPECT, filterGraph };
+module.exports = { brollRect, dimsFor, detectCuts, sliceAudio, extractFrames, probe, extractAudio, renderClip, thumbnail, ASPECT, filterGraph };

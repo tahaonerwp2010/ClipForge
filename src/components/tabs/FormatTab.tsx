@@ -186,8 +186,8 @@ export const FormatTab: React.FC<FormatTabProps> = ({
   return (
     <div className="space-y-4 text-neutral-200 text-xs">
       
-      {/* 1. PROCESSING SECTION */}
-      <section className="space-y-2 p-4 rounded-2xl bg-[#0b1611] border border-[#17291f]">
+      {/* 1. PROCESSING SECTION (a phone has no graphics-card choice) */}
+      {!(window as any).electronAPI?.isMobile && <section className="space-y-2 p-4 rounded-2xl bg-[#0b1611] border border-[#17291f]">
         <h3 className="font-bold uppercase tracking-wider text-neutral-400 text-[11px]">
           Processing
         </h3>
@@ -213,7 +213,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
           })()}
         </div>
         <p className="text-[10px] text-neutral-500 leading-relaxed">Processor: everything runs on the CPU. Graphics card: video saving and speech recognition run on the GPU when your computer supports it. Both: the work is shared and whichever is free takes the next piece. If the graphics card cannot do a step, the processor does it automatically.</p>
-      </section>
+      </section>}
 
       {split && onSplitChange && (
         <section className="space-y-3 p-4 rounded-2xl bg-[#0b1611] border border-[#17291f]">

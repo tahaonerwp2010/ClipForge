@@ -56,7 +56,7 @@ function hookColored(lines, at) {
     return c && /^#[0-9a-f]{6}$/i.test(c) ? `{\\1c${bgr(c)}}${t}{\\1c${bgr(base)}}` : t;
   }).join(' ')).join('\\N');
 }
-function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hookText, part = 'all', keywords, behindBox }) {
+function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hookText, part = 'all', keywords, behindBox, rect = null }) {
   const preset = PRESETS[captions.style] || PRESETS['capcut-emoji'];
   const k = W / 1080;
   const size = Math.round(captions.fontSize * 3.4 * k * (preset.sizeMul || 1));
@@ -82,15 +82,16 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
   const tShow = (at.showSeconds > 0) ? Math.min(dur, at.showSeconds) : dur;
   if (at.enabled && title && part !== 'behind') {
     const ai = at.animIn || 'none', ao = at.animOut || 'none', ms = Math.round(tShow * 1000);
-    const px = Math.round((at.positionX ?? 50) / 100 * W), py = Math.round((at.positionY ?? 10) / 100 * H);
+    const hk = HK.hookLines(title, '', at.lines).split('\n');
+    const pl = HK.placeHook({ lines: hk, W, H, userSize: at.size, px: (at.positionX ?? 50) / 100 * W, py: (at.positionY ?? 10) / 100 * H, measure: hookMeasure(titleFont), rect, emoji: at.showEmoji !== false && EM.splitTitle(String(title)).emojis.length > 0 });
+    const px = pl.px, py = pl.py;
     let place = `{\\pos(${px},${py})}`, fx = '';
     if (ai === 'slide-up') place = `{\\move(${px},${py + Math.round(70 * k)},${px},${py},0,260)}`;
     if (ai === 'pop') fx += '\\fscx60\\fscy60\\t(0,200,\\fscx110\\fscy110)\\t(200,330,\\fscx100\\fscy100)';
     const fin = (ai === 'fade' || ai === 'slide-up') ? 320 : 0, fout = ao === 'fade' ? 350 : 0;
     if (fin || fout) fx += `\\fad(${fin},${fout})`;
     if (ao === 'shrink') fx += `\\t(${Math.max(0, ms - 300)},${ms},\\fscx10\\fscy10\\alpha&HFF&)`;
-    const hk = HK.hookLines(title, '', at.lines).split('\n');
-    const hs = HK.hookFontPx(hk.join('\n'), W, at.size, hookMeasure(titleFont));
+    const hs = pl.fs;
     L.push(`Dialogue: 2,${ts(0)},${ts(tShow)},Title,,0,0,0,,${place}{\\fs${hs}}${fx ? '{' + fx + '}' : ''}${hookColored(hk, at)}`);
   }
   const pb = branding.barOverlay;                                   // a thin bar that fills along the clip (watch-time booster)
@@ -148,18 +149,17 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
   return L.join('\n');
 }
 // Where the title's emoji go (Twemoji PNG overlays, centred just above the title text)
-function titleEmojis({ title, branding = {}, W, H, dur = 9999 }) {
+function titleEmojis({ title, branding = {}, W, H, dur = 9999, rect = null }) {
   const at = branding.autoTitle || {};
   if (!at.enabled || !title || at.showEmoji === false) return [];
-  const hk = HK.hookTwoLines(title), { emojis } = EM.splitTitle(String(title));
+  const { emojis } = EM.splitTitle(String(title));
   const list = emojis.map(EM.pngForChar).filter(Boolean).slice(0, 3);
   if (!list.length) return [];
-  const k = W / 1080, size = HK.hookFontPx(hk, W, undefined, hookMeasure(fam(at.fontFamily || 'Montserrat Black')));
-  const em = Math.round(size * 1.1), gap = Math.round(em * 0.1);
+  const k = W / 1080, hl = HK.hookLines(plain(String(title)), '', at.lines).split('\n');
+  const pl = HK.placeHook({ lines: hl, W, H, userSize: at.size, px: (at.positionX ?? 50) / 100 * W, py: (at.positionY ?? 10) / 100 * H, measure: hookMeasure(fam(at.fontFamily || 'Montserrat Black')), rect, emoji: true });
+  const size = pl.fs, em = Math.round(size * 1.1), gap = Math.round(em * 0.1);
   const total = list.length * em + (list.length - 1) * gap;
-  const cx = (at.positionX ?? 50) / 100 * W, cy = (at.positionY ?? 10) / 100 * H;
-  const above = Math.round(cy - size * 1.2 - em - 6 * k);
-  const y = above >= 0 ? above : Math.min(H - em, Math.round(cy + size * 1.2 + 6 * k));
+  const cx = pl.px, y = Math.max(0, pl.top + Math.round((pl.extra - em) / 2));
   const endT = at.showSeconds > 0 ? Math.min(dur, at.showSeconds) : dur;
   return list.map((png, i) => ({ png, size: em, start: 0, end: endT, x: Math.max(0, Math.min(W - em, Math.round(cx - total / 2 + i * (em + gap)))), y }));
 }

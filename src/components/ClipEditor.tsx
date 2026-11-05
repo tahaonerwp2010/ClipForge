@@ -40,6 +40,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [err, setErr] = useState('');
   const [url, setUrl] = useState('');
+  const [footage, setFootage] = useState<{ y: number; h: number } | null>(null);
   const [captions, setCaptions] = useState<CaptionConfig>(fallback.captions);
   const [branding, setBranding] = useState<BrandingConfig>(fallback.branding);
   const [fx, setFxState] = useState<FxState>({ ...DEFAULT_FX, ...((fallback.grading as any)?.fx || {}) });
@@ -81,7 +82,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
         setBranding({ ...b, autoTitle: { ...fallback.branding.autoTitle, ...(b.autoTitle || {}), enabled: true, title: h, wordColors: st.clips?.[index]?.hookColors || undefined } });
         const r = await api.editPrepare(outDir, index);
         if (!r?.ok) throw new Error(r?.error || 'Could not prepare the preview.');
-        setUrl(r.url); setState('ready');
+        setUrl(r.url); setFootage(r.footage || null); setState('ready');
         snapPending.current = true;
 
       } catch (e: any) { setErr(String(e.message || e)); setState('error'); }
@@ -162,7 +163,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
 
   const ls = hookLines(hookText || 'THE VIRAL TRUTH', hook.lines || 2);
   const maxLen = Math.max(4, ...ls.map((l: string) => l.length));
-  const fitMax = Math.max(40, Math.min(400, hookFitMax(ls, hook.fontFamily)));
+  const fitMax = Math.max(40, Math.min(400, hookFitMax(ls, hook.fontFamily, (hook.positionY ?? 10) / 100 * 1920, footage, hook.showEmoji !== false && /\p{Extended_Pictographic}/u.test(hookText || ''))));
   const Chip = (p: { on: boolean; onClick: () => void; children: any }) => (
     <button type="button" onClick={p.onClick} className={`px-3 py-1 rounded-full text-[11px] cursor-pointer ${p.on ? 'bg-[#12201a] border border-[#3f9a5a] text-[#8fd0a4] font-bold' : 'bg-[#0f1c16] border border-[#1d3228] text-neutral-400 hover:text-white'}`}>{p.children}</button>
   );
@@ -204,7 +205,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
           <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
             <div className="w-full md:w-[380px] shrink-0 flex items-center justify-center p-2 md:p-4 border-b md:border-b-0 md:border-r border-[#13211a]">
               <PhonePreview
-                videoUrl={url} canvasRatio={'9:16' as any} framing={base.current.framing} captions={captions} grading={base.current.grading} branding={branding}
+                videoUrl={url} canvasRatio={'9:16' as any} framing={base.current.framing} footageRect={footage} captions={captions} grading={base.current.grading} branding={branding}
                 words={clip.words || []} currentTime={t} duration={dur} isPlaying={playing} onTimeUpdate={setT} onDurationChange={setDur} onTogglePlay={() => setPlaying(p => !p)}
                 safeZone={safe} onSafeZoneChange={setSafe} onPanChange={() => {}} onFramingChange={() => {}} onCaptionsChange={setCaptions} onBrandingChange={setBranding}
                 clipTitle={hookText} split={undefined as any} onSplitChange={() => {}}

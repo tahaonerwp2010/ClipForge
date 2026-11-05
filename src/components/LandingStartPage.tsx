@@ -293,7 +293,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
             Turn long videos into<br /><span className="text-[#bef264]">short, engaging clips</span>
           </h1>
           <p className="mt-3 text-xs leading-relaxed text-neutral-300/90">
-            Transcribed, cut, reframed and captioned on this computer. Nothing is uploaded unless you turn Cloud Boost on.
+            Transcribed, cut, reframed and captioned on this {(window as any).electronAPI?.isMobile ? 'phone' : 'computer'}. Nothing is uploaded unless you turn Cloud Boost on.
           </p>
         </div>
       </section>

@@ -66,7 +66,7 @@ export const HomeAside: React.FC<{ projects: ProjectItem[]; onNew: () => void; o
       <section className="rounded-2xl bg-[#0b1611] border border-[#17291f] p-3">
         <h3 className="px-2 pt-1 pb-2 text-sm font-bold text-white">Quick actions</h3>
         <Row Icon={Plus} title="New project" sub="Start with a video or link" onClick={onNew} />
-        <Row Icon={FolderOpen} title="Open clips folder" sub="See your finished clips" onClick={openClips} />
+        <Row Icon={FolderOpen} title={(window as any).electronAPI?.isMobile ? 'Save clips to gallery' : 'Open clips folder'} sub={(window as any).electronAPI?.isMobile ? 'Copy finished clips to your phone gallery' : 'See your finished clips'} onClick={openClips} />
         <Row Icon={Settings} title="Settings" sub="Models, folders, AI Boost" onClick={onSettings} />
         <UpdateChecker>{(open, checking) => <Row Icon={ArrowUpCircle} title="Check for updates" sub="Look for a newer version" onClick={open} busy={checking} />}</UpdateChecker>
         {msg && <p className="px-3 pb-2 text-[11px] text-amber-300">{msg}</p>}

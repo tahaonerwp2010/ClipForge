@@ -53,7 +53,8 @@ async function ctxFor(st, i, ov = {}, work, extra = {}) {
   const k = Wd / 1080, capPx = (captions.fontSize || 24) * 3.4 * k, eSize = Math.round(capPx * 1.5);
   const emojiBox = { size: eSize, x: Math.round((captions.positionX ?? 50) / 100 * Wd - eSize / 2), y: Math.max(0, Math.round((captions.positionY ?? 72) / 100 * Ht - capPx * 0.65 - eSize)) };
   const useEmoji = captions.enabled && captions.showEmoji && captions.style === 'capcut-emoji';
-  const assArgs = { words: cw, clipStart: start, clipEnd: end, W: Wd, H: Ht, captions, branding, title: hookText, hookText };
+  const hkRect = st.split ? null : R.brollRect(st.framing, Wd, Ht, (shorts ? st.infos[i] : st.info).width / (shorts ? st.infos[i] : st.info).height);
+  const assArgs = { rect: hkRect, words: cw, clipStart: start, clipEnd: end, W: Wd, H: Ht, captions, branding, title: hookText, hookText };
   let behind = null;
   if (extra.outDir && extra.deps && (extra.deps.segment || extra.deps.detectFaces) && BH.wants(captions)) {
     const info0 = shorts ? st.infos[i] : st.info;
@@ -63,7 +64,7 @@ async function ctxFor(st, i, ov = {}, work, extra = {}) {
   assArgs.behindBox = behind && behind.box; assArgs.keywords = ((shorts ? st.clips : st.clips) || [])[i] && ((st.clips || [])[i].keywords);
   const ass = ASS.build({ ...assArgs, part: behind ? 'front' : 'all' }), assBehind = behind ? ASS.build({ ...assArgs, part: 'behind' }) : '';
   const emojis = [...(useEmoji ? EMOJI.plan(ow, start, end, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
-    ...ASS.titleEmojis({ title: hookText, branding, W: Wd, H: Ht, dur: dur })];
+    ...ASS.titleEmojis({ title: hookText, branding, W: Wd, H: Ht, dur: dur, rect: hkRect })];
   let watermark = null;
   if (branding.showWatermark && branding.watermarkType === 'image' && branding.watermarkImage && branding.watermarkImage.path && fs.existsSync(branding.watermarkImage.path)) {
     watermark = { file: branding.watermarkImage.path, sizePct: branding.watermarkImageSize ?? 20, opacity: branding.watermarkOpacity ?? 100, x: branding.watermarkPositionX ?? 20, y: branding.watermarkPositionY ?? 92 };
@@ -78,10 +79,19 @@ async function ctxFor(st, i, ov = {}, work, extra = {}) {
 }
 
 // A clean copy of the clip (framing, face tracking and grading applied, but NO captions / hook / emoji) at a small size. Used for the live preview.
+// where the footage sits inside the clip, as fractions of the height (the hook must stay above / below it)
+function footageOf(st, i, dims) {
+  try {
+    if (st.split) return null;
+    const inf = st.kind === 'shorts' ? (st.infos || [])[i] : st.info; if (!inf || !inf.width) return null;
+    const [Wd, H] = dims; const r = R.brollRect(st.framing, Wd, H, inf.width / inf.height);
+    return r.h >= H * 0.97 ? null : { y: r.y / H, h: r.h / H };
+  } catch { return null; }
+}
 async function prepare(outDir, i) {
   const st = loadState(outDir); if (!st) throw new Error('This project was made with an older version, so its clips cannot be edited. Generate it again to enable editing.');
   const f = path.join(editDir(outDir), `base_${nn(i)}.mp4`);
-  if (fs.existsSync(f) && fs.statSync(f).size > 1000) return { base: f, dims: R.dimsFor(st.ratio || '9:16', 540) };
+  if (fs.existsSync(f) && fs.statSync(f).size > 1000) return { base: f, dims: R.dimsFor(st.ratio || '9:16', 540), footage: footageOf(st, i, R.dimsFor(st.ratio || '9:16', 540)) };
   const x = await ctxFor(st, i, { captions: { enabled: false } }, null);
   const tmp = f + '.part.mp4';
   const w = path.join(os.tmpdir(), `cf_editprev_${process.pid}_${i}`);
@@ -89,7 +99,7 @@ async function prepare(outDir, i) {
     workDir: w, track: (st.tracks || [])[i] || null, emojis: [], emojiBox: x.emojiBox, srcAspect: x.info.width / x.info.height, hasAudio: x.info.hasAudio !== false, fontFamilies: [], split: st.split || undefined, fps: Math.round(x.info.fps || 30) || 30 });
   fs.renameSync(tmp, f);
   try { fs.rmSync(w, { recursive: true, force: true }); } catch {}
-  return { base: f, dims: R.dimsFor(st.ratio || '9:16', 540) };
+  return { base: f, dims: R.dimsFor(st.ratio || '9:16', 540), footage: footageOf(st, i, R.dimsFor(st.ratio || '9:16', 540)) };
 }
 
 // Re-render clip i with the user's caption / hook changes and replace the old file. The new settings are remembered.

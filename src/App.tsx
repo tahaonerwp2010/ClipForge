@@ -25,6 +25,7 @@ import { StatusBar } from './components/StatusBar';
 import { LandingStartPage } from './components/LandingStartPage';
 import { StudioHeader } from './components/StudioHeader';
 import { PhonePreview } from './components/PhonePreview';
+import { footageRectFor } from './utils/captionHelpers';
 import { FormatTab } from './components/tabs/FormatTab';
 import { CaptionsTab } from './components/tabs/CaptionsTab';
 import { VideoGradeTab } from './components/tabs/VideoGradeTab';
@@ -346,6 +347,7 @@ export default function App() {
     return models.some(m => (m as any).kind !== 'aligner' && (m.status === 'downloaded' || m.status === 'active'));
   };
   // Pro features this project uses right now (used to stop a render when the trial is over and there is no Pro)
+  const studioFootage = selectedVideo && !selectedVideo.split && !selectedVideo.shorts ? footageRectFor(framing, /9:16|vertical/.test(selectedVideo.originalAspect || '') ? 9 / 16 : 16 / 9) : null;
   const proUsage = (q: number = 0) => ({ autoReframe: !!framing.autoReframing, ai: (() => { try { const c = AiService.getConfig(); return !!c.enabled && Object.values(c.providers).some((p: any) => (p.keys || []).some((k: any) => k.status !== 'invalid')); } catch { return false; } })(), highRes: q > 1080, dynamicCaptions: isDynStyle(captions.style), split: !!selectedVideo?.split, customFormat: framing.mode === 'custom-scale', autoHook: !!branding.autoTitle?.enabled, fx: !!(grading as any).fx?.enabled });
   const requestGenerate = async () => {
     if (!(await hasModel())) { setModelDialogOpen(true); return; }
@@ -437,8 +439,8 @@ export default function App() {
         />
         {PRO_ENFORCED && TRIAL_ENABLED && lic.loaded && !lic.pro && !lic.ownerPw && (
           <button type="button" onClick={() => LicenseService.openBuy()} title="Get Pro"
-            className={`fixed top-1.5 right-5 z-[70] flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border text-[10px] font-bold cursor-pointer ${lic.trial ? 'bg-[#bef264]/15 hover:bg-[#bef264]/25 border-[#bef264]/50 text-[#bef264]' : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-amber-200'}`}>
-            <Crown className="w-3 h-3" />{lic.trial ? `${lic.trialDaysLeft} day${lic.trialDaysLeft === 1 ? '' : 's'} left` : 'Trial ended · Get Pro'}
+            className={`fixed top-1.5 right-5 max-md:right-2 max-md:top-2 z-[70] flex items-center gap-1.5 px-2.5 py-0.5 max-md:p-1.5 rounded-md border text-[10px] font-bold cursor-pointer ${lic.trial ? 'bg-[#bef264]/15 hover:bg-[#bef264]/25 border-[#bef264]/50 text-[#bef264]' : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-amber-200'}`}>
+            <Crown className="w-3 h-3" /><span className="max-md:hidden">{lic.trial ? `${lic.trialDaysLeft} day${lic.trialDaysLeft === 1 ? '' : 's'} left` : 'Trial ended · Get Pro'}</span>
           </button>
         )}
         {lic.ownerPw && (
@@ -656,6 +658,7 @@ export default function App() {
                       branding={branding}
                       onBrandingChange={setBranding}
                       clipTitle={selectedVideo.title}
+                      footageRect={studioFootage}
                     />
                   )}
                 </div>
@@ -683,6 +686,7 @@ export default function App() {
                     onCaptionsChange={setCaptions}
                     onBrandingChange={setBranding}
                     clipTitle={selectedVideo.title}
+                    footageRect={studioFootage}
                     split={split}
                     onSplitChange={setSplit}
                   />
@@ -701,7 +705,7 @@ export default function App() {
                 </button>
 
                 <div className="text-xs text-neutral-400 font-mono">
-                  <span>on this computer, about </span>
+                  <span>{(window as any).electronAPI?.isMobile ? 'on this phone, about ' : 'on this computer, about '}</span>
                   <span className="text-white font-bold">82–188 min </span>
                   <span>estimate</span>
                 </div>

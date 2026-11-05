@@ -19,7 +19,7 @@ import { DynCaption } from './DynCaption';
 import { ClassicCaption, getClassic } from './ClassicCaption';
 import { getDyn } from '../utils/dynCaptions';
 import { SECONDARY_FOOTAGE } from '../data/sampleVideos';
-import { getContextualEmoji, CAPCUT_DYNAMIC_COLORS, hookLines, hookFontPx, hookWordTokens } from '../utils/captionHelpers';
+import { getContextualEmoji, CAPCUT_DYNAMIC_COLORS, hookLines, placeHook, hookWordTokens, type FootageBand } from '../utils/captionHelpers';
 
 interface PhonePreviewProps {
   videoUrl: string;
@@ -44,6 +44,8 @@ interface PhonePreviewProps {
   clipTitle?: string;
   split?: SplitConfig | null;
   onSplitChange?: (s: SplitConfig) => void;
+  /** where the footage really is (fractions of the screen height); measured from the video itself when not given */
+  footageRect?: FootageBand;
 }
 
 export const PhonePreview: React.FC<PhonePreviewProps> = ({
@@ -68,7 +70,8 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
   onBrandingChange,
   clipTitle = 'AI CODING REVOLUTION 2026',
   split,
-  onSplitChange
+  onSplitChange,
+  footageRect,
 }) => {
   const primaryVideoRef = useRef<HTMLVideoElement>(null);
   const secondaryVideoRef = useRef<HTMLVideoElement>(null);
@@ -522,6 +525,24 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
 
   // Scale font size proportionally for the small phone mockup
   // Same proportions as the rendered clip: ASS font size = line height (~1.22 x the CSS em), 1080 px wide output.
+  // the hook is measured with the real glyph widths, so measure again once the fonts have finished loading
+  const [, setFontTick] = useState(0);
+  useEffect(() => {
+    const f: any = (document as any).fonts; if (!f) return;
+    const bump = () => setFontTick(n => n + 1);
+    f.ready?.then(bump); f.addEventListener?.('loadingdone', bump);
+    return () => f.removeEventListener?.('loadingdone', bump);
+  }, []);
+  const [measuredBand, setMeasuredBand] = useState<FootageBand>(null);
+  useEffect(() => {
+    if (footageRect !== undefined || split || framing.mode === 'fill-crop') { setMeasuredBand(null); return; }
+    const v = primaryVideoRef.current, scr = phoneScreenRef.current;
+    if (!v || !scr) return;
+    const upd = () => { const a = v.getBoundingClientRect(), b = scr.getBoundingClientRect(); if (b.height > 20 && a.height > 4) setMeasuredBand({ y: (a.top - b.top) / b.height, h: a.height / b.height }); };
+    upd(); const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(upd) : null; ro?.observe(v); ro?.observe(scr);
+    v.addEventListener('loadedmetadata', upd); const t = window.setTimeout(upd, 400);
+    return () => { ro?.disconnect(); v.removeEventListener('loadedmetadata', upd); window.clearTimeout(t); };
+  }, [footageRect, split, framing.mode, framing.offsetY, framing.offsetX, (framing as any).customScale, videoUrl]);
   const [scrW, setScrW] = useState(160);
   useEffect(() => {
     const el = phoneScreenRef.current;
@@ -804,12 +825,17 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
           {/* =====================================================================
               1. AI AUTO TITLE (DRAGGABLE & RESIZABLE DIRECTLY ON SCREEN)
           ===================================================================== */}
-          {branding.autoTitle?.enabled && (
+          {branding.autoTitle?.enabled && (() => {
+            const hkText = branding.autoTitle.title || clipTitle || 'THE VIRAL TRUTH';
+            const hkLines = hookLines(hkText, branding.autoTitle.lines || 2);
+            const pl = placeHook({ lines: hkLines, userSize: branding.autoTitle.size, px: (branding.autoTitle.positionX ?? 50) / 100 * 1080, py: (branding.autoTitle.positionY ?? 10) / 100 * 1920, family: branding.autoTitle.fontFamily, footage: footageRect !== undefined ? footageRect : measuredBand, emoji: branding.autoTitle.showEmoji !== false && /\p{Extended_Pictographic}/u.test(hkText) });
+            const kk = scrW / 1080;
+            return (
             <div
-              data-snap="title" className="absolute z-35 transition-transform select-none max-w-[92%] w-max"
+              data-snap="title" className="absolute z-35 select-none w-max"
               style={{
-                left: `${branding.autoTitle.positionX ?? 50}%`,
-                top: `${branding.autoTitle.positionY ?? 10}%`,
+                left: `${(pl.px / 1080 * 100).toFixed(3)}%`,
+                top: `${(pl.py / 1920 * 100).toFixed(3)}%`,
                 transform: 'translate(-50%, -50%)'
               }}
               onMouseEnter={() => setIsHoveringAutoTitle(true)}
@@ -849,23 +875,24 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                   style={{
                     animation: (() => { const i = branding.autoTitle.animIn || 'none', o = branding.autoTitle.animOut || 'none'; const parts = []; if (i !== 'none') parts.push(`cft-in-${i} 450ms ease-out both`); if (o !== 'none') parts.push(`cft-out-${o} 450ms ease-in 1.6s both`); return parts.join(', ') || undefined; })(),
                     color: branding.autoTitle.color || '#ffffff',
-                    fontSize: `${Math.round(hookFontPx(hookLines(branding.autoTitle.title || clipTitle || 'THE VIRAL TRUTH', branding.autoTitle.lines || 2), scrW, branding.autoTitle.size, branding.autoTitle.fontFamily) / fontCell(branding.autoTitle.fontFamily || 'Montserrat Black') * 10) / 10}px`,
+                    fontSize: `${Math.round(pl.fs / pl.cell * kk * 100) / 100}px`, lineHeight: `${Math.round(pl.fs * kk * 100) / 100}px`,
                     fontFamily: getFontFamily(branding.autoTitle.fontFamily),
-                    width: 'max-content', maxWidth: `${Math.round(scrW * 0.86)}px`, whiteSpace: 'normal', overflowWrap: 'break-word',
+                    width: 'max-content', whiteSpace: 'nowrap',
                     textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.7)'
                   }}
-                  className="font-black uppercase tracking-tight text-center leading-tight"
+                  className="font-black uppercase tracking-tight text-center"
                 >
                   {(() => {
                     const wc = (branding.autoTitle as any).wordColors as (string | null)[] | undefined; let wi = 0;
-                    return hookLines(branding.autoTitle.title || clipTitle || 'THE VIRAL TRUTH', branding.autoTitle.lines || 2).map((l, i) => (
+                    return hkLines.map((l, i) => (
                       <div key={i}>{l.split(' ').map((tok, j) => { const counted = hookWordTokens(tok).length > 0; const c = counted ? wc?.[wi] : null; if (counted) wi++; return <React.Fragment key={j}>{j > 0 ? ' ' : ''}{c ? <span style={{ color: c }}>{tok}</span> : tok}</React.Fragment>; })}</div>
                     ));
                   })()}
                 </div>
               </div>
             </div>
-          )}
+          );
+          })()}
 
           {/* =====================================================================
               2. TOP HOOK BANNER (DRAGGABLE DIRECTLY ON SCREEN)

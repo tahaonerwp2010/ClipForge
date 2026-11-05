@@ -375,11 +375,12 @@ async function runInner(job, emit, deps = {}) {
     if (done && fs.existsSync(out)) { slots[i] = done; setPct(8, ++doneN / clips.length); return; }
     log('FFmpeg', `Rendering clip ${i + 1}/${clips.length} (${(c.end - c.start).toFixed(0)}s)…`);
     const bh = (BH.wants(job.captions) && (deps.segment || deps.detectFaces)) ? await withMaskLock(() => BH.masks({ R, segment: deps.segment, detectFaces: deps.detectFaces, cacheDir: path.join(outDir, '.edit', `mask_${n}`), workDir: path.join(work, `c${n}`), input: job.filePath, start: c.start, end: c.end, ratio, framing: job.framing, grading: job.grading, track: tracks[i], srcAspect: info.width / info.height, split, log: m => log('Captions', m) })) : null;
-    const assArgs = { words: capWords, clipStart: c.start, clipEnd: c.end, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText, keywords: c.keywords, behindBox: bh && bh.box };
+    const hkRect = job.split ? null : R.brollRect(job.framing, Wd, Ht, info.width / info.height);
+    const assArgs = { rect: hkRect, words: capWords, clipStart: c.start, clipEnd: c.end, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText, keywords: c.keywords, behindBox: bh && bh.box };
     const ass = ASS.build({ ...assArgs, part: bh ? 'front' : 'all' }), assBehind = bh ? ASS.build({ ...assArgs, part: 'behind' }) : '';
     if (BH.wants(job.captions)) { const nb = bh ? (assBehind.match(/^Dialogue:/gm) || []).length : 0; log('Captions', bh ? (nb ? `Behind-the-person: ${nb} big word moment${nb === 1 ? '' : 's'}` : 'Behind-the-person: no word in this clip was special enough for the big style') : 'Behind-the-person cut-out was not available for this clip', nb ? 'info' : 'warn'); }
     const emojis = [...(useEmoji ? EMOJI.plan(capWords === words ? words : words, c.start, c.end, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
-      ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur: c.end - c.start })];
+      ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur: c.end - c.start, rect: hkRect })];
     const fx = await planFx(job, capWords, c.start, c.end, i + 1, log);
     const broll = await planBroll(job, capWords, c.start, c.end, i + 1, log, path.join(work, 'broll'), outDir, i);
     const fxC = await cutFx(fx, R, job.filePath, c.start, c.end - c.start, broll, info.hasAudio !== false, outDir, i, log);
@@ -619,11 +620,12 @@ async function runShortsInner(job, emit, deps = {}) {
     log('FFmpeg', `Rendering clip ${i + 1}/${N} (${dur.toFixed(0)}s)…`);
     const cw = capWords[i];
     const bh = (BH.wants(job.captions) && (deps.segment || deps.detectFaces)) ? await withMaskLock(() => BH.masks({ R, segment: deps.segment, detectFaces: deps.detectFaces, cacheDir: path.join(outDir, '.edit', `mask_${n}`), workDir: path.join(work, `c${n}`), input: files[i].path, start: 0, end: dur, ratio, framing: job.framing, grading: job.grading, track: tracks[i], srcAspect: infos[i].width / infos[i].height, log: m => log('Captions', m) })) : null;
-    const assArgs = { words: cw, clipStart: 0, clipEnd: dur, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText, keywords: c.keywords, behindBox: bh && bh.box };
+    const hkRect = job.split ? null : R.brollRect(job.framing, Wd, Ht, infos[i].width / infos[i].height);
+    const assArgs = { rect: hkRect, words: cw, clipStart: 0, clipEnd: dur, W: Wd, H: Ht, captions: job.captions, branding: job.branding, title: c.hookText || c.title, hookText: c.hookText, keywords: c.keywords, behindBox: bh && bh.box };
     const ass = ASS.build({ ...assArgs, part: bh ? 'front' : 'all' }), assBehind = bh ? ASS.build({ ...assArgs, part: 'behind' }) : '';
     if (BH.wants(job.captions)) { const nb = bh ? (assBehind.match(/^Dialogue:/gm) || []).length : 0; log('Captions', bh ? (nb ? `Behind-the-person: ${nb} big word moment${nb === 1 ? '' : 's'}` : 'Behind-the-person: no word in this clip was special enough for the big style') : 'Behind-the-person cut-out was not available for this clip', nb ? 'info' : 'warn'); }
     const emojis = [...(useEmoji ? EMOJI.plan(words[i], 0, dur, emojiBox).map(e => ({ ...e, x: Math.max(0, Math.min(Wd - emojiBox.size, e.x)) })) : []),
-      ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur })];
+      ...ASS.titleEmojis({ title: c.hookText || c.title, branding: job.branding, W: Wd, H: Ht, dur, rect: hkRect })];
     const fx = await planFx(job, cw, 0, dur, i + 1, log);
     const broll = await planBroll(job, cw, 0, dur, i + 1, log, path.join(work, 'broll'), outDir, i);
     const fxC = await cutFx(fx, R, files[i].path, 0, dur, broll, infos[i].hasAudio !== false, outDir, i, log);

@@ -46,4 +46,29 @@ function fitSize(lines, W, measure) {
   const room = W * 0.985 - 2 * Math.round(5 * W / 1080);                 // nearly the whole width, minus the outline
   return Math.floor(room * (measure.cell || 1.22) / em);
 }
-module.exports = { fitSize, hookLines, hookTwoLines, hookFontPx };
+// The hook "supervisor": the user's size / position were set on ONE example hook, but every clip has its own text. This keeps each clip's hook
+// close to the user's setting and only changes what is needed so that it (1) fits the screen width, (2) stays in the band where the user put it
+// (above or below the footage, or on it) without touching the footage, (3) keeps room for the emoji row. Used by the video render and by the previews.
+// lines: hook lines as shown; measure: {em, cell} of the hook font; rect: where the footage is {x,y,w,h} in px, or null (full-screen footage).
+function placeHook({ lines, W, H, userSize, px, py, measure, rect, emoji }) {
+  const k = W / 1080, up = lines.map(l => String(l).toUpperCase()), n = Math.max(1, lines.length);
+  const outline = Math.round(5 * k), maxLen = Math.max(4, ...lines.map(l => l.length));
+  const em = typeof measure === 'function' ? Math.max(1, ...up.map(l => measure(l))) : 0, cell = (measure && measure.cell) || 1.22;
+  const sideM = W * 0.02;
+  const fsW = em ? Math.floor((W - 2 * sideM - 2 * outline) * cell / em) : Math.floor(W * 0.9 / (maxLen * 0.62));
+  let size = userSize > 0 ? userSize * k : Math.min(124 * k, W * 0.88 / (maxLen * 0.64));
+  size = Math.min(size, fsW);
+  const safeTop = Math.round(H * 0.04), safeBot = Math.round(H * 0.94), gap = Math.round(H * 0.012);
+  let lo = safeTop, hi = safeBot;
+  if (rect && rect.h < H * 0.97) {
+    if (py <= rect.y) hi = Math.max(lo + H * 0.06, rect.y - gap);                       // the user put the hook above the footage: it stays above it
+    else if (py >= rect.y + rect.h) lo = Math.min(hi - H * 0.06, rect.y + rect.h + gap); // ... or below it
+  }
+  const exF = emoji ? 1.2 : 0;                                                      // emoji row above the text, in lines of text height
+  size = Math.max(20 * k, Math.min(size, (hi - lo - 2 * outline) / (n + exF)));
+  const extra = exF * size, totalH = n * size + 2 * outline + extra;
+  const top = Math.min(hi - totalH, Math.max(lo, py - n * size / 2 - outline - extra));
+  const half = em ? em * size / cell / 2 + outline : W * 0.4;
+  return { fs: Math.round(size), px: Math.round(Math.min(W - sideM - half, Math.max(sideM + half, px))), py: Math.round(top + extra + outline + n * size / 2), top: Math.round(top), extra: Math.round(extra) };
+}
+module.exports = { placeHook, fitSize, hookLines, hookTwoLines, hookFontPx };

@@ -13,7 +13,7 @@ function build({ words = [], clipStart = 0, clipEnd = 0, captions = {}, branding
     const ws = words.filter(w => w.start >= clipStart + 0.6 && w.start < clipEnd - 0.8);
     let last = -9, n = 0; const max = Math.max(1, Math.floor(dur / 2.4));
     for (const w of ws) {
-      const txt = String(w.word || '').replace(/[^\p{L}\p{N}]/gu, '');
+      const txt = String(w.word || '').replace(/[^A-Za-z0-9\u00C0-\uFFFF]/g, '')   // no \\p{L}: the phone's Node build has no ICU;
       const strong = txt.length >= 7 || /[!?]$/.test(String(w.word || '')) || /^\d/.test(txt);   // longer, emphasised or numeric words
       const t = w.start - clipStart;
       if (strong && t - last >= 2.2 && n < max && !(out.length && Math.abs(out[0].t - t) < 1)) { out.push({ file: pop.path, t: +t.toFixed(2), db: -17 + (pop.gainDb || 0) * 0.3, dur: Math.min(pop.dur || 0.5, 0.6), name: pop.name }); last = t; n++; }

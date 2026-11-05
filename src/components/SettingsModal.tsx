@@ -308,7 +308,7 @@ const ModelsTab: React.FC = () => {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-neutral-400">Pick the speech model used to transcribe your videos. Small is the best balance for most computers. Stars show how well each model understands each language (approximate). For the most exact caption timing, also download Caption sync.</p>
+      <p className="text-xs text-neutral-400">Pick the speech model used to transcribe your videos. Small is the best balance for most {IS_MOBILE ? 'phones' : 'computers'}. Stars show how well each model understands each language (approximate). {IS_MOBILE ? '' : 'For the most exact caption timing, also download Caption sync.'}</p>
       {error && <div className="text-xs rounded-lg px-3 py-2 border bg-red-500/10 border-red-500/30 text-red-200">{error}</div>}
       {[...models.filter(m => m.kind !== 'aligner'), ...(IS_MOBILE ? [] : models.filter(m => m.kind === 'aligner'))].map(m => {
         const isAl = m.kind === 'aligner';
@@ -322,6 +322,7 @@ const ModelsTab: React.FC = () => {
                   <h3 className="text-sm font-bold text-white">{m.name}</h3>
                   <span className="text-[11px] font-mono text-neutral-400">{have && sizes[m.id] ? fmtMB(sizes[m.id]) : m.diskSize}</span>
                   {m.status === 'active' && <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#bef264] text-black">In use</span>}
+                  {IS_MOBILE && /medium|large/i.test(m.name) && <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">Heavy for a phone</span>}
                   {m.recommended && !have && <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#172820] text-[#8fd0a4] border border-[#263b31]">Recommended</span>}
                 </div>
                 <p className="text-[11px] text-neutral-400 mt-0.5 max-w-xl">{m.werScore} · {m.ramRequirement}</p>
