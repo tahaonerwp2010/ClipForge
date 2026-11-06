@@ -178,6 +178,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
   const [spFrame, setSpFrame] = useState('');
   const [spRect, setSpRect] = useState<Rect01 | null>(null);
   const [prepBusy, setPrepBusy] = useState(false);
+  const [prepErr, setPrepErr] = useState('');
   const [spDetect, setSpDetect] = useState<'idle' | 'detecting' | 'found' | 'notfound' | 'error'>('idle');
   const [spMsg, setSpMsg] = useState('');
   const [spEditor, setSpEditor] = useState(false);
@@ -253,6 +254,8 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
     let meta = await readVideoMeta(objectUrl);
     if ((!meta.w || meta.blank) && realPath) { objectUrl = await playableUrl(realPath, objectUrl, true); meta = await readVideoMeta(objectUrl); }   // the window could not even open it: always use the preview copy
     setPrepBusy(false);
+    setPrepErr((window as any).__previewErr ? `Preview copy could not be made: ${(window as any).__previewErr}` : (meta.blank ? 'This video opens but its picture cannot be shown here (preview stays black). The clips are still cut from your original file.' : ''));
+    setPrepErr((window as any).__previewErr ? `Preview copy could not be made: ${(window as any).__previewErr}` : (meta.blank ? 'This video opens but its picture cannot be shown here (preview stays black). The clips are still cut from your original file.' : ''));
     onSelectVideo({
       id: `local-${Date.now()}`,
       title: file.name.replace(/\.[^/.]+$/, ''),
@@ -272,6 +275,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
 
   return (
     <div className="flex flex-col items-stretch w-full select-none text-neutral-200">
+      {prepErr && !prepBusy && <div className="mb-3 px-3 py-2 rounded-lg bg-[#2a1616] border border-[#5a2a2a] text-[12px] text-red-300 break-words">{prepErr}</div>}
       {prepBusy && <div className="mb-3 px-3 py-2 rounded-lg bg-[#16271f] border border-[#2a4a39] text-[12px] text-[#bef264]">Preparing the preview for this video format… this can take a moment for long videos.</div>}
       <input 
         ref={fileInputRef}

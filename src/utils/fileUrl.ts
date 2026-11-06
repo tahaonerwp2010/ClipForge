@@ -9,6 +9,7 @@ export const fileUrl = (p: string): string => {
 export async function playableUrl(path: string | undefined, url: string, force = false): Promise<string> {
   const api = (window as any).electronAPI;
   if (!path || typeof api?.makePreview !== 'function') return url;
-  try { const r = await api.makePreview(path, force); if (r && r.ok && r.path) return fileUrl(r.path); } catch { /* keep the original */ }
+  (window as any).__previewErr = '';
+  try { const r = await api.makePreview(path, force); if (r && r.ok && r.path) return fileUrl(r.path); if (r && !r.ok) (window as any).__previewErr = r.error || 'unknown error'; } catch { /* keep the original */ }
   return url;
 }
