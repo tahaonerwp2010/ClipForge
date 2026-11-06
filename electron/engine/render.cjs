@@ -413,7 +413,7 @@ const PLAYABLE_V = new Set(['h264', 'vp8', 'vp9', 'av1']), PLAYABLE_A = new Set(
 async function previewProxy(src, outDir, force = false) {
   const info = await probe(src);
   const ext = path.extname(src).toLowerCase();
-  const ok = PLAYABLE_V.has(info.vcodec) && (!info.pixfmt || /^yuvj?420p$/.test(info.pixfmt)) && (!info.hasAudio || PLAYABLE_A.has(info.acodec)) && ['.mp4', '.m4v', '.webm', '.mov'].includes(ext) && info.width && info.height;
+  const ok = PLAYABLE_V.has(info.vcodec) && (!info.pixfmt || /^yuvj?420p$/.test(info.pixfmt)) && (!info.hasAudio || PLAYABLE_A.has(info.acodec)) && ['.mp4', '.m4v', '.webm', '.mov'].includes(ext) && info.width && info.height && Math.max(info.width, info.height) <= 2200 && info.fps <= 61;   // 4K / 120 fps files stutter or stay black on weaker computers
   if (ok && !force) return null;
   const crypto = require('crypto'), st = fs.statSync(src);
   const out = path.join(outDir, `preview_${crypto.createHash('md5').update(src + st.size + st.mtimeMs).digest('hex').slice(0, 12)}.mp4`);

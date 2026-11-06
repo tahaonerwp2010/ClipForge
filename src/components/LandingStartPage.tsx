@@ -29,15 +29,16 @@ const fmtEta = (s?: number | null) => s == null ? '' : s >= 3600 ? `${Math.floor
 const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 
 /** Reads duration + a thumbnail frame from a video URL (blob: or file:). Never rejects. */
-function readVideoMeta(url: string, thumbW = 480): Promise<{ duration: number; thumb: string; vertical: boolean; w: number; h: number }> {
+function readVideoMeta(url: string, thumbW = 480): Promise<{ duration: number; thumb: string; vertical: boolean; w: number; h: number; blank?: boolean }> {
   return new Promise((resolve) => {
     const v = document.createElement('video');
     v.preload = 'metadata'; v.muted = true; v.src = url;
     let done = false;
+    let blank = false, tries = 0;
     const finish = (thumb: string) => { if (done) return; done = true; const meta = { duration: v.duration && isFinite(v.duration) ? v.duration : 0, vertical: v.videoWidth < v.videoHeight, w: v.videoWidth || 0, h: v.videoHeight || 0 };
       try { v.onloadedmetadata = null; v.onseeked = null; v.onerror = null; v.pause(); v.removeAttribute('src'); v.load(); } catch { /* free the decoder so many clips do not pile up */ }
-      resolve({ ...meta, thumb }); };
-    const timer = setTimeout(() => finish(FALLBACK_THUMB), 6000);
+      resolve({ ...meta, thumb, blank }); };
+    const timer = setTimeout(() => finish(FALLBACK_THUMB), 20000);   // a 2 GB file can take a while to open
     v.onloadedmetadata = () => { v.currentTime = Math.min(1.0, (v.duration || 2) * 0.2); };
     v.onseeked = () => {
       let thumb = FALLBACK_THUMB;
@@ -45,7 +46,14 @@ function readVideoMeta(url: string, thumbW = 480): Promise<{ duration: number; t
         const c = document.createElement('canvas');
         c.width = thumbW; c.height = Math.round(thumbW * (v.videoHeight || 9) / (v.videoWidth || 16));
         const ctx = c.getContext('2d');
-        if (ctx && v.videoWidth > 0) { ctx.drawImage(v, 0, 0, c.width, c.height); thumb = c.toDataURL('image/jpeg', 0.8); }
+        if (ctx && v.videoWidth > 0) {
+          ctx.drawImage(v, 0, 0, c.width, c.height); thumb = c.toDataURL('image/jpeg', 0.8);
+          // the window opened the file but cannot draw its picture (unsupported codec / too heavy): a frame that stays completely black means "use the preview copy"
+          const d = ctx.getImageData(0, 0, c.width, c.height).data; let sum = 0, n = 0;
+          for (let i = 0; i < d.length; i += 64) { sum += d[i] + d[i + 1] + d[i + 2]; n += 3; }
+          if (sum / Math.max(1, n) < 3 && tries++ < 1 && v.duration > 4) { v.currentTime = v.duration * 0.5; return; }   // one more look in the middle of the video
+          blank = sum / Math.max(1, n) < 3;
+        }
       } catch { /* fallback */ }
       clearTimeout(timer); finish(thumb);
     };
@@ -243,7 +251,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
     setPrepBusy(true);
     let objectUrl = await playableUrl(realPath, URL.createObjectURL(file));
     let meta = await readVideoMeta(objectUrl);
-    if (!meta.w && realPath) { objectUrl = await playableUrl(realPath, objectUrl, true); meta = await readVideoMeta(objectUrl); }   // the window could not even open it: always use the preview copy
+    if ((!meta.w || meta.blank) && realPath) { objectUrl = await playableUrl(realPath, objectUrl, true); meta = await readVideoMeta(objectUrl); }   // the window could not even open it: always use the preview copy
     setPrepBusy(false);
     onSelectVideo({
       id: `local-${Date.now()}`,
