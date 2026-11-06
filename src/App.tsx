@@ -718,6 +718,7 @@ export default function App() {
                     <input type="text" value={projectName} maxLength={80} onChange={(e) => setProjectName(e.target.value)} placeholder={selectedVideo.title}
                       className="w-full px-3 py-2 rounded-lg bg-[#0a130f] border border-[#1d3228] focus:border-[#3f9a5a] outline-none text-xs text-white placeholder:text-neutral-500" />
                   </div>
+                  {selectedVideo.previewPending && <div className="w-full mb-3 px-3 py-2 rounded-lg bg-[#16271f] border border-[#2a5a3a] text-[11px] leading-snug text-brand-300">Making a small preview copy of this video. The preview picture appears when it is ready. Your clips are always cut from the original file.</div>}
                   <PhonePreview
                     videoUrl={selectedVideo.url}
                     canvasRatio={canvasRatio}

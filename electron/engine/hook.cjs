@@ -53,7 +53,9 @@ function fitSize(lines, W, measure) {
 function placeHook({ lines, W, H, userSize, px, py, measure, rect, emoji }) {
   const k = W / 1080, up = lines.map(l => String(l).toUpperCase()), n = Math.max(1, lines.length);
   const outline = Math.round(5 * k), maxLen = Math.max(4, ...lines.map(l => l.length));
-  const em = typeof measure === 'function' ? Math.max(1, ...up.map(l => measure(l))) : 0, cell = (measure && measure.cell) || 1.22;
+  // measure: the function from fonts.measurerFor (text -> width in em, with .cell), or an object { em: thatFunction, cell }
+  const mf = typeof measure === 'function' ? measure : (measure && typeof measure.em === 'function' ? measure.em : null);
+  const em = mf ? Math.max(1, ...up.map(l => mf(l))) : 0, cell = (measure && (measure.cell || (mf && mf.cell))) || 1.22;
   const sideM = W * 0.02;
   const fsW = em ? Math.floor((W - 2 * sideM - 2 * outline) * cell / em) : Math.floor(W * 0.9 / (maxLen * 0.62));
   let size = userSize > 0 ? userSize * k : Math.min(124 * k, W * 0.88 / (maxLen * 0.64));

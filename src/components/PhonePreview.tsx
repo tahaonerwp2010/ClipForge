@@ -887,7 +887,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                     width: 'max-content', whiteSpace: 'nowrap',
                     textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.7)'
                   }}
-                  className="font-black uppercase tracking-tight text-center"
+                  className="font-black uppercase text-center"
                 >
                   {(() => {
                     const wc = (branding.autoTitle as any).wordColors as (string | null)[] | undefined; let wi = 0;

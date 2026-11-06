@@ -163,6 +163,7 @@ function appIcon() {
   return c.find(f => { try { return fs.existsSync(f) && !/app\.asar/.test(f); } catch { return false; } }) || c[1];
 }
 if (process.platform === 'win32') app.setAppUserModelId('com.clipforge.desktop');
+app.commandLine.appendSwitch('disable-accelerated-video-decode');   // some graphics drivers (older Intel) show black or colour-garbled frames in <video>; the picture is decoded by the processor instead (preview size only)
 if (process.platform === 'linux') app.commandLine.appendSwitch('no-sandbox');   // AppImage on newer Ubuntu blocks the sandbox
 // Blank / white window protection: if the browser's graphics process crashes, the next start runs without GPU drawing (the flag is a small file).
 const gpuFlag = () => path.join(app.getPath('userData'), 'gpu-off.flag');
@@ -392,11 +393,12 @@ ipcMain.handle('projects-save', async (e, list) => { try { const f = projectsFil
 // ---- Edit a finished clip (captions + hook only) ----
 const EDIT = require('./engine/edit.cjs');
 ipcMain.handle('edit-load', async (e, outDir) => { const st = EDIT.loadState(outDir); return st ? { ok: true, captions: st.captions, branding: st.branding, framing: st.framing, grading: st.grading, ratio: st.ratio, clips: st.clips.map(c => ({ hookText: c.hookText, title: c.title })) } : { ok: false }; });
-ipcMain.handle('make-preview', async (e, srcPath, force) => {
-  const go = () => R.previewProxy(String(srcPath), path.join(app.getPath('userData'), 'previews'), !!force);
+ipcMain.handle('make-preview', async (e, srcPath, force, checkOnly) => {
+  const go = () => R.previewProxy(String(srcPath), path.join(app.getPath('userData'), 'previews'), !!force, !!checkOnly);
   try {
     if (!editJob && !currentRun) resetCancel();      // an old "cancel" must never block the preview (every ffmpeg call fails right away while the flag is set)
-    return { ok: true, path: await go() };
+    const r0 = await go(); if (r0 === 'needed') return { ok: true, need: true, path: null };
+    return { ok: true, path: r0 };
   } catch (err) {
     const m = String(err.message || err);
     if (/CANCELLED/.test(m) && !editJob && !currentRun) { try { resetCancel(); return { ok: true, path: await go() }; } catch (e2) { return { ok: false, path: null, error: String(e2.message || e2).slice(0, 400) }; } }

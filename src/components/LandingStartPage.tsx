@@ -179,6 +179,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
   const [spRect, setSpRect] = useState<Rect01 | null>(null);
   const [prepBusy, setPrepBusy] = useState(false);
   const [prepErr, setPrepErr] = useState('');
+  const [prepBg, setPrepBg] = useState(false);
   const [spDetect, setSpDetect] = useState<'idle' | 'detecting' | 'found' | 'notfound' | 'error'>('idle');
   const [spMsg, setSpMsg] = useState('');
   const [spEditor, setSpEditor] = useState(false);
@@ -250,23 +251,30 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
     if (!file) return;
     const realPath = window.electronAPI?.getPathForFile?.(file) || undefined;
     setPrepBusy(true);
-    let objectUrl = await playableUrl(realPath, URL.createObjectURL(file));
-    let meta = await readVideoMeta(objectUrl);
-    if ((!meta.w || meta.blank) && realPath) { objectUrl = await playableUrl(realPath, objectUrl, true); meta = await readVideoMeta(objectUrl); }   // the window could not even open it: always use the preview copy
-    setPrepBusy(false);
-    setPrepErr((window as any).__previewErr ? `Preview copy could not be made: ${(window as any).__previewErr}` : (meta.blank ? 'This video opens but its picture cannot be shown here (preview stays black). The clips are still cut from your original file.' : ''));
-    setPrepErr((window as any).__previewErr ? `Preview copy could not be made: ${(window as any).__previewErr}` : (meta.blank ? 'This video opens but its picture cannot be shown here (preview stays black). The clips are still cut from your original file.' : ''));
-    onSelectVideo({
-      id: `local-${Date.now()}`,
-      title: file.name.replace(/\.[^/.]+$/, ''),
-      url: objectUrl,
-      duration: Math.round(meta.duration) || 120,
-      thumbnail: meta.thumb,
-      type: 'upload',
-      author: 'Local File',
-      originalAspect: meta.vertical ? '9:16 vertical' : '16:9 widescreen',
-      filePath: realPath
+    const orig = URL.createObjectURL(file);
+    const meta = await readVideoMeta(orig);
+    let need = false;
+    if (realPath) { try { const r = await (window as any).electronAPI?.makePreview?.(realPath, false, true); need = !!(r && r.need); } catch { /* ignore */ } }
+    const mk = (url: string, m: typeof meta): VideoSource => ({
+      id: `local-${id0}`, title: file.name.replace(/\.[^/.]+$/, ''), url, duration: Math.round(m.duration) || 120, thumbnail: m.thumb, type: 'upload', author: 'Local File',
+      originalAspect: m.vertical ? '9:16 vertical' : '16:9 widescreen', filePath: realPath
     });
+    const id0 = Date.now();
+    const bad = need || !meta.w || meta.blank;
+    if (!bad || !realPath) { setPrepBusy(false); setPrepErr(''); onSelectVideo(mk(orig, meta)); return; }
+    if (!meta.w) {
+      // the window cannot even read the file: the preview copy is needed before anything can be shown (size / length come from it)
+      const u = await playableUrl(realPath, orig, true); const m2 = u !== orig ? await readVideoMeta(u) : meta;
+      setPrepBusy(false); setPrepErr((window as any).__previewErr ? `Preview copy could not be made: ${(window as any).__previewErr}` : '');
+      onSelectVideo(mk(u, m2)); return;
+    }
+    // readable but heavy / not playable here: carry on at once, the small preview copy is made in the background and swapped in when ready
+    setPrepBusy(false); setPrepErr(''); setPrepBg(true);
+    onSelectVideo({ ...mk(orig, meta), previewPending: true });
+    const u = await playableUrl(realPath, orig, true);
+    setPrepBg(false);
+    if (u !== orig) { const m2 = await readVideoMeta(u); onSelectVideo(mk(u, { ...m2, duration: meta.duration || m2.duration, vertical: meta.vertical })); }
+    else { onSelectVideo(mk(orig, meta)); setPrepErr((window as any).__previewErr ? `Preview copy could not be made: ${(window as any).__previewErr}` : 'This video opens but its picture cannot be shown here (preview stays black). The clips are still cut from your original file.'); }
   };
 
   const longSelected = selectedVideo && !selectedVideo.shorts && selectedVideo.type !== 'youtube' ? selectedVideo : null;
@@ -275,6 +283,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
 
   return (
     <div className="flex flex-col items-stretch w-full select-none text-neutral-200">
+      {prepBg && <div className="mb-3 px-3 py-2 rounded-lg bg-[#16271f] border border-[#2a5a3a] text-[12px] text-brand-300">Making a small preview copy in the background. You can carry on; the preview picture appears when it is ready.</div>}
       {prepErr && !prepBusy && <div className="mb-3 px-3 py-2 rounded-lg bg-[#2a1616] border border-[#5a2a2a] text-[12px] text-red-300 break-words">{prepErr}</div>}
       {prepBusy && <div className="mb-3 px-3 py-2 rounded-lg bg-[#16271f] border border-[#2a4a39] text-[12px] text-[#bef264]">Preparing the preview for this video format… this can take a moment for long videos.</div>}
       <input 

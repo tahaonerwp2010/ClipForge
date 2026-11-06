@@ -15,7 +15,7 @@ async function probe(file) {
   const j = JSON.parse(stdout);
   const v = j.streams.find(s => s.codec_type === 'video'), a = j.streams.find(s => s.codec_type === 'audio');
   const [n, d] = (v?.r_frame_rate || '0/1').split('/').map(Number);
-  return { duration: +j.format.duration, width: v?.width, height: v?.height, fps: d ? +(n / d).toFixed(2) : 0, pixfmt: v?.pix_fmt, vcodec: v?.codec_name, acodec: a?.codec_name, hasAudio: !!a };
+  return { duration: +j.format.duration, width: v?.width, height: v?.height, fps: d ? +(n / d).toFixed(2) : 0, pixfmt: v?.pix_fmt, vcodec: v?.codec_name, acodec: a?.codec_name, hasAudio: !!a, format: String(j.format.format_name || '') };
 }
 const extractAudio = (video, wav) => run(ffmpeg(), ['-y', '-i', video, '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', wav]);
 const sliceAudio = (wav, start, dur, out) => run(ffmpeg(), ['-y', '-ss', String(start), '-t', String(dur), '-i', wav, '-c:a', 'pcm_s16le', out]);
@@ -410,17 +410,30 @@ async function extractFrames(input, start, dur, outDir, fps = 2) {
 const dimsFor = (ratio, quality = 1080) => { const [w, h] = ASPECT[ratio] || ASPECT['9:16']; const s = Math.max(480, quality) / 1080; const ev = n => Math.max(2, Math.round(n * s / 2) * 2); return [ev(w), ev(h)]; };
 // Videos the app window cannot play (HEVC / 10-bit / ProRes / AC3 sound / odd containers) get a small H.264 copy just for the preview; the real work always uses the original file.
 const PLAYABLE_V = new Set(['h264', 'vp8', 'vp9', 'av1']), PLAYABLE_A = new Set(['aac', 'mp3', 'opus', 'vorbis', 'flac', 'pcm_s16le', 'pcm_s24le']);
-async function previewProxy(src, outDir, force = false) {
+async function previewProxy(src, outDir, force = false, checkOnly = false) {
   const info = await probe(src);
   const ext = path.extname(src).toLowerCase();
-  const ok = PLAYABLE_V.has(info.vcodec) && (!info.pixfmt || /^yuvj?420p$/.test(info.pixfmt)) && (!info.hasAudio || PLAYABLE_A.has(info.acodec)) && ['.mp4', '.m4v', '.webm', '.mov'].includes(ext) && info.width && info.height && Math.max(info.width, info.height) <= 2200 && info.fps <= 61;   // 4K / 120 fps files stutter or stay black on weaker computers
+  // The window plays only real MP4 / MOV / WebM files. A transport stream (.ts) that was just renamed ".mp4" - Dropbox / broadcast exports do this - looks fine in VLC but stays black here.
+  const boxOk = /mp4|mov|webm|matroska/.test(info.format || 'mov');
+  const codecOk = PLAYABLE_V.has(info.vcodec) && (!info.pixfmt || /^yuvj?420p$/.test(info.pixfmt)) && (!info.hasAudio || PLAYABLE_A.has(info.acodec));
+  const sizeOk = info.width && info.height && Math.max(info.width, info.height) <= 2200 && info.fps <= 61;   // 4K / 120 fps files stutter or stay black on weaker computers
+  const ok = codecOk && boxOk && sizeOk && ['.mp4', '.m4v', '.webm', '.mov'].includes(ext);
   if (ok && !force) return null;
+  if (checkOnly) return 'needed';
   const crypto = require('crypto'), st = fs.statSync(src);
-  const out = path.join(outDir, `preview_${crypto.createHash('md5').update(src + st.size + st.mtimeMs).digest('hex').slice(0, 12)}.mp4`);
+  const key = crypto.createHash('md5').update(src + st.size + st.mtimeMs).digest('hex').slice(0, 12);
+  const out = path.join(outDir, `preview_${key}.mp4`);
   if (fs.existsSync(out) && fs.statSync(out).size > 2000) return out;
   fs.mkdirSync(outDir, { recursive: true });
   const tmp = out + '.part.mp4';
-  await run(ffmpeg(), ['-y', '-i', src, '-map', '0:v:0', '-map', '0:a:0?', '-vf', "scale=-2:'min(720,ih)'", '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '96k', '-ac', '2', '-movflags', '+faststart', tmp]);
+  const common = ['-movflags', '+faststart', '-map_chapters', '-1', '-map_metadata', '-1', tmp];
+  if (!boxOk && codecOk && sizeOk && info.vcodec === 'h264') {
+    // only the wrapper is wrong: copy the picture and sound into a proper MP4 (no re-encoding, so it takes seconds, not minutes)
+    try { await run(ffmpeg(), ['-y', '-i', src, '-map', '0:v:0', '-map', '0:a:0?', '-c', 'copy', ...common]); fs.renameSync(tmp, out); return out; } catch (e) { if (/CANCELLED/.test(String(e.message))) throw e; try { fs.rmSync(tmp, { force: true }); } catch {} }
+  }
+  // heavy sources (4K, AV1, HEVC) are slow to decode on a weak computer: the preview copy covers the first 2 minutes only
+  const heavy = Math.max(info.width || 0, info.height || 0) > 2200 || /^(av1|hevc)$/.test(info.vcodec || '');
+  await run(ffmpeg(), ['-y', ...(heavy ? ['-t', '120'] : []), '-i', src, '-map', '0:v:0', '-map', '0:a:0?', '-vf', "fps=30,scale=-2:'min(540,ih)'", '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '30', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '96k', '-ac', '2', ...common]);
   fs.renameSync(tmp, out); return out;
 }
 module.exports = { previewProxy, brollRect, dimsFor, detectCuts, sliceAudio, extractFrames, probe, extractAudio, renderClip, thumbnail, ASPECT, filterGraph };

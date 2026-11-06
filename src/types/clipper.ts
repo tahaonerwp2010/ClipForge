@@ -180,6 +180,7 @@ export interface VideoSource {
   author?: string;
   originalAspect?: string;
   filePath?: string; // real path on disk (Electron only)
+  previewPending?: boolean;   // a small preview copy is still being made in the background
   split?: SplitConfig;   // 'Split screen' mode
   shorts?: { path: string; name: string; duration: number }[]; // 'Upload short clips' mode: each file is one finished clip
 }

@@ -39,7 +39,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ownerGrant: (pw, id, plan) => ipcRenderer.invoke('owner-grant', { pw, id, plan }),
   ownerRemove: (pw, id) => ipcRenderer.invoke('owner-remove', { pw, id }),
   editLoad: (outDir) => ipcRenderer.invoke('edit-load', outDir),
-  makePreview: (p, force) => ipcRenderer.invoke('make-preview', p, force),
+  makePreview: (p, force, checkOnly) => ipcRenderer.invoke('make-preview', p, force, checkOnly),
   editBatchStart: (a) => ipcRenderer.invoke('edit-batch-start', a),
   editBatchPause: () => ipcRenderer.invoke('edit-batch-pause'),
   editBatchResume: () => ipcRenderer.invoke('edit-batch-resume'),
