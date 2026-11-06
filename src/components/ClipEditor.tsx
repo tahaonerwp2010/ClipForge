@@ -20,6 +20,7 @@ interface Props {
   allIdx: number[];          // engine indexes of every clip still in the project (a clip keeps its number after others are deleted)
   onClose: () => void;
   onSaved: (index: number, r: { outputPath: string; thumbnailUrl?: string }) => void;
+  onStart: (items: { index: number; overrides: any }[], labels: string[]) => void;   // the apply runs as a background pipeline job (progress page), not inside this window
   fallback: { captions: CaptionConfig; branding: BrandingConfig; grading: VideoGradingConfig; framing: InnerFramingConfig };
 }
 
@@ -35,7 +36,7 @@ const CATS: { id: Cat; label: string; Icon: React.ElementType }[] = [
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx, onClose, onSaved, fallback }) => {
+export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx, onClose, onSaved, onStart, fallback }) => {
   const api: any = (window as any).electronAPI;
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [err, setErr] = useState('');
@@ -140,25 +141,12 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
         else { const words: any = {}; cs.forEach((c, j) => { if (c) words[j] = c; }); hookRule.push({ line: li, words }); }
       });
     }
-    for (let n = 0; n < idx.length; n++) {
-      const i = idx[n]; cur.current = i; doneBefore.current = n; setJob(all ? `Clip ${n + 1} of ${idx.length}` : '');
-      const own = i === index;
+    const items = idx.map(i => {
       const { title: _t, wordColors: _wc, ...atNoTitle } = at as any;
-      let r: any;
-      for (;;) {
-        if (ctl.current.cancel) break;
-        if (ctl.current.paused) await waitResume();
-        if (ctl.current.cancel) break;
-        r = await api.editRender(outDir, i, own ? { captions, hookText, autoTitle: at, branding: bo, fx } : { captions, autoTitle: atNoTitle, branding: bo, fx, hookRule });
-        if (r?.cancelled && !ctl.current.cancel) { if (!ctl.current.paused) ctl.current.paused = true; continue; }       // paused: this clip is redone from its start after Resume
-        break;
-      }
-      if (ctl.current.cancel || r?.cancelled) { setSaving(false); onClose(); return; }
-      if (!r?.ok) { setSaving(false); setErr(r?.error || 'Render failed.'); setState('error'); return; }
-      onSaved(i, { outputPath: r.outputPath, thumbnailUrl: r.thumbnailUrl });
-      setPct(Math.round((n + 1) / idx.length * 100));
-    }
-    setSaving(false); onClose();
+      return { index: i, overrides: i === index ? { captions, hookText, autoTitle: at, branding: bo, fx } : { captions, autoTitle: atNoTitle, branding: bo, fx, hookRule } };
+    });
+    const labels = changedParts();
+    setSaving(false); onStart(items, labels); onClose(); return;
   };
 
   const ls = hookLines(hookText || 'THE VIRAL TRUTH', hook.lines || 2);

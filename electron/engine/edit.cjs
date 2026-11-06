@@ -104,7 +104,7 @@ async function prepare(outDir, i) {
 }
 
 // Re-render clip i with the user's caption / hook changes and replace the old file. The new settings are remembered.
-async function rerender(outDir, i, ov, onProgress, deps) {
+async function rerender(outDir, i, ov, onProgress, deps, hw = 'cpu') {
   const st = loadState(outDir); if (!st) throw new Error('This project was made with an older version, so its clips cannot be edited.');
   const x = await ctxFor(st, i, ov, null, { outDir, deps, log: m => { try { onProgress && onProgress(0); } catch {} } });
   const out = path.join(outDir, `clip_${nn(i)}.mp4`), tmp = path.join(outDir, `clip_${nn(i)}.edit.mp4`);
@@ -120,7 +120,7 @@ async function rerender(outDir, i, ov, onProgress, deps) {
   } catch {}
   await R.renderClip({ capSfx: CAPSFX.build({ words: x.cw, clipStart: x.start, clipEnd: x.end, captions: x.captions, branding: x.branding, seed: i + 1 }), broll, behind: x.behind, assBehind: x.assBehind, quality: x.quality, fx, input: x.input, start: x.start, end: x.end, out: tmp, assText: x.ass, ratio: st.ratio || '9:16', framing: st.framing, grading: st.grading,
     workDir: w, track: (st.tracks || [])[i] || null, emojis: x.emojis, emojiBox: x.emojiBox, srcAspect: x.info.width / x.info.height, hasAudio: x.info.hasAudio !== false, fontFamilies: x.fontFamilies,
-    watermark: x.watermark, music: x.music, split: st.split || undefined, fps: Math.round(x.info.fps || 30) || 30, onProgress });
+    watermark: x.watermark, music: x.music, split: st.split || undefined, fps: Math.round(x.info.fps || 30) || 30, hw, onProgress });
   try { fs.unlinkSync(out); } catch {}
   fs.renameSync(tmp, out);
   let thumb; try { thumb = await R.thumbnail(out, path.join(w, 't.jpg')); } catch {}
@@ -132,4 +132,27 @@ async function rerender(outDir, i, ov, onProgress, deps) {
   saveState(outDir, st);
   return { outputPath: out, thumbnailUrl: thumb };
 }
-module.exports = { saveState, loadState, prepare, rerender };
+// Re-render many clips as ONE job (same worker pool as the first render: graphics card + processor side by side). ctl = { paused, cancel } is controlled from outside.
+async function rerenderBatch(outDir, items, { hardware, deps, onEvent, ctl, resetCancel }) {
+  const HW = require('./hardware.cjs'), workers = await HW.workerList(HW.normMode(hardware));
+  const queue = items.slice(); let failed = null, done = 0;
+  const emit = (o) => { try { onEvent && onEvent(o); } catch {} };
+  const nap = () => new Promise(r => setTimeout(r, 250));
+  emit({ type: 'start', total: items.length, workers: workers.length });
+  await Promise.all(workers.map(async (w) => {
+    while (!failed && !ctl.cancel) {
+      if (ctl.paused) { await nap(); continue; }
+      const it = queue.shift(); if (!it) return;
+      try {
+        const r = await rerender(outDir, it.index, it.overrides || {}, p => emit({ type: 'progress', index: it.index, p }), deps, w);
+        done++; emit({ type: 'clip', index: it.index, outputPath: r.outputPath, thumbnailUrl: r.thumbnailUrl, done, total: items.length });
+      } catch (e) {
+        if (String(e.message || e).includes('CANCELLED')) { if (ctl.paused && !ctl.cancel) { queue.unshift(it); continue; } return; }   // paused: this clip starts again from its beginning on Resume
+        failed = failed || e;
+      }
+    }
+  }));
+  if (failed) throw failed;
+  emit({ type: ctl.cancel ? 'cancelled' : 'done', done, total: items.length });
+}
+module.exports = { rerenderBatch, saveState, loadState, prepare, rerender };

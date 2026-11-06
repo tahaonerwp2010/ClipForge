@@ -13,6 +13,7 @@ function run(cmd, args, { cwd, onStderr, onStdout } = {}) {
     if (cancelled) return reject(new Error('CANCELLED'));
     const child = spawn(cmd, args, { cwd, windowsHide: true });
     live.add(child);
+    try { require('os').setPriority(child.pid, require('os').constants.priority.PRIORITY_BELOW_NORMAL); } catch { /* the app window stays smooth while ffmpeg works */ }
     let out = '', err = '';
     child.stdout.on('data', d => { out += d; onStdout && onStdout(d.toString()); });
     child.stderr.on('data', d => { err += d; onStderr && onStderr(d.toString()); });

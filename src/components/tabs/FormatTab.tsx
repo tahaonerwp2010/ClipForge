@@ -212,7 +212,7 @@ export const FormatTab: React.FC<FormatTabProps> = ({
             </>);
           })()}
         </div>
-        <p className="text-[10px] text-neutral-500 leading-relaxed">Processor: everything runs on the CPU. Graphics card: video saving and speech recognition run on the GPU when your computer supports it. Both: the work is shared and whichever is free takes the next piece. If the graphics card cannot do a step, the processor does it automatically.</p>
+        <p className="text-[10px] text-neutral-500 leading-relaxed">Processor: everything runs on the CPU. Graphics card: video decoding, resizing (NVIDIA), video saving and speech recognition use the GPU when your computer supports it; captions, effects and overlays have no GPU version and still use the processor, so the app runs several clips side by side to keep the card busy. Both: the work is shared and whichever is free takes the next piece. If the graphics card cannot do a step, the processor does it automatically.</p>
       </section>}
 
       {split && onSplitChange && (

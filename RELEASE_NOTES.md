@@ -1,4 +1,13 @@
 ## What's new
+- **Graphics-card mode does more of the work:** the source video is decoded on the GPU, NVIDIA cards also resize the picture on the card (only the small result goes back to the processor), the blurred backdrop is made at a quarter of the size (looks the same, much less processor work), and up to 3 clips render side by side. "Both" runs 2 clips on the card and 1 on the processor, whoever is free takes the next clip. Captions, effects, overlays and the behind-the-person cut-out have no GPU version in FFmpeg and still use the processor. Every step falls back automatically if a driver cannot do it.
+- **Edit clips is now a real background pipeline:** applying changes to many clips uses the same graphics-card + processor workers as the first render (2-3 clips at a time on a strong PC), shows a pipeline-style progress page with only the steps that matter plus Pause / Cancel Pipeline, and you can watch your clips meanwhile. The Edit clip button is unavailable until it finishes or is cancelled.
+- **Faster renders on strong computers:** the render pool now runs more than one clip per device when the CPU has enough cores.
+- **Updates download faster and can be cancelled:** the update is fetched in 8 pieces at once (shows MB/s); the cross cancels the download.
+- **Fewer freezes / white screens:** ffmpeg runs at lower priority so the window stays smooth; if the graphics process crashes the app reloads and starts without GPU drawing next time.
+- **Project name field in Studio** (empty = the video's name). Deleting a project now also removes its clipforge marker files.
+- **Caption picker is smoother** (previews load only while visible; category pills respond instantly).
+- **Translated captions sync better** (translated in short phrases tied to the spoken moments).
+- **Behind-the-person captions:** crisper, slightly grown cut-out (no see-through hats/hair) and the big word can no longer rise out of the top of the clip.
 - **More video formats in the preview:** videos the window cannot play (HEVC / 10-bit / MKV / AC3 sound …) now get a small preview copy automatically, so the preview plays; the clips are still cut from your original file.
 - **Better AI titles, hooks and descriptions:** the writer now also reads a short digest of the whole video, uses stronger click-driven patterns (curiosity gap, specifics, first-word punch) and writes tighter two-sentence descriptions. It stays true to the clip.
 - **Hook emoji option checked:** on = emojis in a row above the hook (preview and video), off = none. The preview now shows the same row.

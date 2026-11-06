@@ -70,12 +70,14 @@ ${JSON.stringify(part)}`;
 }
 
 // Sentence-level translation; the translated words are spread over the same time span, weighted by word length.
+// Short phrases (a pause, a comma or ~10 words end one), so the translated words can never drift far from the moment they are spoken.
 function segments(words) {
   const segs = []; let cur = [];
   words.forEach((w, i) => {
     cur.push(i);
     const gap = words[i + 1] ? words[i + 1].start - w.end : 99;
-    if (/[.!?۔]$/.test(w.word) || gap > 0.8 || cur.length >= 28) { segs.push(cur); cur = []; }
+    const stop = /[.!?۔]$/.test(w.word) || gap > 0.7 || (/[,;:،]$/.test(w.word) && cur.length >= 3) || (gap > 0.3 && cur.length >= 4) || cur.length >= 10;
+    if (stop) { segs.push(cur); cur = []; }
   });
   if (cur.length) segs.push(cur);
   return segs;
@@ -88,10 +90,10 @@ const needsAI = (words, language) => !(isHinglish(language) && words.some(w => S
 async function translate(words, language, g, onProgress) {
   if (isHinglish(language) && words.some(w => SCRIPT_RE.test(String(w.word)))) return toRoman(words, g, onProgress);
   if (isHinglish(language)) language = 'Hinglish (Hindi/Urdu written in English letters, the way people type in chat, e.g. "kaise ho, ye bohot important hai")';
-  const segs = segments(words), res = [], B = 25;
+  const segs = segments(words), res = [], B = 40;
   // one batch; if the AI answers with the wrong number of lines it is asked again, then the batch is split in halves (down to single lines)
   const askLines = async (part, depth = 0) => {
-    const prompt = `Translate each line into ${language}. Keep the meaning and a natural spoken tone, keep every line short.
+    const prompt = `Translate each line into ${language}. The lines are consecutive short pieces of one spoken sentence-flow: translate every line ON ITS OWN (never merge lines or move words between lines), keep the meaning and a natural spoken tone, and keep the translated line about as long as the original.
 Return ONLY a JSON array of exactly ${part.length} strings, same order.
 ${JSON.stringify(part)}`;
     for (let t = 0; t < (depth ? 1 : 2); t++) { const x = await ask(g, prompt); if (x.length === part.length && x.every(v => typeof v === 'string')) return x; }

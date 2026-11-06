@@ -1,4 +1,4 @@
-import React, { useEffect, useState, startTransition } from 'react';
+import React, { useEffect, useRef, useState, startTransition, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Captions, X, ChevronRight } from 'lucide-react';
 import { CaptionConfig } from '../../types/clipper';
@@ -132,6 +132,17 @@ const PersonFrame: React.FC<{ tpl?: DynTemplate; children?: React.ReactNode; sma
 const ExtraPreview: React.FC<{ spec: ClassicSpec; size?: number }> = ({ spec, size = 15 }) => <ClassicCaption spec={spec} words={spec.sample} active={spec.sample.length - 1} colorIdx={spec.sample.length} size={size} />;
 
 // the 60+ previews never change when another style is picked, so they are drawn once per animation tick instead of on every click
+// A preview is only built while its card is on screen: 60+ animated previews at once (and replaying every few seconds) is what made the window feel slow
+const Lazy: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const ref = useRef<HTMLDivElement>(null); const [vis, setVis] = useState(false);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') { setVis(true); return; }
+    const io = new IntersectionObserver(es => setVis(es.some(e => e.isIntersecting)), { rootMargin: '80px' });
+    io.observe(el); return () => io.disconnect();
+  }, []);
+  return <div ref={ref} className="w-full h-full">{vis ? children : null}</div>;
+};
 const PrevClassic = React.memo(({ p }: { p: Preset }) => <PersonFrame><ClassicPreview preset={p} /></PersonFrame>);
 const PrevExtra = React.memo(({ c, tick }: { c: ClassicSpec; tick: number }) => <PersonFrame><ExtraPreview key={tick} spec={c} size={15} /></PersonFrame>);
 const PrevDyn = React.memo(({ t, tick }: { t: DynTemplate; tick: number }) => { const b = isBehind(t); return <PersonFrame tpl={t}><DynCaption key={tick} tpl={t} base={b ? 11 : 13} sample part={b ? 'front' : 'all'} /></PersonFrame>; });
@@ -140,7 +151,8 @@ const NOTE = 'No live preview for Dynamic and Behind-the-person captions: the ph
 
 export const CaptionStylePicker: React.FC<{ captions: CaptionConfig; onCaptionsChange: (c: CaptionConfig) => void }> = ({ captions, onCaptionsChange }) => {
   const [open, setOpen] = useState(false);
-  const [cat, setCat] = useState<Cat>('all');
+  const [pill, setCat] = useState<Cat>('all');
+  const cat = useDeferredValue(pill);   // the pill moves at once, the grid below follows a moment later
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!open) return;
@@ -201,7 +213,7 @@ export const CaptionStylePicker: React.FC<{ captions: CaptionConfig; onCaptionsC
             </div>
             <div className="px-5 pt-3 flex flex-wrap gap-1.5">
               {([['all', 'All'], ['classic', 'Classic'], ['dynamic', 'Dynamic'], ['behind', 'Behind the person']] as const).map(([id, label]) => (
-                <button key={id} type="button" onClick={() => setCat(id)} className={`px-3 py-1.5 rounded-full text-[11px] cursor-pointer ${cat === id ? 'bg-[#bef264] text-black font-extrabold' : 'bg-[#0f1c16] text-neutral-300 hover:text-white border border-[#1d3128]'}`}>{label}</button>
+                <button key={id} type="button" onClick={() => setCat(id)} className={`px-3 py-1.5 rounded-full text-[11px] cursor-pointer ${pill === id ? 'bg-[#bef264] text-black font-extrabold' : 'bg-[#0f1c16] text-neutral-300 hover:text-white border border-[#1d3128]'}`}>{label}</button>
               ))}
             </div>
             <div className="overflow-y-auto p-5 pt-3 space-y-4">
@@ -213,14 +225,14 @@ export const CaptionStylePicker: React.FC<{ captions: CaptionConfig; onCaptionsC
                   {POPULAR_CAPTION_PRESETS.map(p => { const sel = cur === p.id; return (
                     <div key={p.id} onClick={() => pickPreset(p)} className={card(sel)}>
                       {tick_(sel)}
-                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><PrevClassic p={p} /></div>
+                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><Lazy><PrevClassic p={p} /></Lazy></div>
                       <div className="text-xs font-extrabold text-white truncate">{p.name}</div>
                       <p className="text-[10px] text-neutral-400 mt-0.5 line-clamp-2">{p.tagline}</p>
                     </div>); })}
                   {CLASSIC_EXTRA.map(c => { const sel = cur === c.id; return (
                     <div key={c.id} onClick={() => pickExtra(c)} className={card(sel)}>
                       {tick_(sel)}
-                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><PrevExtra c={c} tick={tick} /></div>
+                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><Lazy><PrevExtra c={c} tick={tick} /></Lazy></div>
                       <div className="text-xs font-extrabold text-white truncate">{c.name}</div>
                       <p className="text-[10px] text-neutral-400 mt-0.5 line-clamp-2">{c.tagline}</p>
                     </div>); })}                </div>
@@ -231,7 +243,7 @@ export const CaptionStylePicker: React.FC<{ captions: CaptionConfig; onCaptionsC
                   {dyn.map(t => { const sel = cur === t.id; const b = isBehind(t); return (
                     <div key={t.id} onClick={() => pickDyn(t)} className={card(sel)}>
                       {tick_(sel)}
-                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><PrevDyn t={t} tick={tick} /></div>
+                      <div className="h-36 rounded-xl border border-[#1c3127] overflow-hidden mb-2"><Lazy><PrevDyn t={t} tick={tick} /></Lazy></div>
                       <div className="flex items-center justify-between gap-2"><span className="text-xs font-extrabold text-white truncate">{t.name}</span><span className="text-[8px] text-neutral-500 uppercase tracking-wider shrink-0">{b ? 'behind person' : 'dynamic'} · locked</span></div>
                       <p className="text-[10px] text-neutral-400 mt-0.5 line-clamp-2">{t.tagline}</p>
                     </div>); })}

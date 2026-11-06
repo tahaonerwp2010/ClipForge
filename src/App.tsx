@@ -35,6 +35,8 @@ import { MyProjectsView } from './components/MyProjectsView';
 import { GenerationProgressView } from './components/GenerationProgressView';
 import { ClipsLibrary } from './components/ClipsLibrary';
 import { ClipEditor } from './components/ClipEditor';
+import { EditJobView, EditJob, editJobPct } from './components/EditJobView';
+import { getHardware } from './services/hardwareMode';
 import { SettingsView } from './components/SettingsModal';
 import { Check } from 'lucide-react';
 import { ConfirmDialog, ModelRequiredDialog } from './components/Dialogs';
@@ -53,6 +55,8 @@ export default function App() {
 
   // Video Selection
   const [selectedVideo, setSelectedVideo] = useState<VideoSource | null>(null);
+  const [projectName, setProjectName] = useState('');   // empty = the video's own name
+  useEffect(() => { setProjectName(''); }, [selectedVideo?.id]);
 
   // Projects State
   const [projects, setProjects] = useState<ProjectItem[]>(INITIAL_PROJECTS);
@@ -179,6 +183,34 @@ export default function App() {
   const [safeZone, setSafeZone] = useState<SafeZoneGuide>('none');
 
   const [editClipId, setEditClipId] = useState<string | null>(null);
+  // ---- "edit clips" job: runs in the background (engine), one at a time; its progress page looks like the normal pipeline page ----
+  const [editJob, setEditJob] = useState<EditJob | null>(null);
+  const editJobRef = useRef<EditJob | null>(null); editJobRef.current = editJob;
+  const startEditJob = async (projectId: string, outDir: string, items: { index: number; overrides: any }[], labels: string[]) => {
+    const api: any = window.electronAPI; if (!api?.editBatchStart) return;
+    const job: EditJob = { projectId, outDir, labels, total: items.length, done: 0, inflight: {}, paused: false, status: 'running', startedAt: Date.now() };
+    setEditJob(job);
+    const r = await api.editBatchStart({ outDir, items, hardware: getHardware() });
+    if (!r?.ok) { setEditJob({ ...job, status: 'error', error: r?.error || 'Could not start.' }); return; }
+    setActiveProjectId(projectId); setActiveView('progress');
+  };
+  useEffect(() => {
+    const api: any = window.electronAPI; if (!api?.onEditBatch) return;
+    return api.onEditBatch((d: any) => {
+      const j = editJobRef.current; if (!j || d.outDir !== j.outDir) return;
+      if (d.type === 'progress') { const f = d.p <= 1 ? d.p : d.p / 100; setEditJob(x => x && { ...x, inflight: { ...x.inflight, [d.index]: Math.max(0, Math.min(1, f)) } }); }
+      else if (d.type === 'clip') {
+        const v = '?v=' + Date.now();
+        const engIdx = (c: any) => { const m = /-clip-(\d+)$/.exec(String(c.id)); return m ? parseInt(m[1], 10) - 1 : -1; };
+        setProjects(prev => prev.map(p => p.id !== j.projectId ? p : { ...p, clips: getProjectClips(p).map(c => engIdx(c) !== d.index ? c : { ...c, outputPath: d.outputPath, thumbnailUrl: d.thumbnailUrl || c.thumbnailUrl, videoUrl: (c.videoUrl || '').split('?')[0] + v }) }));
+        setEditJob(x => { if (!x) return x; const inf = { ...x.inflight }; delete inf[d.index]; return { ...x, done: d.done, inflight: inf }; });
+      }
+      else if (d.type === 'done') setEditJob(x => x && { ...x, status: 'done', done: x.total, inflight: {} });
+      else if (d.type === 'cancelled') setEditJob(null);
+      else if (d.type === 'error') setEditJob(x => x && { ...x, status: 'error', error: d.error });
+    });
+  }, []);
+  const editBusy = (projectId?: string) => !!editJob && editJob.status === 'running' && (!projectId || editJob.projectId === projectId);
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
@@ -377,7 +409,7 @@ export default function App() {
     setIsGenerateModalOpen(false);
     if (LicenseService.blockIfLocked(proUsage(quality))) return;
 
-    const projTitle = selectedVideo ? selectedVideo.title : 'Untitled project';
+    const projTitle = (projectName.trim() || (selectedVideo ? selectedVideo.title : '')) || 'Untitled project';
     const existing = projects.find(p => p.id === activeProjectId);
     const id = existing ? existing.id : `proj-${Date.now()}`;
 
@@ -512,6 +544,18 @@ export default function App() {
           );
         })}
 
+        {/* Edit pipeline of this project (hook / caption changes applied to finished clips) */}
+        {activeView === 'progress' && activeProject && editJob && editJob.projectId === activeProject.id && (
+          <main className="flex-1 flex flex-col overflow-hidden">
+            <EditJobView job={editJob} name={activeProject.name}
+              onPause={() => { window.electronAPI?.editBatchPause?.(); setEditJob(j => j && { ...j, paused: true }); }}
+              onResume={() => { window.electronAPI?.editBatchResume?.(); setEditJob(j => j && { ...j, paused: false }); }}
+              onCancel={() => { window.electronAPI?.editBatchCancel?.(); setEditJob(null); setActiveView('clips'); showToast('Edit pipeline cancelled'); }}
+              onViewClips={() => { setActiveView('clips'); if (editJob.status !== 'running') setEditJob(null); }}
+              onBack={() => setActiveView('my_projects')} />
+          </main>
+        )}
+
         {/* Queued project: waiting screen */}
         {activeView === 'progress' && activeProject && activeProject.status === 'Queued' && (
           <main className="flex-1 flex flex-col items-center justify-center text-center space-y-3">
@@ -525,7 +569,7 @@ export default function App() {
           </main>
         )}
 
-        {activeView === 'progress' && activeProject && runKeys[activeProject.id] === undefined && activeProject.status !== 'Queued' && (
+        {activeView === 'progress' && activeProject && !(editJob && editJob.projectId === activeProject.id) && runKeys[activeProject.id] === undefined && activeProject.status !== 'Queued' && (
           <main className="flex-1 flex flex-col overflow-hidden">
             <GenerationProgressView
               project={activeProject}
@@ -557,7 +601,10 @@ export default function App() {
               projectId={activeProject.id}
               sourceVideoUrl={activeProject.sourceVideoUrl || selectedVideo?.url}
               onBack={() => setActiveView('my_projects')}
+              editLock={editBusy() ? { mine: editJob!.projectId === activeProject.id, pct: editJobPct(editJob!), paused: editJob!.paused } : null}
+              onViewEditProgress={() => setActiveView('progress')}
               onSelectClipToEdit={(clip) => {
+                if (editBusy()) { showToast(editJob!.projectId === activeProject.id ? 'An edit pipeline is in progress for this project. Cancel it first (or wait until it finishes).' : 'An edit pipeline of another project is in progress. Cancel it first (or wait until it finishes).'); return; }
                 if (!activeProject.outputDir || !clip.outputPath) { showToast('This clip cannot be edited (no rendered file).'); return; }
                 setEditClipId(clip.id);
               }}
@@ -587,6 +634,7 @@ export default function App() {
               const cl = getProjectClips(activeProject); const k = cl.findIndex(c => c.id === editClipId); if (k < 0) return null;
               return <ClipEditor key={editClipId} clip={cl[k]} index={engIdx(cl[k])} outDir={activeProject.outputDir || ''} total={cl.length} allIdx={cl.map(engIdx).filter(n => n >= 0)} fallback={{ captions, branding, grading, framing }}
                 onClose={() => setEditClipId(null)}
+                onStart={(items, labels) => startEditJob(activeProject.id, activeProject.outputDir || '', items, labels)}
                 onSaved={(i, r) => { const v = '?v=' + Date.now(); setProjects(prev => prev.map(p => p.id !== activeProject.id ? p : { ...p, clips: getProjectClips(p).map(c => engIdx(c) !== i ? c : { ...c, outputPath: r.outputPath, thumbnailUrl: r.thumbnailUrl || c.thumbnailUrl, videoUrl: (c.videoUrl || '').split('?')[0] + v }) })); }} />;
             })()}
           </main>
@@ -665,6 +713,11 @@ export default function App() {
 
                 {/* Right Column: Phone Mockup (Merged into the same scroll flow!) */}
                 <div className="shrink-0 w-full lg:w-[300px] flex flex-col items-center sticky top-2">
+                  <div className="w-full mb-3">
+                    <label className="block text-[10px] font-mono uppercase tracking-widest text-neutral-500 mb-1">Project name</label>
+                    <input type="text" value={projectName} maxLength={80} onChange={(e) => setProjectName(e.target.value)} placeholder={selectedVideo.title}
+                      className="w-full px-3 py-2 rounded-lg bg-[#0a130f] border border-[#1d3228] focus:border-[#3f9a5a] outline-none text-xs text-white placeholder:text-neutral-500" />
+                  </div>
                   <PhonePreview
                     videoUrl={selectedVideo.url}
                     canvasRatio={canvasRatio}

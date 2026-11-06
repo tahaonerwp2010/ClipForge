@@ -8,10 +8,11 @@ type UpdateInfo = {
 type Api = {
   isElectron?: boolean;
   updateCheck?: (repo?: string) => Promise<UpdateInfo>;
-  updateDownload?: (url: string, name: string) => Promise<{ ok: boolean; path?: string; error?: string }>;
+  updateDownload?: (url: string, name: string) => Promise<{ ok: boolean; path?: string; error?: string; cancelled?: boolean }>;
+  updateCancel?: () => Promise<boolean>;
   updateInstall?: (filePath: string, version?: string) => Promise<{ ok: boolean; mode?: string; error?: string }>;
   openExternal?: (url: string) => Promise<boolean>;
-  onUpdateProgress?: (cb: (d: { done: number; total: number; percent: number }) => void) => () => void;
+  onUpdateProgress?: (cb: (d: { done: number; total: number; percent: number; speed?: number }) => void) => () => void;
 };
 export const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.3.0';
 const mb = (n: number) => `${(n / 1048576).toFixed(0)} MB`;
@@ -64,11 +65,12 @@ export const UpdateChecker: React.FC<{ children: (open: () => void, checking: bo
           if (!i.ok) { setInstalling(false); setDlError(i.error || 'Could not start the update.'); }
           else if (i.mode === 'manual') setInstalling(false);
         }
-      } else setDlError(r.error || 'Download failed. Try again.');
+      } else if (!r.cancelled) setDlError(r.error || 'Download failed. Try again.');
     } else if (info.pageUrl) { api?.openExternal?.(info.pageUrl); }
   };
   const saveRepo = async (e: React.FormEvent) => { e.preventDefault(); await runCheck(true, repoInput); };
-  const close = () => { if (!dl && !installing) { setOpen(false); setDlPath(''); setDlError(''); } };
+  // the cross stops a running download (and closes the window); while the installer starts it stays locked
+  const close = () => { if (dl) { api?.updateCancel?.(); setDl(null); setOpen(false); setDlPath(''); setDlError(''); return; } if (!installing) { setOpen(false); setDlPath(''); setDlError(''); } };
 
   const upToDate = info?.ok && !info.available;
   const hasUpdate = info?.ok && info.available;
@@ -78,7 +80,7 @@ export const UpdateChecker: React.FC<{ children: (open: () => void, checking: bo
       {children(() => runCheck(true), checking)}
 
       {open && (
-        <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
+        <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onMouseDown={(e) => { if (e.target === e.currentTarget && !dl) close(); }}>
           <div className="bg-[#0c1611] border border-[#20322a] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
@@ -87,7 +89,7 @@ export const UpdateChecker: React.FC<{ children: (open: () => void, checking: bo
                   {hasUpdate ? 'A new update is available' : upToDate ? 'You are up to date' : info ? 'Could not check for updates' : 'Checking for updates…'}
                 </h3>
               </div>
-              <button onClick={close} title="Close" disabled={!!dl} className="w-6 h-6 rounded-lg bg-[#13211a] text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"><X className="w-3.5 h-3.5" /></button>
+              <button onClick={close} title={dl ? 'Cancel download' : 'Close'} className="w-6 h-6 rounded-lg bg-[#13211a] text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"><X className="w-3.5 h-3.5" /></button>
             </div>
 
             {hasUpdate && info && (
@@ -110,7 +112,7 @@ export const UpdateChecker: React.FC<{ children: (open: () => void, checking: bo
                 {dl && (
                   <div>
                     <div className="h-1.5 rounded-full bg-[#09100d] overflow-hidden"><div className="h-full bg-[#bef264] transition-all" style={{ width: `${dl.percent}%` }} /></div>
-                    <p className="text-[11px] text-neutral-400 mt-1">Downloading… {dl.percent}%{dl.total ? ` (${mb(dl.done)} of ${mb(dl.total)})` : ''}</p>
+                    <p className="text-[11px] text-neutral-400 mt-1">Downloading… {dl.percent}%{dl.total ? ` (${mb(dl.done)} of ${mb(dl.total)})` : ''}{(dl as any).speed ? ` · ${((dl as any).speed / 1048576).toFixed(1)} MB/s` : ''}</p>
                   </div>
                 )}
                 {installing && <p className="text-[11px] text-[#8fd0a4] flex items-center gap-1.5"><RotateCw className="w-3 h-3 animate-spin" /> Installing the update. ClipForge will close and open again by itself…</p>}

@@ -86,11 +86,13 @@ let _brPrep = null;
 // Which workers render the clips: 'cpu' (processor), 'gpu' (graphics-card encoder) or both side by side (each takes the next clip whenever it is free)
 async function renderWorkers(job, log) {
   const HW = require('./hardware.cjs'), mode = HW.normMode(job.hardware);
-  if (mode === 'cpu') return ['cpu'];
-  const enc = await HW.gpuEncoder();
-  if (!enc) { log('FFmpeg', 'No usable graphics-card video encoder was found, so the processor renders', 'warn'); return ['cpu']; }
-  log('FFmpeg', mode === 'gpu' ? `Rendering on the graphics card (${enc.label})` : `Rendering on the graphics card (${enc.label}) and the processor together`, 'info');
-  return mode === 'gpu' ? ['gpu'] : ['gpu', 'cpu'];
+  const list = await HW.workerList(mode);
+  if (mode !== 'cpu') {
+    const enc = await HW.gpuEncoder();
+    if (!enc) log('FFmpeg', 'No usable graphics-card video encoder was found, so the processor renders', 'warn');
+    else log('FFmpeg', (mode === 'gpu' ? `Rendering on the graphics card (${enc.label})` : `Rendering on the graphics card (${enc.label}) and the processor together`) + (list.length > 2 || (mode === 'gpu' && list.length > 1) ? `, ${list.length} clips at a time` : ''), 'info');
+  } else if (list.length > 1) log('FFmpeg', `Rendering ${list.length} clips at a time on the processor`, 'info');
+  return list;
 }
 let _maskLock = Promise.resolve();                  // the cut-out (behind-the-person) models are used by one clip at a time
 const withMaskLock = (fn) => { const r = _maskLock.then(fn, fn); _maskLock = r.then(() => {}, () => {}); return r; };

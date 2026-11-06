@@ -35,7 +35,8 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.cjs'),
-      webSecurity: false
+      webSecurity: false,
+      backgroundThrottling: false
     }
   });
 
@@ -163,6 +164,12 @@ function appIcon() {
 }
 if (process.platform === 'win32') app.setAppUserModelId('com.clipforge.desktop');
 if (process.platform === 'linux') app.commandLine.appendSwitch('no-sandbox');   // AppImage on newer Ubuntu blocks the sandbox
+// Blank / white window protection: if the browser's graphics process crashes, the next start runs without GPU drawing (the flag is a small file).
+const gpuFlag = () => path.join(app.getPath('userData'), 'gpu-off.flag');
+try { if (fs.existsSync(gpuFlag())) app.disableHardwareAcceleration(); } catch {}
+app.on('child-process-gone', (e, d) => {
+  try { if (d && d.type === 'GPU' && d.reason !== 'clean-exit') { fs.writeFileSync(gpuFlag(), String(Date.now())); if (mainWindow && !mainWindow.isDestroyed()) setTimeout(() => { try { mainWindow.webContents.reload(); } catch {} }, 800); } } catch {}
+});
 app.whenReady().then(() => {
   Paths.configure({ userData: app.getPath('userData'), appPath: app.getAppPath(), resourcesPath: process.resourcesPath || '' });
   Paths.setModelsDir(Settings.load().modelsDir);
@@ -208,6 +215,63 @@ function fetchToFile(url, dest, onProgress, redirects = 0) {
   });
 }
 
+// Fast download: the file is fetched in several pieces at once (Range requests), so it uses all of the connection's speed instead of one slow stream.
+// ctl.cancel() stops it at once. Falls back to one stream when the server does not support ranges.
+async function fastDownload(url, dest, onProgress, ctl, parts = 8) {
+  const agent = new https.Agent({ keepAlive: true, maxSockets: 16 });
+  const reqs = new Set(); let cancelled = false;
+  ctl.cancel = () => { cancelled = true; for (const r of reqs) { try { r.destroy(); } catch {} } };
+  const probe = (u, redirects = 0) => new Promise((resolve, reject) => {
+    if (redirects > 6) return reject(new Error('Too many redirects'));
+    const r = https.get(u, { agent, headers: { 'User-Agent': 'ClipForge', Range: 'bytes=0-0' } }, (res) => {
+      res.resume();
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) return resolve(probe(new URL(res.headers.location, u).toString(), redirects + 1));
+      if (res.statusCode === 206) { const m = /\/(\d+)$/.exec(String(res.headers['content-range'] || '')); return resolve({ url: u, total: m ? parseInt(m[1], 10) : 0, ranged: !!m }); }
+      resolve({ url: u, total: parseInt(res.headers['content-length'] || '0', 10), ranged: false });
+    }); reqs.add(r); r.on('error', reject);
+  });
+  const info = await probe(url);
+  if (cancelled) throw new Error('CANCELLED');
+  const fh = await fs.promises.open(dest, 'w');
+  let done = 0, last = 0;
+  const tick = (n) => { done += n; const now = Date.now(); if (now - last > 150) { last = now; onProgress(done, info.total); } };
+  try {
+    if (!info.ranged || !info.total || info.total < 8e6) {
+      await new Promise((resolve, reject) => {
+        const r = https.get(info.url, { agent, headers: { 'User-Agent': 'ClipForge' } }, (res) => {
+          if (res.statusCode !== 200) { res.resume(); return reject(new Error(`Download failed: HTTP ${res.statusCode}`)); }
+          let pos = 0; res.on('data', (c) => { res.pause(); fh.write(c, 0, c.length, pos).then(() => { pos += c.length; tick(c.length); res.resume(); }, reject); });
+          res.on('end', resolve); res.on('error', reject);
+        }); reqs.add(r); r.on('error', reject);
+      });
+    } else {
+      const size = Math.ceil(info.total / (parts * 4)), chunks = []; for (let s0 = 0; s0 < info.total; s0 += size) chunks.push([s0, Math.min(info.total - 1, s0 + size - 1)]);
+      let next = 0;
+      const worker = async () => {
+        while (!cancelled) {
+          const c = chunks[next++]; if (!c) return;
+          let pos = c[0], tries = 0;
+          while (pos <= c[1] && !cancelled) {
+            try {
+              await new Promise((resolve, reject) => {
+                const r = https.get(info.url, { agent, headers: { 'User-Agent': 'ClipForge', Range: `bytes=${pos}-${c[1]}` } }, (res) => {
+                  if (res.statusCode !== 206) { res.resume(); return reject(new Error(`Download failed: HTTP ${res.statusCode}`)); }
+                  res.on('data', (b) => { res.pause(); fh.write(b, 0, b.length, pos).then(() => { pos += b.length; tick(b.length); res.resume(); }, reject); });
+                  res.on('end', resolve); res.on('error', reject);
+                }); reqs.add(r); r.on('error', reject);
+              });
+            } catch (e) { if (cancelled) return; if (++tries > 4) throw e; await new Promise(r => setTimeout(r, 800 * tries)); }
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: parts }, worker));
+    }
+  } finally { try { await fh.close(); } catch {} agent.destroy(); }
+  if (cancelled) { try { fs.unlinkSync(dest); } catch {} throw new Error('CANCELLED'); }
+  onProgress(info.total || done, info.total || done);
+}
+let updateDl = null;
+ipcMain.handle('update-cancel', async () => { if (updateDl) { try { updateDl.cancel(); } catch {} } return true; });
 ipcMain.handle('model-status', async () => {
   const out = {};
   for (const id of Object.keys(MODEL_URLS)) {
@@ -326,6 +390,21 @@ const EDIT = require('./engine/edit.cjs');
 ipcMain.handle('edit-load', async (e, outDir) => { const st = EDIT.loadState(outDir); return st ? { ok: true, captions: st.captions, branding: st.branding, framing: st.framing, grading: st.grading, ratio: st.ratio, clips: st.clips.map(c => ({ hookText: c.hookText, title: c.title })) } : { ok: false }; });
 ipcMain.handle('make-preview', async (e, srcPath, force) => { try { const out = await R.previewProxy(String(srcPath), path.join(app.getPath('userData'), 'previews'), !!force); return { ok: true, path: out }; } catch (err) { return { ok: false, path: null, error: String(err.message || err).slice(0, 160) }; } });
 ipcMain.handle('edit-prepare', async (e, a) => { try { const r = await EDIT.prepare(a.outDir, a.index); return { ok: true, url: require('url').pathToFileURL(r.base).toString(), dims: r.dims, footage: r.footage || null }; } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 300) }; } });
+// ---- Edit many clips as one background job (progress events go to the screen; pause / resume / cancel) ----
+let editJob = null;
+ipcMain.handle('edit-batch-start', async (e, a) => {
+  if (editJob) return { ok: false, error: 'An edit is already running.' };
+  const ctl = { paused: false, cancel: false }; editJob = { ctl, outDir: a.outDir };
+  resetCancel();
+  const deps = { segment: (frames) => require('./engine/facetrack.cjs').segmentFrames(frames, { BrowserWindow }), detectFaces: (frames) => require('./engine/facetrack.cjs').detectFaces(frames, { BrowserWindow }) };
+  EDIT.rerenderBatch(a.outDir, a.items || [], { hardware: a.hardware, deps, ctl, onEvent: (o) => send('edit-batch', { ...o, outDir: a.outDir }) })
+    .catch(err => send('edit-batch', { type: 'error', error: String((err && err.message) || err).slice(0, 300), outDir: a.outDir }))
+    .finally(() => { editJob = null; });
+  return { ok: true };
+});
+ipcMain.handle('edit-batch-pause', async () => { if (!editJob) return false; editJob.ctl.paused = true; killAll(); return true; });
+ipcMain.handle('edit-batch-resume', async () => { if (!editJob) return false; resetCancel(); editJob.ctl.paused = false; return true; });
+ipcMain.handle('edit-batch-cancel', async () => { if (!editJob) return false; editJob.ctl.cancel = true; editJob.ctl.paused = false; killAll(); return true; });
 ipcMain.handle('edit-cancel', async () => { killAll(); return true; });
 ipcMain.handle('edit-render', async (e, a) => { resetCancel(); try { const r = await EDIT.rerender(a.outDir, a.index, a.overrides || {}, p => send('edit-progress', { index: a.index, p }), { segment: (frames) => require('./engine/facetrack.cjs').segmentFrames(frames, { BrowserWindow }), detectFaces: (frames) => require('./engine/facetrack.cjs').detectFaces(frames, { BrowserWindow }) }); return { ok: true, ...r }; } catch (err) { if (/CANCELLED/.test(String(err.message || err))) return { ok: false, cancelled: true }; return { ok: false, error: String(err.message || err).slice(0, 300) }; } });
 // ---- Pro licence (Supabase) ----
@@ -434,9 +513,10 @@ ipcMain.handle('delete-project-files', async (e, { id, name, outputDir, files })
     if (path.resolve(d) === path.resolve(Settings.clipsDir())) continue;       // never touch the main clips folder itself
     if (!mine(d)) continue;                                                     // several projects can be made from one video: each has its own folder
     for (const f of fs.readdirSync(d)) {
-      if (/^clip_\d+(\.edit)?\.(mp4|srt|jpg|png|txt)$/i.test(f) || /^clips_title_description\.xlsx$/i.test(f) || /^~\$clips_title_description\.xlsx$/i.test(f)) { try { fs.unlinkSync(path.join(d, f)); removed++; } catch {} }   // only files ClipForge created (clips + the title/description sheet)
+      if (/^clip_\d+[\w.\-]*\.(mp4|srt|jpg|png|txt|json|ass)$/i.test(f) || /^(track_\d+|words|transcript|segments|checkpoint[\w\-]*)\.json$/i.test(f) || /^clips_title_description\.xlsx$/i.test(f) || /^~\$clips_title_description\.xlsx$/i.test(f)) { try { fs.unlinkSync(path.join(d, f)); removed++; } catch {} }   // only files ClipForge created (clips + the title/description sheet)
     }
-    try { fs.rmSync(path.join(d, '.edit'), { recursive: true, force: true }); for (const h of ['.clipforge-edit.json', '.clipforge.json']) fs.rmSync(path.join(d, h), { force: true }); } catch {}
+    try { fs.rmSync(path.join(d, '.edit'), { recursive: true, force: true }); } catch {}
+    for (const h of ['.clipforge-edit.json', '.clipforge.json', 'clipforge.json']) { try { fs.rmSync(path.join(d, h), { force: true }); } catch {} }   // the marker files go even if something else in the folder was busy
     try { for (const f of ['work', 'tmp']) { const w = path.join(d, f); if (fs.existsSync(w) && fs.statSync(w).isDirectory() && fs.readdirSync(w).length === 0) fs.rmdirSync(w); } } catch {}
     try { fs.rmdirSync(d); } catch {}    // removes the folder only if it is now empty (anything of yours that is still inside is left alone)
   }
@@ -482,10 +562,11 @@ ipcMain.handle('update-download', async (e, { url, name }) => {
   try {
     const dir = path.join(app.getPath('downloads'), 'ClipForge Update'); fs.mkdirSync(dir, { recursive: true });
     const dest = path.join(dir, String(name || 'ClipForge-update.exe').replace(/[\\/:*?"<>|]/g, '_')), tmp = dest + '.part';
-    await fetchToFile(url, tmp, (d, t) => send('update-progress', { done: d, total: t, percent: t ? Math.round(d / t * 100) : 0 }));
-    fs.renameSync(tmp, dest);
+    updateDl = {}; const t0 = Date.now();
+    await fastDownload(url, tmp, (d, t) => send('update-progress', { done: d, total: t, percent: t ? Math.round(d / t * 100) : 0, speed: d / Math.max(0.5, (Date.now() - t0) / 1000) }), updateDl);
+    updateDl = null; fs.renameSync(tmp, dest);
     return { ok: true, path: dest };
-  } catch (err) { return { ok: false, error: String(err.message || err) }; }
+  } catch (err) { updateDl = null; try { fs.unlinkSync(path.join(app.getPath('downloads'), 'ClipForge Update', String(name || 'ClipForge-update.exe').replace(/[\\/:*?"<>|]/g, '_') + '.part')); } catch {} if (/CANCELLED/.test(String(err.message))) return { ok: false, cancelled: true, error: 'Download cancelled.' }; return { ok: false, error: String(err.message || err) }; }
 });
 // Installs the downloaded update by itself: silent installer for an installed app (it keeps the install folder, then reopens ClipForge).
 ipcMain.handle('update-install', async (e, { filePath, version }) => {

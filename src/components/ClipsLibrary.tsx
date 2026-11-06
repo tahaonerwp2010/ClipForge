@@ -33,6 +33,8 @@ interface ClipsLibraryProps {
   sourceVideoUrl?: string;
   onBack?: () => void;
   onSelectClipToEdit: (clip: GeneratedClip) => void;
+  editLock?: { mine: boolean; pct: number; paused: boolean } | null;   // an edit pipeline is running: the Edit clip button is unavailable
+  onViewEditProgress?: () => void;
   onDeleteClip: (clipId: string) => void;
   sourceVideoElement?: HTMLVideoElement | null;
   canvasRatio: OuterCanvasRatio;
@@ -49,6 +51,8 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
   sourceVideoUrl,
   onBack,
   onSelectClipToEdit,
+  editLock,
+  onViewEditProgress,
   onDeleteClip,
   sourceVideoElement,
   canvasRatio,
@@ -224,7 +228,12 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-6 md:p-8">
         <div className="max-w-6xl mx-auto space-y-6">
-          
+          {editLock && (
+            <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-[#12201a] border border-[#3f9a5a]/40 text-xs text-[#8fd0a4]">
+              <span>{editLock.mine ? `Edit pipeline ${editLock.paused ? 'paused' : 'running'} for this project · ${editLock.pct}%. You can watch your clips meanwhile; editing is available again when it finishes or is cancelled.` : 'An edit pipeline of another project is running. Editing is available again when it finishes or is cancelled.'}</span>
+              {editLock.mine && onViewEditProgress && <button type="button" onClick={onViewEditProgress} className="px-3 py-1.5 rounded-lg bg-[#bef264] text-black font-black cursor-pointer shrink-0">View progress</button>}
+            </div>
+          )}
           {clips.length === 0 ? (
             <div className="p-12 text-center rounded-2xl bg-[#0a130f] border border-[#16271f] space-y-3 max-w-md mx-auto mt-12">
               <div className="w-12 h-12 rounded-xl bg-[#13211a] text-[#8fd0a4] flex items-center justify-center mx-auto">
@@ -376,7 +385,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
                       </div>
 
                       <div className="flex items-center justify-between pt-1 border-t border-[#13211a] text-[11px] text-neutral-400">
-                        <button onClick={() => onSelectClipToEdit(clip)} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#bef264] hover:bg-[#a3e635] text-black text-xs font-extrabold shadow-md shadow-[#bef264]/20 cursor-pointer transition-colors" title="Edit captions, hook, banner, watermark and music">
+                        <button onClick={() => onSelectClipToEdit(clip)} aria-disabled={!!editLock} style={editLock ? { opacity: 0.35, filter: 'grayscale(1)' } : undefined} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#bef264] hover:bg-[#a3e635] text-black text-xs font-extrabold shadow-md shadow-[#bef264]/20 cursor-pointer transition-colors" title="Edit captions, hook, banner, watermark and music">
                           <span>✎ Edit clip</span>
                         </button>
 

@@ -135,10 +135,10 @@ function brollRect(framing, W, H, srcAspect) {
   return inside ? { x: x0, y: y0, w: fgW, h: fgH, round: radius > 0 } : { x: x0, y: y0, w: ev(x1 - x0), h: ev(y1 - y0), round: false };
 }
 
-function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], emojiBox, srcAspect, maskIdx, watermark, splitArgs, fxZoom = [], fxFlash = [], fxShake = [], fxGlitch = [], fxMore = {}, behind = null, hasAssBehind = false, broll = [], brRect = null }) {
+function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], emojiBox, srcAspect, maskIdx, watermark, splitArgs, fxZoom = [], fxFlash = [], fxShake = [], fxGlitch = [], fxMore = {}, behind = null, hasAssBehind = false, broll = [], brRect = null, gpuF = false, cheap = false }) {
   const f = framing || {}, g = grading || {};
   const mode = f.mode || 'fit-blur';
-  let base, note = null;
+  let base, note = null, gpuUsed = false;
   if (splitArgs) {
     base = splitBase(splitArgs);
   } else if (mode === 'fill-crop' && track && track.duo && !behind && srcAspect >= 1.3 && H > W) {
@@ -152,7 +152,9 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
     const xExpr = track && track.expr
       ? `max(0,min(iw-${W},(${RFX.balanceExpr(track.expr)})*iw-${W}/2))`                       // AI face tracking path
       : `max(0,min(iw-${W},(iw-${W})/2*(1+${pan}/50)))`;                       // manual pan slider
-    base = `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H}:'${xExpr}':'(ih-${H})/2'[v0]`;
+    gpuUsed = gpuF;
+    const sc = gpuF ? `scale_cuda=${W}:${H}:force_original_aspect_ratio=increase:format=nv12,hwdownload,format=nv12` : `scale=${W}:${H}:force_original_aspect_ratio=increase`;
+    base = `[0:v]${sc},crop=${W}:${H}:'${xExpr}':'(ih-${H})/2'[v0]`;
   } else {
     if (mode === 'split-screen') note = 'split-screen needs a second video; using fit instead';
     const { fgW, fgH, radius } = layoutInfo({ ...f, mode: mode === 'custom-scale' ? mode : 'fit-blur' }, W, H, srcAspect);
@@ -163,8 +165,15 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
     const tracked = mode === 'custom-scale' && track && track.expr && fgW > W;
     const xo = tracked ? `max(${W}-w,min(0,${W}/2-(${RFX.balanceExpr(track.expr)})*w))+${offX}` : `(W-w)/2+${offX}`;
     const useMask = radius > 0 && maskIdx != null;
-    const fgChain = `[b]scale=${fgW}:${fgH}${useMask ? `,format=yuva420p[fg0];[${maskIdx}:v]format=gray[m];[fg0][m]alphamerge[fg]` : '[fg]'}`;
-    base = `[0:v]split[a][b];[a]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},${bgFx}[bg];` +
+    gpuUsed = gpuF;
+    const fgSc = gpuF ? `scale_cuda=${fgW}:${fgH}:format=nv12,hwdownload,format=nv12` : `scale=${fgW}:${fgH}`;
+    // graphics-card mode: the blurred backdrop is made at a quarter of the size and enlarged (it is blurred anyway), far less work for the processor
+    const ev4 = n => Math.max(2, Math.round(n / 2) * 2), w4 = ev4(W / 4), h4 = ev4(H / 4), r4 = Math.max(1, Math.min(Math.floor(Math.min(w4, h4) / 2) - 1, Math.round(Math.max(4, f.blurIntensity || 18) / 4)));
+    const bgFx4 = black ? 'drawbox=t=fill:c=black' : `boxblur=${r4}:2,eq=brightness=${-(f.backdropDarken ?? 0.3) * 0.5}`;
+    const bgSc = gpuF ? `scale_cuda=${w4}:${h4}:force_original_aspect_ratio=increase:format=nv12,hwdownload,format=nv12` : `scale=${w4}:${h4}:force_original_aspect_ratio=increase`;
+    const bgChain = cheap ? `[a]${bgSc},crop=${w4}:${h4},${bgFx4},scale=${W}:${H}:flags=bilinear[bg]` : `[a]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},${bgFx}[bg]`;
+    const fgChain = `[b]${fgSc}${useMask ? `,format=yuva420p[fg0];[${maskIdx}:v]format=gray[m];[fg0][m]alphamerge[fg]` : '[fg]'}`;
+    base = `[0:v]split[a][b];${bgChain};` +
            `${fgChain};[bg][fg]overlay=x='${xo}':y='(H-h)/2+${offY}'${tracked ? ':eval=frame' : ''}[v0]`;
   }
   const eq = `eq=brightness=${(((g.brightness ?? 100) - 100) / 200).toFixed(3)}:contrast=${((g.contrast ?? 100) / 100).toFixed(3)}:saturation=${((g.saturation ?? 100) / 100).toFixed(3)}`;
@@ -217,7 +226,7 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
     // background -> big word (captions_behind.ass) -> person cut-out -> the rest of the captions
     const g = geo || ((i, o) => `[${i}]null[${o}]`);
     const pj = post.join(',');
-    graph = `${base};[v0]split[v0a][v0b];[${behind.idx}:v]scale=${W}:${H}:flags=bicubic,gblur=sigma=2.5,format=gray,framerate=fps=${behind.outFps}[mk];[v0b]format=yuv420p[v0c];[v0c][mk]alphamerge[v0p];` +
+    graph = `${base};[v0]split[v0a][v0b];[${behind.idx}:v]format=gray,dilation,${cheap ? `framerate=fps=${behind.outFps},scale=${W}:${H}:flags=bicubic,gblur=sigma=2,format=gray` : `scale=${W}:${H}:flags=bicubic,gblur=sigma=2,format=gray,framerate=fps=${behind.outFps}`},lutyuv=y='clip((val-40)*4,0,255)'[mk];[v0b]format=yuv420p[v0c];[v0c][mk]alphamerge[v0p];` +
       `${g('v0a', 'vz')};${g('v0p', 'vpz')};[vz]${pj}[vcb];[vpz]${pj}[vpc];` +
       `[vcb]${hasAssBehind ? 'ass=captions_behind.ass:fontsdir=fonts' : 'null'}[vt];[vt][vpc]overlay=format=auto[vp];${brollOn ? 'XBRO' : `[vp]${hasAss ? 'ass=captions.ass:fontsdir=fonts' : 'null'}[vc]`}`;
   } else if (geo) graph = `${base};${geo('v0', 'vz')};[vz]${post.join(',')}[${brollOn ? 'vcx' : 'vc'}]`;
@@ -253,7 +262,7 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
       a.forEach((al, k) => chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=${c}@${al}:t=fill:enable='between(t,${(x.t + k * d / 3).toFixed(3)},${(x.t + (k + 1) * d / 3).toFixed(3)})'`)); }); }
   if (flashEn) chain.push(`drawbox=x=0:y=0:w=iw:h=ih:color=white@0.5:t=fill:enable='${flashEn}'`);
   graph += `;[${last}]${chain.length ? chain.join(',') : 'null'}[v]`;
-  return { graph, note };
+  return { graph, note, gpuUsed };
 }
 
 async function renderClip({ quality = 1080, input, start, end, out, assText, ratio, framing, grading, workDir, hasAudio = true, track, emojis = [], emojiBox, onProgress, srcAspect, fontFamilies = [], watermark, music, split, fx, fps = 30, behind = null, assBehind = '', broll = [], hw = 'cpu', capSfx = [] }) {
@@ -328,8 +337,9 @@ async function renderClip({ quality = 1080, input, start, end, out, assText, rat
   const brRect = brollRect(framing, W, H, srcAspect);
   const brMask = brRect.round && maskIdx != null ? path.join(workDir, 'mask.pgm') : null;
   brollList.forEach(b => { b.idx = nextIdx++; b.fps = fps; brollInputs.push('-ss', String(b.ss || 0), '-t', String(b.dur), '-i', path.resolve(b.file)); if (brMask) { b.mIdx = nextIdx++; brollInputs.push('-loop', '1', '-framerate', String(fps), '-t', String(b.dur), '-i', brMask); } });   // muted: only the picture is used
-  const { graph: vGraph, note } = filterGraph({ broll: brollList, brRect, behind: behindIdx != null ? { idx: behindIdx, outFps: fps } : null, hasAssBehind: !!assBehind, W, H, framing, grading, hasAss: !!assText, track, emojiGroups, emojiBox, srcAspect, maskIdx, watermark: wmIdx != null ? { ...watermark, idx: wmIdx } : null, splitArgs, fxZoom: (fx && fx.zoom) || [], fxFlash: (fx && fx.flashes) || [], fxShake: (fx && fx.shake) || [], fxGlitch: (fx && fx.glitch) || [], fxMore: fx || {} });
-  let graph = vGraph;
+  const gOpts = { broll: brollList, brRect, behind: behindIdx != null ? { idx: behindIdx, outFps: fps } : null, hasAssBehind: !!assBehind, W, H, framing, grading, hasAss: !!assText, track, emojiGroups, emojiBox, srcAspect, maskIdx, watermark: wmIdx != null ? { ...watermark, idx: wmIdx } : null, splitArgs, fxZoom: (fx && fx.zoom) || [], fxFlash: (fx && fx.flashes) || [], fxShake: (fx && fx.shake) || [], fxGlitch: (fx && fx.glitch) || [], fxMore: fx || {} };
+  const mkGraph = (gpuF, cheap) => filterGraph({ ...gOpts, gpuF, cheap });
+  let graph = '';                                              // the audio part, added after the picture part of each attempt
   // audio source for split screen: facecam audio (default), game audio, or both
   let aSrc = '0:a', aMap = '0:a:0';
   if (split && hasAudio && secIdx != null && secAudio && (split.audio === 'game' || split.audio === 'mix')) {
@@ -350,21 +360,33 @@ async function renderClip({ quality = 1080, input, start, end, out, assText, rat
     graph += g; aSrc = 'asfx'; aMap = '[asfx]';
   }
   if (musicIdx != null) graph += ';' + musicChain(musicIdx, music, end - start, aSrc);
-  const args = ['-y', '-ss', String(start), '-t', String(end - start), '-i', path.resolve(input),
-    ...emojiGroups.flatMap(g => ['-i', g.png]), ...maskArgs, ...splitInputs, ...sfxInputs, ...behindInputs, ...brollInputs,
-    '-filter_complex', graph, '-map', '[v]', ...(hasAudio ? ['-map', musicIdx != null ? '[aout]' : aMap, '-c:a', 'aac', '-b:a', '160k'] : []),
-    ...(await encoderArgs(hw)), '-movflags', '+faststart', '-map_chapters', '-1', '-map_metadata', '-1', path.resolve(out)];   // never copy chapters / tags from the sound files into the clip
   const total = end - start;
+  // Attempts, best first. Graphics-card mode: (1) NVIDIA decode + scale on the card, (2) card decode only, (3) card encode only, (4) processor. Any failure drops to the next one.
+  const atts = [];
+  let note = null;
+  if (hw === 'gpu') {
+    const HWm = require('./hardware.cjs'), plan = await HWm.gpuPlan();
+    if (plan.enc) {
+      let okCodec = false;
+      try { const pi = await probe(input); okCodec = /^(h264|hevc|vp9)$/.test(pi.vcodec || '') && /^yuvj?420p(10le)?$/.test(pi.pixfmt || ''); } catch {}
+      const g1 = plan.filters && okCodec && !split ? mkGraph(true, true) : null;
+      if (g1 && g1.gpuUsed) atts.push({ pre: ['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda'], g: g1, enc: 'gpu' });
+      if (plan.decArgs.length) atts.push({ pre: plan.decArgs, g: mkGraph(false, true), enc: 'gpu' });
+      atts.push({ pre: [], g: mkGraph(false, true), enc: 'gpu' });
+    }
+  }
+  atts.push({ pre: [], g: mkGraph(false, false), enc: 'cpu' });
+  const buildArgs = async (at) => ['-y', '-ss', String(start), '-t', String(end - start), ...at.pre, '-i', path.resolve(input),
+    ...emojiGroups.flatMap(g => ['-i', g.png]), ...maskArgs, ...splitInputs, ...sfxInputs, ...behindInputs, ...brollInputs,
+    '-filter_complex', at.g.graph + graph, '-map', '[v]', ...(hasAudio ? ['-map', musicIdx != null ? '[aout]' : aMap, '-c:a', 'aac', '-b:a', '160k'] : []),
+    ...(await encoderArgs(at.enc)), '-movflags', '+faststart', '-map_chapters', '-1', '-map_metadata', '-1', path.resolve(out)];   // never copy chapters / tags from the sound files into the clip
   const runIt = (a) => run(ffmpeg(), a, { cwd: workDir, onStderr: s => {
     const m = [...s.matchAll(/time=(\d+):(\d+):(\d+(?:\.\d+)?)/g)].pop();
     if (m && onProgress) onProgress(Math.min(1, (+m[1] * 3600 + +m[2] * 60 + +m[3]) / total));
   } });
-  try { await runIt(args); }
-  catch (e) {                                                    // the graphics-card encoder failed (driver, too many sessions…): redo this clip on the processor
-    if (hw !== 'gpu' || String(e.message) === 'CANCELLED') throw e;
-    const a0 = args.indexOf('-c:v'), a1 = args.indexOf('-movflags');
-    if (a0 < 0 || a1 < a0) throw e;
-    await runIt([...args.slice(0, a0), ...(await encoderArgs('cpu')), ...args.slice(a1)]);
+  for (let i = 0; i < atts.length; i++) {
+    try { await runIt(await buildArgs(atts[i])); note = atts[i].g.note; if (i > 0 && hw === 'gpu') note = (note ? note + '; ' : '') + (atts[i].enc === 'gpu' ? 'graphics card: partly' : 'graphics card failed, used the processor'); break; }
+    catch (e) { if (String(e.message) === 'CANCELLED' || i === atts.length - 1) throw e; try { fs.rmSync(path.resolve(out), { force: true }); } catch {} }
   }
   return { note };
 }
