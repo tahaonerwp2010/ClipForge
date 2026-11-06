@@ -235,32 +235,35 @@ async function fastDownload(url, dest, onProgress, ctl, parts = 8) {
   const fh = await fs.promises.open(dest, 'w');
   let done = 0, last = 0;
   const tick = (n) => { done += n; const now = Date.now(); if (now - last > 150) { last = now; onProgress(done, info.total); } };
+  // One request for the byte range [from, to] (to = -1: until the end). Every received piece gets its own file position the moment it arrives and
+  // we wait for ALL of its writes before returning, so a dropped connection + retry can never write over or skip bytes (that corrupted the installer).
+  const fetchRange = (from, to) => new Promise((resolve, reject) => {
+    let got = 0, failed = false; const writes = [];
+    const fail = (e) => { if (!failed) { failed = true; done = Math.max(0, done - got); reject(e); } };
+    const hdr = { 'User-Agent': 'ClipForge' }; if (to >= 0) hdr.Range = `bytes=${from}-${to}`;
+    const r = https.get(info.url, { agent, headers: hdr }, (res) => {
+      if (res.statusCode !== (to >= 0 ? 206 : 200)) { res.resume(); return fail(new Error(`Download failed: HTTP ${res.statusCode}`)); }
+      res.on('data', (b) => { const at = from + got; got += b.length; tick(b.length); writes.push(fh.write(b, 0, b.length, at)); if (writes.length > 64) { res.pause(); Promise.all(writes.splice(0)).then(() => res.resume(), fail); } });
+      res.on('end', () => Promise.all(writes).then(() => resolve(got), fail));
+      res.on('aborted', () => fail(new Error('Connection lost')));
+      res.on('error', fail);
+      res.on('close', () => { if (!res.complete) fail(new Error('Connection lost')); });
+    }); reqs.add(r); r.on('error', fail);
+  });
   try {
-    if (!info.ranged || !info.total || info.total < 8e6) {
-      await new Promise((resolve, reject) => {
-        const r = https.get(info.url, { agent, headers: { 'User-Agent': 'ClipForge' } }, (res) => {
-          if (res.statusCode !== 200) { res.resume(); return reject(new Error(`Download failed: HTTP ${res.statusCode}`)); }
-          let pos = 0; res.on('data', (c) => { res.pause(); fh.write(c, 0, c.length, pos).then(() => { pos += c.length; tick(c.length); res.resume(); }, reject); });
-          res.on('end', resolve); res.on('error', reject);
-        }); reqs.add(r); r.on('error', reject);
-      });
+    if (!parts || !info.ranged || !info.total || info.total < 8e6) {
+      const got = await fetchRange(0, -1);
+      if (info.total && got !== info.total) throw new Error(`Download incomplete (${got} of ${info.total} bytes)`);
     } else {
       const size = Math.ceil(info.total / (parts * 4)), chunks = []; for (let s0 = 0; s0 < info.total; s0 += size) chunks.push([s0, Math.min(info.total - 1, s0 + size - 1)]);
       let next = 0;
       const worker = async () => {
         while (!cancelled) {
           const c = chunks[next++]; if (!c) return;
-          let pos = c[0], tries = 0;
-          while (pos <= c[1] && !cancelled) {
-            try {
-              await new Promise((resolve, reject) => {
-                const r = https.get(info.url, { agent, headers: { 'User-Agent': 'ClipForge', Range: `bytes=${pos}-${c[1]}` } }, (res) => {
-                  if (res.statusCode !== 206) { res.resume(); return reject(new Error(`Download failed: HTTP ${res.statusCode}`)); }
-                  res.on('data', (b) => { res.pause(); fh.write(b, 0, b.length, pos).then(() => { pos += b.length; tick(b.length); res.resume(); }, reject); });
-                  res.on('end', resolve); res.on('error', reject);
-                }); reqs.add(r); r.on('error', reject);
-              });
-            } catch (e) { if (cancelled) return; if (++tries > 4) throw e; await new Promise(r => setTimeout(r, 800 * tries)); }
+          let tries = 0;
+          for (;;) {                                           // a failed piece is fetched again from its own start, so a half-received piece can never leave a hole
+            try { const got = await fetchRange(c[0], c[1]); if (got !== c[1] - c[0] + 1) throw new Error('Short piece'); break; }
+            catch (e) { if (cancelled) return; if (++tries > 5) throw e; done = Math.max(0, done); await new Promise(r => setTimeout(r, 800 * tries)); }
           }
         }
       };
@@ -269,6 +272,7 @@ async function fastDownload(url, dest, onProgress, ctl, parts = 8) {
   } finally { try { await fh.close(); } catch {} agent.destroy(); }
   if (cancelled) { try { fs.unlinkSync(dest); } catch {} throw new Error('CANCELLED'); }
   onProgress(info.total || done, info.total || done);
+  return info.total || 0;
 }
 let updateDl = null;
 ipcMain.handle('update-cancel', async () => { if (updateDl) { try { updateDl.cancel(); } catch {} } return true; });
@@ -566,17 +570,39 @@ ipcMain.handle('update-check', async (e, { repo } = {}) => {
   if (repo != null && String(repo).trim()) Settings.save({ updateRepo: U.cleanRepo(repo) });
   const r = await U.check(updateRepo(), pkgInfo.version || app.getVersion());
   try { const iv = Settings.load().installedVersion; if (r.ok && iv && !U.newer(r.latest, iv)) r.available = false; } catch {}   // already installed this one (or older)
+  if (r && r.asset) lastAsset = r.asset;
   return { ...r, current: pkgInfo.version || app.getVersion(), repo: U.cleanRepo(updateRepo()) };
 });
+let lastAsset = null;
+const sha256File = (f) => new Promise((res, rej) => { const h = require('crypto').createHash('sha256'); fs.createReadStream(f).on('data', d => h.update(d)).on('end', () => res(h.digest('hex'))).on('error', rej); });
 ipcMain.handle('update-download', async (e, { url, name }) => {
+  const dir = path.join(app.getPath('downloads'), 'ClipForge Update');
+  const safe = String(name || 'ClipForge-update.exe').replace(/[\\/:*?"<>|]/g, '_');
+  const dest = path.join(dir, safe), tmp = dest + '.part';
   try {
-    const dir = path.join(app.getPath('downloads'), 'ClipForge Update'); fs.mkdirSync(dir, { recursive: true });
-    const dest = path.join(dir, String(name || 'ClipForge-update.exe').replace(/[\\/:*?"<>|]/g, '_')), tmp = dest + '.part';
-    updateDl = {}; const t0 = Date.now();
-    await fastDownload(url, tmp, (d, t) => send('update-progress', { done: d, total: t, percent: t ? Math.round(d / t * 100) : 0, speed: d / Math.max(0.5, (Date.now() - t0) / 1000) }), updateDl);
-    updateDl = null; fs.renameSync(tmp, dest);
+    fs.mkdirSync(dir, { recursive: true });
+    const exp = lastAsset && lastAsset.name === name ? lastAsset : null;
+    const t0 = Date.now(); let verified = false, lastErr = '';
+    for (const parts of [8, 0]) {                                     // 1st: 8 pieces at once; if the finished file does not check out, once more as one plain stream
+      try { fs.unlinkSync(tmp); } catch {}
+      updateDl = {};
+      await fastDownload(url, tmp, (d, t) => send('update-progress', { done: d, total: t, percent: t ? Math.round(d / t * 100) : 0, speed: d / Math.max(0.5, (Date.now() - t0) / 1000) }), updateDl, parts);
+      updateDl = null;
+      const size = fs.statSync(tmp).size;
+      if (exp && exp.size && size !== exp.size) { lastErr = `The downloaded file has the wrong size (${size} instead of ${exp.size} bytes).`; continue; }
+      const m = exp && /^sha256:([0-9a-f]{64})$/i.exec(String(exp.digest || ''));
+      if (m && (await sha256File(tmp)).toLowerCase() !== m[1].toLowerCase()) { lastErr = 'The downloaded file is damaged (checksum does not match).'; continue; }
+      verified = true; break;
+    }
+    if (!verified) { try { fs.unlinkSync(tmp); } catch {} return { ok: false, error: lastErr + ' Please try again.' }; }
+    try { fs.unlinkSync(dest); } catch {}
+    fs.renameSync(tmp, dest);
     return { ok: true, path: dest };
-  } catch (err) { updateDl = null; try { fs.unlinkSync(path.join(app.getPath('downloads'), 'ClipForge Update', String(name || 'ClipForge-update.exe').replace(/[\\/:*?"<>|]/g, '_') + '.part')); } catch {} if (/CANCELLED/.test(String(err.message))) return { ok: false, cancelled: true, error: 'Download cancelled.' }; return { ok: false, error: String(err.message || err) }; }
+  } catch (err) {
+    updateDl = null; try { fs.unlinkSync(tmp); } catch {}
+    if (/CANCELLED/.test(String(err.message))) return { ok: false, cancelled: true, error: 'Download cancelled.' };
+    return { ok: false, error: String(err.message || err).slice(0, 300) };
+  }
 });
 // Installs the downloaded update by itself: silent installer for an installed app (it keeps the install folder, then reopens ClipForge).
 ipcMain.handle('update-install', async (e, { filePath, version }) => {

@@ -34,7 +34,7 @@ async function check(repoIn, current) {
       const asset = (process.platform === 'win32' && assets.find(a => /setup.*\.exe$/i.test(a.name))) || (process.platform === 'darwin' && assets.find(a => plat.ext.test(a.name) && archRe.test(a.name))) || assets.find(a => plat.ext.test(a.name)) || assets.find(a => plat.os.test(a.name)) || null;
       const isNew = newer(rel.tag_name, current);
       const notes = isNew ? await whatsNew(repo, rel) : '';
-      return { ok: true, repo, current, latest: String(rel.tag_name).replace(/^v/i, ''), available: isNew, notes, pageUrl: rel.html_url, asset: asset ? { name: asset.name, url: asset.browser_download_url, size: asset.size } : null, source: 'release' };
+      return { ok: true, repo, current, latest: String(rel.tag_name).replace(/^v/i, ''), available: isNew, notes, pageUrl: rel.html_url, asset: asset ? { name: asset.name, url: asset.browser_download_url, size: asset.size, digest: asset.digest || '' } : null, source: 'release' };
     }
     const r = await fetch(`https://raw.githubusercontent.com/${repo}/HEAD/package.json`, { headers: { 'User-Agent': 'ClipForge-Updater' }, signal: AbortSignal.timeout(15000) });
     if (r.status === 404) return { ok: false, error: 'not-found', message: `Repository "${repo}" was not found. Check the name (owner/repo) and that it is public.` };
