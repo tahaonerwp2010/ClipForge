@@ -405,6 +405,10 @@ ipcMain.handle('projects-save', async (e, list) => { try { const f = projectsFil
 // ---- Edit a finished clip (captions + hook only) ----
 const EDIT = require('./engine/edit.cjs');
 ipcMain.handle('edit-load', async (e, outDir) => { const st = EDIT.loadState(outDir); return st ? { ok: true, captions: st.captions, branding: st.branding, framing: st.framing, grading: st.grading, ratio: st.ratio, clips: st.clips.map(c => ({ hookText: c.hookText, title: c.title })) } : { ok: false }; });
+ipcMain.handle('make-still', async (e, srcPath) => {
+  try { if (!editJob && !currentRun) resetCancel(); return { ok: true, path: await R.stillOf(String(srcPath), path.join(app.getPath('userData'), 'previews')) }; }
+  catch (err) { return { ok: false, path: null, error: String(err.message || err).slice(0, 200) }; }
+});
 ipcMain.handle('make-preview', async (e, srcPath, force, checkOnly, startPct) => {
   const go = () => R.previewMake(String(srcPath), path.join(app.getPath('userData'), 'previews'), !!force, !!checkOnly, typeof startPct === 'number' ? startPct : null);
   try {

@@ -18,7 +18,7 @@ function sentences(words) {
 }
 
 const STOP = new Set('the and for with that this from have what when where which clips clip want need show moments moment video part about into their them they you your first seconds second must should would could also more than very some only like make find give take where who whom'.split(' '));
-const keywordsOf = p => [...new Set(String(p || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3 && !STOP.has(w)))];
+const keywordsOf = p => [...new Set(String(p || '').toLowerCase().split(/[\s.,;:!?"'()\[\]{}<>\/\\|@#$%^&*+=~`،۔؟।、。！？]+/).filter(w => w.length > (/^[a-z0-9]+$/.test(w) ? 3 : 1) && !STOP.has(w)))];
 function offline(words, count, clipLen, keywords = []) {
   if (!words.length) return [];
   const sents = sentences(words);
@@ -77,13 +77,13 @@ function chunkWords(words, maxCalls = 8) {
 async function gemini(words, count, clipLen, g, log = () => {}, userPrompt = '') {
   const chunks = chunkWords(words);
   const per = chunks.length === 1 ? Math.min(count * 2, count + 4) : Math.max(2, Math.min(4, Math.ceil(count / chunks.length) + 1));
-  const req = userPrompt ? `\nTOP PRIORITY — THE EDITOR'S REQUEST: "${userPrompt}"\nThis request overrides every other rule below (virality, hooks, variety). Only pick moments that really match it; a moment that does not match must not be returned, even if it is exciting. If fewer moments match than asked for, return only the matching ones. Give every moment a "fit" score 0-10 = how exactly it satisfies the request (10 = exactly what was asked, 0 = unrelated). Judge only what is SAID / the topic here (anything about how people look or what is on screen is checked separately).\n` : '';
+  const req = userPrompt ? `\nTOP PRIORITY — THE EDITOR'S REQUEST (may be written in ANY language; first understand its exact meaning, the transcript may be in a different language): "${userPrompt}"\nFollow this request STRICTLY. It overrides every other rule below (virality, hooks, variety). Return ONLY moments that clearly satisfy what the request asks for (topic, person, emotion, type of moment, keywords, anything it names). NEVER add a moment just to reach the requested number, and never return an off-topic one because it is exciting. If only 2 match, return 2; if none match, return []. Give every moment a "fit" score 0-10: 10 = exactly what was asked, 7-9 = clearly matches, 5-6 = partly, 0-4 = does not match (do not return those). Judge only what is SAID / the topic here (anything about how people look or what is on screen is checked separately).\n` : '';
   const all = []; let used = '';
   for (let ci = 0; ci < chunks.length; ci++) {
     const ch = chunks[ci];
     const where = chunks.length > 1 ? `This is part ${ci + 1} of ${chunks.length} of a longer video (${Math.round(ch[0].start / 60)}–${Math.round(ch[ch.length - 1].end / 60)} min). ` : '';
     const prompt = `You are a viral short-form video editor. ${where}Transcript with timestamps below.${req}
-Pick the ${per} most engaging, self-contained moments. ${clipLen ? `Aim for about ${clipLen} seconds each, but a moment may be anywhere from ${Math.round(clipLen * 0.6)} to ${Math.round(clipLen * 1.5)} seconds when that is what it needs to be complete: finishing the thought properly matters more than hitting ${clipLen} seconds exactly.` : 'There is NO fixed length: every moment is exactly as long as it needs to be to make complete sense on its own (usually 15 to 90 seconds). Never cut a thought in half and never pad with filler.'} Each moment must make sense without the rest of the video: it starts at the beginning of a sentence or thought (never in the middle of one, never on a leftover word of the previous sentence) and ends right when the thought is finished, on the last word of a sentence. Never end on a question that is not answered inside the moment (if a question starts the moment, include its answer; if the speaker answers a question, start at that question). Never start with an answer fragment ("and", "but", "so", "because"...). No overlaps.
+${userPrompt ? `Pick UP TO ${per} self-contained moments that match the request (fewer or none is fine).` : `Pick the ${per} most engaging, self-contained moments.`} ${clipLen ? `Aim for about ${clipLen} seconds each, but a moment may be anywhere from ${Math.round(clipLen * 0.6)} to ${Math.round(clipLen * 1.5)} seconds when that is what it needs to be complete: finishing the thought properly matters more than hitting ${clipLen} seconds exactly.` : 'There is NO fixed length: every moment is exactly as long as it needs to be to make complete sense on its own (usually 15 to 90 seconds). Never cut a thought in half and never pad with filler.'} Each moment must make sense without the rest of the video: it starts at the beginning of a sentence or thought (never in the middle of one, never on a leftover word of the previous sentence) and ends right when the thought is finished, on the last word of a sentence. Never end on a question that is not answered inside the moment (if a question starts the moment, include its answer; if the speaker answers a question, start at that question). Never start with an answer fragment ("and", "but", "so", "because"...). No overlaps.
 Score honestly and strictly on the same scale for every part of the video: 90+ only for exceptional moments, most moments are 55-80.
 Return ONLY a JSON array of objects: {${userPrompt ? '"fit":0-10,' : ''}"start":number,"end":number,"title":"punchy hook title max 8 words","hookText":"first-3-seconds hook line","viralityScore":1-99,"reason":"short","category":"High Energy|Deep Insight|Storytelling|Shocking Truth"}
 
@@ -232,7 +232,8 @@ DESCRIPTION: 2 short punchy sentences (max 250 characters): the first one repeat
 HASHTAGS: 3 relevant hashtags (always with #) that EXIST on YouTube and are US based; no generic spam.
 Use the VIDEO CONTEXT only to understand who is speaking and what the story is, but write each item about its OWN clip. Return only the structured JSON.`;
 const hookRules = (n) => `
-HOOK (field "hookText") is the text shown on screen in the first seconds. Its only job is to make a scrolling viewer stop and keep watching. Length: ${HOOK_LEN[n] || HOOK_LEN[2]}. Write it as EITHER (a) a curiosity question that this exact clip answers, or (b) a bold, specific statement that creates an open loop (a surprising claim, a number, a warning, a contradiction, "nobody tells you…" style). Never a plain summary or a topic label. It must be true to what is said in the clip and make the viewer need the payoff. Use the clip's own strongest words/numbers. Make the very first word count (a number, \"Stop\", \"Nobody\", \"Why\", \"He\"/\"She\" + a shock) and pick the single most surprising or emotional thing said in this clip. Good examples: "Why do 90% of startups die in year one?", "This one habit made him a millionaire", "Stop doing this before it costs you everything", "She lost everything. Then this happened.", "Nobody warned him about this". Bad examples: "A talk about startups", "Interesting thoughts on money", "Watch this video". Add one fitting emoji at the end. Do not use hashtags in the hook.`;
+HOOK (field "hookText") is the text shown on screen in the first seconds. Its only job is to make a scrolling viewer stop and keep watching. Length: ${HOOK_LEN[n] || HOOK_LEN[2]}. Write it as EITHER (a) a curiosity question that this exact clip answers, or (b) a bold, specific statement that creates an open loop (a surprising claim, a number, a warning, a contradiction, "nobody tells you…" style). Never a plain summary or a topic label. It must be true to what is said in the clip and make the viewer need the payoff. Use the clip's own strongest words/numbers. Make the very first word count (a number, \"Stop\", \"Nobody\", \"Why\", \"He\"/\"She\" + a shock) and pick the single most surprising or emotional thing said in this clip. Good examples: "Why do 90% of startups die in year one?", "This one habit made him a millionaire", "Stop doing this before it costs you everything", "She lost everything. Then this happened.", "Nobody warned him about this". Bad examples: "A talk about startups", "Interesting thoughts on money", "Watch this video". Add one fitting emoji at the end. Do not use hashtags in the hook.
+NEVER copy a sentence or a stretch of words from the clip as the hook, and never write the hook as something the speaker says in first person ("I ...", "We ...", "My ..."). The hook is a TEASER written ABOUT the clip by an editor, in the third person or as a question to the viewer, that the clip then pays off. It must be a complete thought (never ending in "and", "so", "but", "that", "to", "the"). Bad (copied speech): "I always take shots at myself first so they can't." Good: "Why does he insult himself before anyone else can?". Bad: "We had 150 cases a week and it was crazy." Good: "How one small firm juggles 150 court cases a week".`;
 const metaSystem = (n) => META_BASE + hookRules(n) + `
 Output format: a JSON array with one object per clip, in the same order, each with "n" = the clip number given as #n in the input: {"n":0,"title":"...","hookText":"...","description":"...","hashtags":["#a","#b","#c"],"keywords":["..."]}.` + (n === 1 ? '' : ` Separate the hook lines with a \\n character.`);
 
@@ -324,6 +325,40 @@ function alignAnswers(part, arr, words, log) {
   }
   return arr;
 }
+// ---- Hook quality check: a hook that is a sentence copied from the clip, a first-person line or an unfinished sentence is thrown out and rewritten ----
+const normW = t => String(t || '').toLowerCase().replace(/[^a-z0-9' ]+/g, ' ').split(/\s+/).filter(Boolean);
+function hookBad(hook, txt) {
+  const plain = EM.splitTitle(String(hook || '')).text || String(hook || '');
+  const hw = normW(plain);
+  if (hw.length < 3) return true;
+  if (/^(i|i'm|i've|i'll|i'd|we|we're|we've|my|me|our)\b/i.test(plain.trim()) && !/\?/.test(plain)) return true;
+  if (/\b(and|but|so|that|because|to|of|the|a|an|with|for|or|if|then|when|than)\s*[.!?…]*$/i.test(plain.trim())) return true;
+  const tw = normW(txt), n = hw.length >= 4 ? 4 : hw.length;
+  const grams = new Set(); for (let i = 0; i + n <= tw.length; i++) grams.add(tw.slice(i, i + n).join(' '));
+  let tot = 0, hit = 0; for (let i = 0; i + n <= hw.length; i++) { tot++; if (grams.has(hw.slice(i, i + n).join(' '))) hit++; }
+  return tot > 0 && hit / tot >= 0.5;
+}
+function hookFromTitle(title, txt, n) {
+  const plain = (EM.splitTitle(String(title || '')).text || '').replace(/[|:]+/g, ' ').trim();
+  const maxW = { 1: 5, 2: 9, 3: 13 }[n] || 9; const w = plain.split(/\s+/).filter(Boolean);
+  const cut = w.slice(0, maxW + 2).join(' ').replace(/[,;:\-–]+$/, '');
+  return cut && !hookBad(cut, txt) ? cut : '';
+}
+async function fixHooks(bad, words, g, log, n) {
+  const CH = 5; let fixed = 0;
+  for (let o = 0; o < bad.length; o += CH) {
+    const part = bad.slice(o, o + CH);
+    const items = part.map((c, i) => `#${i}\nCLIP: ${clipText(c, words).slice(0, 1200)}\nREJECTED HOOK (copied speech or unfinished - do NOT reuse its wording): ${String(c.hookText || '').replace(/\s+/g, ' ')}`).join('\n\n');
+    const system = `You write on-screen hooks for YouTube Shorts / TikTok / Reels for English-speaking viewers in the United States. For each clip, write ONE new hook.` + hookRules(n) + `
+Output ONLY a JSON array: [{"n":0,"hookText":"..."}]` + (n === 1 ? '' : ' Separate the hook lines with a \\n character.');
+    try {
+      const r = await G.generate(g, { system, prompt: items, json: true });
+      const out = G.parseJson(r.text), arr = Array.isArray(out) ? out : (out.hooks || out.clips || []);
+      for (const o2 of arr) { const k = Number(o2 && o2.n); const c = part[k]; const h = o2 && String(o2.hookText || '').trim(); if (c && h && !hookBad(h, clipText(c, words))) { c.hookText = h; fixed++; } }
+    } catch (e) { log(`Hook rewrite skipped (${String(e.message).slice(0, 80)})`, 'warn'); }
+  }
+  if (fixed) log(`Hooks: ${fixed} weak hook${fixed === 1 ? '' : 's'} rewritten`, 'info');
+}
 async function writeTitles(clips, words, g, log, hookLines = 2) {
   const HN = hookLines === 1 || hookLines === 3 ? hookLines : 2;
   let engine = 'local';
@@ -355,9 +390,11 @@ async function writeTitles(clips, words, g, log, hookLines = 2) {
   } else clips.forEach(c => { c.__weak = true; });
   const weak = clips.filter(c => c.__weak);
   if (weak.length) { await localTitles(weak, words, log, HN); if (weak.length < clips.length) engine = 'gemini+local'; }
+  { const bad = clips.filter(c => hookBad(c.hookText, clipText(c, words))); if (bad.length && G.ready(g)) await fixHooks(bad, words, g, log, HN); }
   for (const c of clips) {
     delete c.__weak;
     const txt = clipText(c, words);
+    if (hookBad(c.hookText, txt)) { const alt = hookFromTitle(c.title, txt, HN); if (alt) c.hookText = alt; }
     if (!c.description || c.description.length < 15) c.description = localDescription(txt);
     c.hashtags = finalTags(c.hashtags, (c.__topic || '') + ' ' + c.title + ' ' + txt); delete c.__topic;
     { const he = EM.splitTitle(String(c.hookText || '')).emojis; c.hookText = HK.hookLines(c.hookText, c.title, HN); if (he && he.length) c.hookText += ' ' + he.slice(0, 2).join(''); }
@@ -381,11 +418,15 @@ async function findClips(words, { hookLines = 2, count = 4, clipLen = 30, gemini
       let cands = sanitize(await gemini(words, count, clipLen, g, (m, k) => log('AI', m, k), userPrompt), words);
       if (clipLen) cands.forEach(c => { c.rank = (c.viralityScore || 60) - Math.abs((c.end - c.start) - clipLen) / clipLen * 12; });   // among equally good moments the one closer to the chosen length wins
       cands = dedupe(cands);
-      let subject = '';
+      let subject = '', strict = false;
       if (userPrompt && cands.some(c => c.fit != null)) {                       // the request comes first: fit decides, virality only breaks ties
         cands.forEach(c => { c.rank = (c.fit ?? 5) * 10 + (c.viralityScore || 60) * 0.2; });
-        const good = cands.filter(c => (c.fit ?? 5) >= 5);
-        cands = (good.length >= count ? good : cands).sort((a, b) => b.rank - a.rank);
+        const good = cands.filter(c => (c.fit ?? 5) >= 6);
+        if (good.length) cands = good;
+        else { cands = cands.filter(c => (c.fit ?? 0) >= 4).slice(0, 2); log('AI', cands.length ? 'No moment matches your prompt strongly; only the closest ones are kept' : 'No moment matches your prompt', 'warn'); }
+        cands.sort((a, b) => b.rank - a.rank);
+        strict = true;
+        if (cands.length < count && good.length) log('AI', `Only ${cands.length} moment(s) really match your prompt, so only those are returned (nothing unrelated added)`, 'info');
         log('AI', `Your prompt decides the order: ${cands.slice(0, count).map(c => c.fit ?? '?').join(', ')} (fit 0-10)`, 'info');
       }
       if (userPrompt && cands.length && filePath) {
@@ -393,13 +434,14 @@ async function findClips(words, { hookLines = 2, count = 4, clipLen = 30, gemini
           const pool = cands.slice(0, Math.min(cands.length, Math.max(count * 2, count + 4), 12));
           const vr = await visualRank(pool, { filePath, workDir, userPrompt, g, log: (m, k) => log('AI', m, k) });
           if (vr.visual) {
-            const good = vr.cands.filter(c => c.match >= 4);
-            cands = (good.length >= count ? good : vr.cands).sort((a, b) => b.rank - a.rank);
+            const good = vr.cands.filter(c => c.match >= 5);
+            const keep = good.length ? good : vr.cands.filter(c => c.match >= 3).slice(0, 2);
+            if (keep.length) cands = keep.sort((a, b) => b.rank - a.rank);
             subject = vr.subject;
           }
         } catch (e) { log('AI', `Visual check skipped (${String(e.message).slice(0, 90)}); the prompt is used for the topic only`, 'warn'); }
       }
-      let picked = topUp(cands.slice(0, count));
+      let picked = strict ? cands.slice(0, count) : topUp(cands.slice(0, count));
       picked = picked.slice(0, count);
       if (picked.length) {
         if (subject) picked.forEach(c => { c.subject = subject; });

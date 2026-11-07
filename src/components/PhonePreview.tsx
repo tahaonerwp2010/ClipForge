@@ -24,6 +24,7 @@ import { getContextualEmoji, CAPCUT_DYNAMIC_COLORS, hookLines, placeHook, hookWo
 interface PhonePreviewProps {
   videoUrl: string;
   poster?: string;
+  onFirstFrame?: (url: string) => void;
   canvasRatio: OuterCanvasRatio;
   framing: InnerFramingConfig;
   captions: CaptionConfig;
@@ -52,6 +53,7 @@ interface PhonePreviewProps {
 export const PhonePreview: React.FC<PhonePreviewProps> = ({
   videoUrl,
   poster,
+  onFirstFrame,
   canvasRatio,
   framing,
   captions,
@@ -649,7 +651,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                   src={videoUrl}
                   poster={poster}
                   preload="auto"
-                  onLoadedData={() => setVidReady(true)}
+                  onLoadedData={() => { setVidReady(true); onFirstFrame?.(videoUrl); }}
                   loop
                   playsInline
                   onTimeUpdate={handleTimeUpdate}
@@ -687,7 +689,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                   src={videoUrl}
                   poster={poster}
                   preload="auto"
-                  onLoadedData={() => setVidReady(true)}
+                  onLoadedData={() => { setVidReady(true); onFirstFrame?.(videoUrl); }}
                   loop
                   playsInline
                   onTimeUpdate={handleTimeUpdate}
@@ -733,7 +735,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                   src={videoUrl}
                   poster={poster}
                   preload="auto"
-                  onLoadedData={() => setVidReady(true)}
+                  onLoadedData={() => { setVidReady(true); onFirstFrame?.(videoUrl); }}
                   loop
                   playsInline
                   onTimeUpdate={handleTimeUpdate}
@@ -773,7 +775,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                   src={videoUrl}
                   poster={poster}
                   preload="auto"
-                  onLoadedData={() => setVidReady(true)}
+                  onLoadedData={() => { setVidReady(true); onFirstFrame?.(videoUrl); }}
                   loop
                   playsInline
                   onTimeUpdate={handleTimeUpdate}
@@ -820,7 +822,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                   src={videoUrl}
                   poster={poster}
                   preload="auto"
-                  onLoadedData={() => setVidReady(true)}
+                  onLoadedData={() => { setVidReady(true); onFirstFrame?.(videoUrl); }}
                   loop
                   playsInline
                   onTimeUpdate={handleTimeUpdate}

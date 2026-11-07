@@ -62,6 +62,21 @@ export default function App() {
   const [partPct, setPartPct] = useState(15);
   const [partBusy, setPartBusy] = useState(false);
   useEffect(() => { const v = selectedVideo; if (v?.previewSample && heavyToastFor.current !== v.id) { heavyToastFor.current = v.id; setHeavyToast(true); } }, [selectedVideo]);
+  // Safety net: if the preview video shows no picture 15 s after the Studio page opened (for whatever reason), switch to a short preview part automatically.
+  const frameOkUrl = useRef('');
+  useEffect(() => {
+    const v = selectedVideo;
+    if (activeView !== 'studio' || !v || !v.filePath || v.previewSample || v.previewPending) return;
+    const url = v.url;
+    const t = setTimeout(async () => {
+      if (frameOkUrl.current === url) return;
+      setPartBusy(true);
+      const u = await playableUrl(v.filePath, url, true, 0.15); const sm = (window as any).__previewSample || null;
+      setPartBusy(false);
+      if (u !== url) { heavyToastFor.current = ''; setSelectedVideo(cur => cur && cur.id === v.id ? { ...cur, url: u, previewSample: sm || { start: 0, len: v.duration, dur: v.duration } } : cur); }
+    }, 15000);
+    return () => clearTimeout(t);
+  }, [activeView, selectedVideo?.url, selectedVideo?.id]);
   const changePreviewPart = async () => {
     const v = selectedVideo; if (!v || !v.filePath || partBusy) return;
     setPartBusy(true);
@@ -734,12 +749,12 @@ export default function App() {
                       className="w-full px-3 py-2 rounded-lg bg-[#0a130f] border border-[#1d3228] focus:border-[#3f9a5a] outline-none text-xs text-white placeholder:text-neutral-500" />
                   </div>
                   {heavyToast && <div className="fixed bottom-6 right-6 z-[300] max-w-sm px-4 py-3 rounded-xl bg-[#0f1f17] border border-[#2a5a3a] shadow-2xl text-[12px] text-neutral-200 leading-snug">
-                    <div className="font-bold text-brand-300 mb-1">This is a heavy video</div>
-                    <div>The preview shows only a short part of it so it stays smooth. Your clips are still cut from the full video.</div>
+                    <div className="font-bold text-brand-300 mb-1">Preview shows a short part</div>
+                    <div>This video is heavy or in a format the preview cannot play in full, so the preview shows only a short part of it. Your clips are still cut from the full video.</div>
                     <button type="button" onClick={() => setHeavyToast(false)} className="mt-2 px-3 py-1 rounded-md bg-[#a3e635] text-black font-bold cursor-pointer">OK</button>
                   </div>}
                   {selectedVideo.previewSample && !selectedVideo.previewPending && <div className="w-full mb-3 px-3 py-2 rounded-lg bg-[#16271f] border border-[#2a5a3a] text-[11px] leading-snug text-brand-300">
-                    <div>Heavy video: the preview shows only {mmss(selectedVideo.previewSample.start)}–{mmss(selectedVideo.previewSample.start + selectedVideo.previewSample.len)} of {mmss(selectedVideo.previewSample.dur)}. Your clips are cut from the full video.</div>
+                    <div>Preview part: the preview shows only {mmss(selectedVideo.previewSample.start)}–{mmss(selectedVideo.previewSample.start + selectedVideo.previewSample.len)} of {mmss(selectedVideo.previewSample.dur)}. Your clips are cut from the full video.</div>
                     <div className="flex items-center gap-2 mt-2">
                       <input type="range" min={0} max={95} step={5} value={partPct} onChange={e => setPartPct(+e.target.value)} className="flex-1 accent-[#a3e635]" disabled={partBusy} aria-label="Preview part" />
                       <button type="button" onClick={changePreviewPart} disabled={partBusy} className="px-2 py-1 rounded-md bg-[#2a5a3a] text-white font-bold cursor-pointer disabled:opacity-50">{partBusy ? 'Making…' : 'Show this part'}</button>
@@ -749,6 +764,7 @@ export default function App() {
                   <PhonePreview
                     videoUrl={selectedVideo.url}
                     poster={selectedVideo.thumbnail}
+                    onFirstFrame={(u) => { frameOkUrl.current = u; }}
                     canvasRatio={canvasRatio}
                     framing={framing}
                     captions={captions}

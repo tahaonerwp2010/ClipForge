@@ -255,8 +255,11 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
     const meta = await readVideoMeta(orig);
     let need = false;
     if (realPath) { try { const r = await (window as any).electronAPI?.makePreview?.(realPath, false, true); need = !!(r && r.need); } catch { /* ignore */ } }
+    // the window could not draw a picture (stock placeholder / black): take a real still from the file with FFmpeg
+    let still = '';
+    if (realPath && (!meta.w || meta.blank || meta.thumb === FALLBACK_THUMB)) { try { const r = await (window as any).electronAPI?.makeStill?.(realPath); if (r && r.ok && r.path) still = toFileUrl(r.path); } catch { /* ignore */ } }
     const mk = (url: string, m: typeof meta): VideoSource => ({
-      id: `local-${id0}`, title: file.name.replace(/\.[^/.]+$/, ''), url, duration: Math.round(m.duration) || 120, thumbnail: m.thumb, type: 'upload', author: 'Local File',
+      id: `local-${id0}`, title: file.name.replace(/\.[^/.]+$/, ''), url, duration: Math.round(m.duration) || 120, thumbnail: (still && (m.thumb === FALLBACK_THUMB || m.blank || !m.w)) ? still : m.thumb, type: 'upload', author: 'Local File',
       originalAspect: m.vertical ? '9:16 vertical' : '16:9 widescreen', filePath: realPath
     });
     const id0 = Date.now();

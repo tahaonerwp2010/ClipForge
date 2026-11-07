@@ -48,7 +48,8 @@ declare global {
       ownerRemove?: (pw: string, id: string) => Promise<{ ok: boolean; error?: string }>;
       openExternal?: (url: string) => Promise<boolean>;
       editLoad?: (outDir: string) => Promise<{ ok: boolean; captions?: any; branding?: any; framing?: any; grading?: any; ratio?: string; clips?: { hookText: string; title: string }[] }>;
-      makePreview?: (path: string, force?: boolean, checkOnly?: boolean, startPct?: number) => Promise<{ ok: boolean; path: string | null; need?: boolean; sample?: { start: number; len: number; dur: number } | null; error?: string }>;
+      makeStill?: (path: string) => Promise<{ ok: boolean; path: string | null; error?: string }>;
+  makePreview?: (path: string, force?: boolean, checkOnly?: boolean, startPct?: number) => Promise<{ ok: boolean; path: string | null; need?: boolean; sample?: { start: number; len: number; dur: number } | null; error?: string }>;
       editBatchStart?: (a: { outDir: string; items: { index: number; overrides: any }[]; hardware?: any }) => Promise<{ ok: boolean; error?: string }>;
       editBatchPause?: () => Promise<boolean>;
       editBatchResume?: () => Promise<boolean>;
