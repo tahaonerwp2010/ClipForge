@@ -19,6 +19,7 @@ const Settings = require('./engine/settings.cjs');
 const AI = require('./engine/ai.cjs');
 
 let mainWindow;
+let askedClose = false;
 const send = (ch, data) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(ch, data); };
 
 function createWindow() {
@@ -43,6 +44,16 @@ function createWindow() {
   // The inspector (F12 / Ctrl+Shift+I) is for development only. In the installed app it stays closed, unless it is started with --devtools.
   const allowDev = !app.isPackaged || process.argv.includes('--devtools');
   if (!allowDev) { try { require('electron').Menu.setApplicationMenu(null); } catch {} }   // the default menu would also open it
+  // Closing the window while a project is being made would stop it: ask first (the progress is kept either way and can be resumed)
+  mainWindow.on('close', (e) => {
+    if (forceQuit || !(currentRun || editJob)) return;
+    e.preventDefault();
+    if (askedClose) return; askedClose = true;
+    dialog.showMessageBox(mainWindow, { type: 'warning', buttons: ['Keep working', 'Close and stop'], defaultId: 0, cancelId: 0, noLink: true, title: 'ClipForge is still working',
+      message: 'A project is still being processed.', detail: 'If you close ClipForge now the work stops. Everything finished so far is kept, and you can resume the project later from where it stopped.' })
+      .then(r => { askedClose = false; if (r.response === 1) { forceQuit = true; try { mainWindow.close(); } catch {} } })
+      .catch(() => { askedClose = false; });
+  });
   mainWindow.webContents.on('before-input-event', (event, input) => {
     const isDev = input.key === 'F12' || (input.control && input.shift && String(input.key).toLowerCase() === 'i');
     if (!isDev) return;
@@ -181,7 +192,8 @@ app.whenReady().then(() => {
   });
 });
 
-app.on('before-quit', () => { try { killAll(); } catch {} });
+let forceQuit = false;
+app.on('before-quit', () => { forceQuit = true; global.__cfQuitting = true; try { killAll(); } catch {} });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

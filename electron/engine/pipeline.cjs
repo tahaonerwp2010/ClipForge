@@ -655,7 +655,12 @@ async function runPipeline(job, emit, deps = {}) {
   try { return await (job.shorts ? runShortsInner : runInner)(job, emit, deps); }
   catch (e) {
     // cancelled (paused) => keep checkpoints for resume; real failure => clean up
-    if (String(e.message) !== 'CANCELLED') { try { fs.rmSync(path.join(P.workRoot(), `job_${slug(job.id || job.name)}`), { recursive: true, force: true }); } catch {} }
+    // Checkpoints are only thrown away after a real failure that happened before any expensive work was done. A cancel / pause, the app being closed
+    // (the window, the hidden helper windows and the converters all stop with odd error messages then) or any later failure keeps them, so the project can be resumed.
+    const work = path.join(P.workRoot(), `job_${slug(job.id || job.name)}`);
+    let keep = String(e.message) === 'CANCELLED' || /CANCEL|destroyed|killed|SIGTERM|aborted/i.test(String(e.message)) || !!global.__cfQuitting;
+    if (!keep) { try { keep = fs.readdirSync(work).some(n => /^res_\d+\.json$/.test(n)); if (!keep) { const m = JSON.parse(fs.readFileSync(path.join(work, 'meta.json'), 'utf8')); keep = !!(m && m.steps && Object.keys(m.steps).some(k => +k >= 2)); } } catch {} }
+    if (!keep) { try { fs.rmSync(work, { recursive: true, force: true }); } catch {} }
     throw e;
   }
 }
