@@ -405,15 +405,15 @@ ipcMain.handle('projects-save', async (e, list) => { try { const f = projectsFil
 // ---- Edit a finished clip (captions + hook only) ----
 const EDIT = require('./engine/edit.cjs');
 ipcMain.handle('edit-load', async (e, outDir) => { const st = EDIT.loadState(outDir); return st ? { ok: true, captions: st.captions, branding: st.branding, framing: st.framing, grading: st.grading, ratio: st.ratio, clips: st.clips.map(c => ({ hookText: c.hookText, title: c.title })) } : { ok: false }; });
-ipcMain.handle('make-preview', async (e, srcPath, force, checkOnly) => {
-  const go = () => R.previewProxy(String(srcPath), path.join(app.getPath('userData'), 'previews'), !!force, !!checkOnly);
+ipcMain.handle('make-preview', async (e, srcPath, force, checkOnly, startPct) => {
+  const go = () => R.previewMake(String(srcPath), path.join(app.getPath('userData'), 'previews'), !!force, !!checkOnly, typeof startPct === 'number' ? startPct : null);
   try {
     if (!editJob && !currentRun) resetCancel();      // an old "cancel" must never block the preview (every ffmpeg call fails right away while the flag is set)
     const r0 = await go(); if (r0 === 'needed') return { ok: true, need: true, path: null };
-    return { ok: true, path: r0 };
+    return r0 ? { ok: true, path: r0.path, sample: r0.sample } : { ok: true, path: null };
   } catch (err) {
     const m = String(err.message || err);
-    if (/CANCELLED/.test(m) && !editJob && !currentRun) { try { resetCancel(); return { ok: true, path: await go() }; } catch (e2) { return { ok: false, path: null, error: String(e2.message || e2).slice(0, 400) }; } }
+    if (/CANCELLED/.test(m) && !editJob && !currentRun) { try { resetCancel(); const r1 = await go(); return { ok: true, path: r1 && r1.path, sample: r1 && r1.sample }; } catch (e2) { return { ok: false, path: null, error: String(e2.message || e2).slice(0, 400) }; } }
     return { ok: false, path: null, error: m.slice(0, 400) };
   }
 });

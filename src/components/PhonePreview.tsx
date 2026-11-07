@@ -23,6 +23,7 @@ import { getContextualEmoji, CAPCUT_DYNAMIC_COLORS, hookLines, placeHook, hookWo
 
 interface PhonePreviewProps {
   videoUrl: string;
+  poster?: string;
   canvasRatio: OuterCanvasRatio;
   framing: InnerFramingConfig;
   captions: CaptionConfig;
@@ -50,6 +51,7 @@ interface PhonePreviewProps {
 
 export const PhonePreview: React.FC<PhonePreviewProps> = ({
   videoUrl,
+  poster,
   canvasRatio,
   framing,
   captions,
@@ -76,6 +78,8 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
   const primaryVideoRef = useRef<HTMLVideoElement>(null);
   const secondaryVideoRef = useRef<HTMLVideoElement>(null);
   const bgVideoRef = useRef<HTMLVideoElement>(null);
+  const [vidReady, setVidReady] = useState(false);          // the sharp video has its first picture: only then the blurred backdrop copy starts loading (one decoder at a time)
+  useEffect(() => { setVidReady(false); }, [videoUrl]);
   const phoneScreenRef = useRef<HTMLDivElement>(null);
 
   // Pan dragging state for fill-crop
@@ -623,7 +627,8 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
             <>
               {framing.fitBackground !== 'black' && <video
                 ref={bgVideoRef}
-                src={videoUrl}
+                src={vidReady ? videoUrl : undefined}
+                onLoadedData={() => { const p = primaryVideoRef.current, b = bgVideoRef.current; if (p && b) { b.currentTime = p.currentTime; if (!p.paused) b.play().catch(() => {}); } }}
                 muted
                 loop
                 playsInline
@@ -642,6 +647,9 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                 <video
                   ref={primaryVideoRef}
                   src={videoUrl}
+                  poster={poster}
+                  preload="auto"
+                  onLoadedData={() => setVidReady(true)}
                   loop
                   playsInline
                   onTimeUpdate={handleTimeUpdate}
@@ -677,6 +685,9 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                 <video
                   ref={primaryVideoRef}
                   src={videoUrl}
+                  poster={poster}
+                  preload="auto"
+                  onLoadedData={() => setVidReady(true)}
                   loop
                   playsInline
                   onTimeUpdate={handleTimeUpdate}
@@ -720,6 +731,9 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                 <video
                   ref={primaryVideoRef}
                   src={videoUrl}
+                  poster={poster}
+                  preload="auto"
+                  onLoadedData={() => setVidReady(true)}
                   loop
                   playsInline
                   onTimeUpdate={handleTimeUpdate}
@@ -757,6 +771,9 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                 <video
                   ref={primaryVideoRef}
                   src={videoUrl}
+                  poster={poster}
+                  preload="auto"
+                  onLoadedData={() => setVidReady(true)}
                   loop
                   playsInline
                   onTimeUpdate={handleTimeUpdate}
@@ -801,6 +818,9 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
                 <video
                   ref={primaryVideoRef}
                   src={videoUrl}
+                  poster={poster}
+                  preload="auto"
+                  onLoadedData={() => setVidReady(true)}
                   loop
                   playsInline
                   onTimeUpdate={handleTimeUpdate}

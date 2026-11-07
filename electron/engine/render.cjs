@@ -410,7 +410,7 @@ async function extractFrames(input, start, dur, outDir, fps = 2) {
 const dimsFor = (ratio, quality = 1080) => { const [w, h] = ASPECT[ratio] || ASPECT['9:16']; const s = Math.max(480, quality) / 1080; const ev = n => Math.max(2, Math.round(n * s / 2) * 2); return [ev(w), ev(h)]; };
 // Videos the app window cannot play (HEVC / 10-bit / ProRes / AC3 sound / odd containers) get a small H.264 copy just for the preview; the real work always uses the original file.
 const PLAYABLE_V = new Set(['h264', 'vp8', 'vp9', 'av1']), PLAYABLE_A = new Set(['aac', 'mp3', 'opus', 'vorbis', 'flac', 'pcm_s16le', 'pcm_s24le']);
-async function previewProxy(src, outDir, force = false, checkOnly = false) {
+async function previewMake(src, outDir, force = false, checkOnly = false, startPct = null) {
   const info = await probe(src);
   const ext = path.extname(src).toLowerCase();
   // The window plays only real MP4 / MOV / WebM files. A transport stream (.ts) that was just renamed ".mp4" - Dropbox / broadcast exports do this - looks fine in VLC but stays black here.
@@ -422,18 +422,23 @@ async function previewProxy(src, outDir, force = false, checkOnly = false) {
   if (checkOnly) return 'needed';
   const crypto = require('crypto'), st = fs.statSync(src);
   const key = crypto.createHash('md5').update(src + st.size + st.mtimeMs).digest('hex').slice(0, 12);
-  const out = path.join(outDir, `preview_${key}.mp4`);
-  if (fs.existsSync(out) && fs.statSync(out).size > 2000) return out;
+  // heavy sources (4K, AV1, HEVC) are slow to decode on a weak computer: the preview copy is a short part (90 s) taken from the middle area of the video,
+  // where somebody is usually talking (the start is mostly intro / silence). startPct (0..1) lets the user pick the part.
+  const heavy = Math.max(info.width || 0, info.height || 0) > 2200 || /^(av1|hevc)$/.test(info.vcodec || '');
+  const dur = info.duration || 0, SAMPLE = 90;
+  const sstart = heavy && dur > SAMPLE * 1.6 ? Math.max(0, Math.min(dur - SAMPLE, Math.round((startPct == null ? 0.15 : startPct) * dur))) : 0;
+  const sample = heavy ? { start: sstart, len: Math.min(SAMPLE, dur || SAMPLE), dur } : null;
+  const out = path.join(outDir, `preview_${key}${heavy ? '_s' + sstart : ''}.mp4`);
+  if (fs.existsSync(out) && fs.statSync(out).size > 2000) return { path: out, sample };
   fs.mkdirSync(outDir, { recursive: true });
   const tmp = out + '.part.mp4';
   const common = ['-movflags', '+faststart', '-map_chapters', '-1', '-map_metadata', '-1', tmp];
   if (!boxOk && codecOk && sizeOk && info.vcodec === 'h264') {
     // only the wrapper is wrong: copy the picture and sound into a proper MP4 (no re-encoding, so it takes seconds, not minutes)
-    try { await run(ffmpeg(), ['-y', '-i', src, '-map', '0:v:0', '-map', '0:a:0?', '-c', 'copy', ...common]); fs.renameSync(tmp, out); return out; } catch (e) { if (/CANCELLED/.test(String(e.message))) throw e; try { fs.rmSync(tmp, { force: true }); } catch {} }
+    try { await run(ffmpeg(), ['-y', '-i', src, '-map', '0:v:0', '-map', '0:a:0?', '-c', 'copy', ...common]); fs.renameSync(tmp, out); return { path: out, sample: null }; } catch (e) { if (/CANCELLED/.test(String(e.message))) throw e; try { fs.rmSync(tmp, { force: true }); } catch {} }
   }
-  // heavy sources (4K, AV1, HEVC) are slow to decode on a weak computer: the preview copy covers the first 2 minutes only
-  const heavy = Math.max(info.width || 0, info.height || 0) > 2200 || /^(av1|hevc)$/.test(info.vcodec || '');
-  await run(ffmpeg(), ['-y', ...(heavy ? ['-t', '120'] : []), '-i', src, '-map', '0:v:0', '-map', '0:a:0?', '-vf', "fps=30,scale=-2:'min(540,ih)'", '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '30', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '96k', '-ac', '2', ...common]);
-  fs.renameSync(tmp, out); return out;
+  await run(ffmpeg(), ['-y', ...(heavy ? ['-ss', String(sstart), '-t', String(SAMPLE)] : []), '-i', src, '-map', '0:v:0', '-map', '0:a:0?', '-vf', "fps=30,scale=-2:'min(540,ih)'", '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '30', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '96k', '-ac', '2', ...common]);
+  fs.renameSync(tmp, out); return { path: out, sample };
 }
-module.exports = { previewProxy, brollRect, dimsFor, detectCuts, sliceAudio, extractFrames, probe, extractAudio, renderClip, thumbnail, ASPECT, filterGraph };
+async function previewProxy(src, outDir, force = false, checkOnly = false) { const r = await previewMake(src, outDir, force, checkOnly); return r && typeof r === 'object' ? r.path : r; }
+module.exports = { previewMake, previewProxy, brollRect, dimsFor, detectCuts, sliceAudio, extractFrames, probe, extractAudio, renderClip, thumbnail, ASPECT, filterGraph };

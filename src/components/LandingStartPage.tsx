@@ -266,14 +266,14 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       // the window cannot even read the file: the preview copy is needed before anything can be shown (size / length come from it)
       const u = await playableUrl(realPath, orig, true); const m2 = u !== orig ? await readVideoMeta(u) : meta;
       setPrepBusy(false); setPrepErr((window as any).__previewErr ? `Preview copy could not be made: ${(window as any).__previewErr}` : '');
-      onSelectVideo(mk(u, m2)); return;
+      const sm = (window as any).__previewSample || null; onSelectVideo({ ...mk(u, sm ? { ...m2, duration: sm.dur || m2.duration } : m2), previewSample: sm }); return;
     }
     // readable but heavy / not playable here: carry on at once, the small preview copy is made in the background and swapped in when ready
     setPrepBusy(false); setPrepErr(''); setPrepBg(true);
     onSelectVideo({ ...mk(orig, meta), previewPending: true });
     const u = await playableUrl(realPath, orig, true);
     setPrepBg(false);
-    if (u !== orig) { const m2 = await readVideoMeta(u); onSelectVideo(mk(u, { ...m2, duration: meta.duration || m2.duration, vertical: meta.vertical })); }
+    if (u !== orig) { const m2 = await readVideoMeta(u); onSelectVideo({ ...mk(u, { ...m2, duration: meta.duration || m2.duration, vertical: meta.vertical }), previewSample: (window as any).__previewSample || null }); }
     else { onSelectVideo(mk(orig, meta)); setPrepErr((window as any).__previewErr ? `Preview copy could not be made: ${(window as any).__previewErr}` : 'This video opens but its picture cannot be shown here (preview stays black). The clips are still cut from your original file.'); }
   };
 

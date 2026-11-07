@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { playableUrl } from './utils/fileUrl';
 import React, { useState, useRef, useEffect } from 'react';
 import { AiService } from './services/aiService';
 import { 
@@ -55,6 +56,20 @@ export default function App() {
 
   // Video Selection
   const [selectedVideo, setSelectedVideo] = useState<VideoSource | null>(null);
+  // heavy video: the preview shows a short part only -> one small popup, and a slider to pick another part
+  const [heavyToast, setHeavyToast] = useState(false);
+  const heavyToastFor = useRef('');
+  const [partPct, setPartPct] = useState(15);
+  const [partBusy, setPartBusy] = useState(false);
+  useEffect(() => { const v = selectedVideo; if (v?.previewSample && heavyToastFor.current !== v.id) { heavyToastFor.current = v.id; setHeavyToast(true); } }, [selectedVideo]);
+  const changePreviewPart = async () => {
+    const v = selectedVideo; if (!v || !v.filePath || partBusy) return;
+    setPartBusy(true);
+    const u = await playableUrl(v.filePath, v.url, true, partPct / 100); const sm = (window as any).__previewSample || null;
+    setPartBusy(false);
+    if (u !== v.url || sm) setSelectedVideo(cur => cur && cur.id === v.id ? { ...cur, url: u, previewSample: sm } : cur);
+  };
+  const mmss = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
   const [projectName, setProjectName] = useState('');   // empty = the video's own name
   useEffect(() => { setProjectName(''); }, [selectedVideo?.id]);
 
@@ -718,9 +733,22 @@ export default function App() {
                     <input type="text" value={projectName} maxLength={80} onChange={(e) => setProjectName(e.target.value)} placeholder={selectedVideo.title}
                       className="w-full px-3 py-2 rounded-lg bg-[#0a130f] border border-[#1d3228] focus:border-[#3f9a5a] outline-none text-xs text-white placeholder:text-neutral-500" />
                   </div>
+                  {heavyToast && <div className="fixed bottom-6 right-6 z-[300] max-w-sm px-4 py-3 rounded-xl bg-[#0f1f17] border border-[#2a5a3a] shadow-2xl text-[12px] text-neutral-200 leading-snug">
+                    <div className="font-bold text-brand-300 mb-1">This is a heavy video</div>
+                    <div>The preview shows only a short part of it so it stays smooth. Your clips are still cut from the full video.</div>
+                    <button type="button" onClick={() => setHeavyToast(false)} className="mt-2 px-3 py-1 rounded-md bg-[#a3e635] text-black font-bold cursor-pointer">OK</button>
+                  </div>}
+                  {selectedVideo.previewSample && !selectedVideo.previewPending && <div className="w-full mb-3 px-3 py-2 rounded-lg bg-[#16271f] border border-[#2a5a3a] text-[11px] leading-snug text-brand-300">
+                    <div>Heavy video: the preview shows only {mmss(selectedVideo.previewSample.start)}–{mmss(selectedVideo.previewSample.start + selectedVideo.previewSample.len)} of {mmss(selectedVideo.previewSample.dur)}. Your clips are cut from the full video.</div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <input type="range" min={0} max={95} step={5} value={partPct} onChange={e => setPartPct(+e.target.value)} className="flex-1 accent-[#a3e635]" disabled={partBusy} aria-label="Preview part" />
+                      <button type="button" onClick={changePreviewPart} disabled={partBusy} className="px-2 py-1 rounded-md bg-[#2a5a3a] text-white font-bold cursor-pointer disabled:opacity-50">{partBusy ? 'Making…' : 'Show this part'}</button>
+                    </div>
+                  </div>}
                   {selectedVideo.previewPending && <div className="w-full mb-3 px-3 py-2 rounded-lg bg-[#16271f] border border-[#2a5a3a] text-[11px] leading-snug text-brand-300">Making a small preview copy of this video. The preview picture appears when it is ready. Your clips are always cut from the original file.</div>}
                   <PhonePreview
                     videoUrl={selectedVideo.url}
+                    poster={selectedVideo.thumbnail}
                     canvasRatio={canvasRatio}
                     framing={framing}
                     captions={captions}

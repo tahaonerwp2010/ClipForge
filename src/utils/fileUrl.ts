@@ -6,10 +6,10 @@ export const fileUrl = (p: string): string => {
 };
 
 /** Link the screen should use to PLAY a video: the original when the window can play it, otherwise a small H.264 copy made by the engine (only for preview). */
-export async function playableUrl(path: string | undefined, url: string, force = false): Promise<string> {
+export async function playableUrl(path: string | undefined, url: string, force = false, startPct?: number): Promise<string> {
   const api = (window as any).electronAPI;
   if (!path || typeof api?.makePreview !== 'function') return url;
-  (window as any).__previewErr = '';
-  try { const r = await api.makePreview(path, force); if (r && r.ok && r.path) return fileUrl(r.path); if (r && !r.ok) (window as any).__previewErr = r.error || 'unknown error'; } catch { /* keep the original */ }
+  (window as any).__previewErr = ''; (window as any).__previewSample = null;
+  try { const r = await api.makePreview(path, force, false, startPct); if (r && r.ok && r.path) { (window as any).__previewSample = r.sample || null; return fileUrl(r.path); } if (r && !r.ok) (window as any).__previewErr = r.error || 'unknown error'; } catch { /* keep the original */ }
   return url;
 }
