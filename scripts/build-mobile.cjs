@@ -25,6 +25,7 @@ fs.copyFileSync(path.join(root, 'mobile/node/index.js'), path.join(nd, 'index.js
 fs.writeFileSync(path.join(nd, 'package.json'), JSON.stringify({ name: 'clipforge-engine', version: pkg.version, main: 'index.js', clipforge: pkg.clipforge || {} }));
 fs.cpSync(path.join(root, 'electron'), path.join(nd, 'electron'), { recursive: true, filter: (s) => !/preload\.cjs$/.test(s) });
 fs.cpSync(path.join(root, 'assets/sfx'), path.join(nd, 'assets/sfx'), { recursive: true });
+if (fs.existsSync(path.join(root, 'assets/characters'))) fs.cpSync(path.join(root, 'assets/characters'), path.join(nd, 'assets/characters'), { recursive: true });
 if (fs.existsSync(path.join(root, 'assets/emoji'))) fs.cpSync(path.join(root, 'assets/emoji'), path.join(nd, 'assets/emoji'), { recursive: true });
 fs.cpSync(path.join(root, 'public/fonts'), path.join(nd, 'public/fonts'), { recursive: true });
 console.log('mobile bundle ready, engine files:', fs.readdirSync(path.join(nd, 'electron/engine')).length);

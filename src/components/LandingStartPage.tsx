@@ -17,7 +17,8 @@ import {
   Download,
   AlertCircle,
   Rows2,
-  Crop
+  Crop,
+  Wand2
 } from 'lucide-react';
 
 const MAX_SHORTS = 30;
@@ -65,12 +66,14 @@ interface LandingStartPageProps {
   onVideoSelectedAndContinue: (source: VideoSource) => void;
   selectedVideo: VideoSource | null;
   onSelectVideo: (source: VideoSource) => void;
+  onOpenStory?: () => void;
 }
 
 export const LandingStartPage: React.FC<LandingStartPageProps> = ({
   onVideoSelectedAndContinue,
   selectedVideo,
-  onSelectVideo
+  onSelectVideo,
+  onOpenStory
 }) => {
   const [activeCard, setActiveCard] = useState<'long' | 'short' | 'split' | 'youtube'>('long');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -360,6 +363,14 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
             </button>
           );
         })}
+        {onOpenStory && !(window as any).electronAPI?.isMobile && (
+          <button type="button" onClick={onOpenStory} className="relative text-left p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-4 sm:col-span-2 bg-[#0b1611] border-[#3f9a5a]/50 hover:border-[#3f9a5a] hover:bg-[#0f1f17]">
+            <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#bef264] text-black">New</span>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center border bg-[#13241b] text-[#bef264] border-[#1d3228] shrink-0"><Wand2 className="w-[18px] h-[18px]" /></div>
+            <div><h3 className="text-[13px] font-bold text-white leading-snug">Script to Short</h3>
+              <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">Add a voice-over and music. The app adds visuals, motion graphics, characters, sound effects, thumbnails and post texts for every platform.</p></div>
+          </button>
+        )}
       </div>
 
       {/* 5. DYNAMIC INPUT AREA BELOW CARDS */}

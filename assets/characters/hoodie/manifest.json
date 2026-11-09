@@ -1,0 +1,387 @@
+{
+ "id": "hoodie",
+ "name": "Hoodie",
+ "mode": "layered",
+ "body": {
+  "w": 800,
+  "h": 980
+ },
+ "head": {
+  "w": 270,
+  "x": 265,
+  "y": 20
+ },
+ "poses": {
+  "idle": [
+   "neutral",
+   "listening",
+   "default"
+  ],
+  "wave": [
+   "hello",
+   "hi",
+   "greeting",
+   "welcome",
+   "bye",
+   "goodbye"
+  ],
+  "stop": [
+   "stop",
+   "wait",
+   "hold on",
+   "attention",
+   "warning",
+   "before you"
+  ],
+  "point": [
+   "look here",
+   "this",
+   "check this",
+   "pointing aside"
+  ],
+  "point_up": [
+   "idea",
+   "top",
+   "tip",
+   "number one",
+   "listen"
+  ],
+  "point_down": [
+   "link below",
+   "comment",
+   "description",
+   "download below",
+   "click below"
+  ],
+  "thumbs": [
+   "good",
+   "great",
+   "approved",
+   "like",
+   "works",
+   "free"
+  ],
+  "present": [
+   "introducing",
+   "here it is",
+   "showing",
+   "offer",
+   "presenting"
+  ],
+  "shrug": [
+   "who knows",
+   "no idea",
+   "why",
+   "whatever",
+   "maybe"
+  ],
+  "cross": [
+   "no",
+   "never",
+   "not allowed",
+   "serious",
+   "skeptical"
+  ],
+  "hips": [
+   "confident",
+   "ready",
+   "proud",
+   "done",
+   "boss"
+  ]
+ },
+ "faces": {
+  "question": [
+   "question",
+   "why",
+   "what",
+   "how",
+   "secret",
+   "mystery",
+   "unknown"
+  ],
+  "exclaim": [
+   "warning",
+   "attention",
+   "important",
+   "wait",
+   "stop"
+  ],
+  "dollar": [
+   "money",
+   "dollar",
+   "earn",
+   "pay",
+   "income",
+   "price",
+   "cash",
+   "rich"
+  ],
+  "check": [
+   "yes",
+   "correct",
+   "works",
+   "done",
+   "free",
+   "verified",
+   "no sign up"
+  ],
+  "cross": [
+   "no",
+   "wrong",
+   "scam",
+   "not",
+   "fake",
+   "never"
+  ],
+  "dots": [
+   "thinking",
+   "wait",
+   "loading",
+   "hmm"
+  ],
+  "smile": [
+   "happy",
+   "nice",
+   "welcome",
+   "friendly"
+  ],
+  "laugh": [
+   "funny",
+   "lol",
+   "crazy",
+   "joke"
+  ],
+  "shock": [
+   "shock",
+   "wow",
+   "unbelievable",
+   "insane",
+   "omg",
+   "huge",
+   "crazy"
+  ],
+  "wink": [
+   "trust me",
+   "secret tip",
+   "hint"
+  ],
+  "love": [
+   "love",
+   "favorite",
+   "best",
+   "amazing"
+  ],
+  "sad": [
+   "sad",
+   "lose",
+   "problem",
+   "pain",
+   "miss out",
+   "sorry"
+  ],
+  "idea": [
+   "idea",
+   "tip",
+   "trick",
+   "hack",
+   "solution",
+   "tool"
+  ],
+  "cool": [
+   "cool",
+   "pro",
+   "smart",
+   "easy",
+   "boss"
+  ]
+ },
+ "triggers": [
+  {
+   "words": [
+    "ruko",
+    "ruk",
+    "ruk jao",
+    "ٹھہرو",
+    "رکو",
+    "रुको",
+    "रुकिए",
+    "قف",
+    "انتظر",
+    "espera",
+    "alto",
+    "attends",
+    "stop",
+    "wait",
+    "hold on",
+    "dur",
+    "bekle",
+    "warte"
+   ],
+   "pose": "stop",
+   "face": "exclaim"
+  },
+  {
+   "words": [
+    "hello",
+    "hi",
+    "salam",
+    "assalam",
+    "السلام",
+    "سلام",
+    "नमस्ते",
+    "हेलो",
+    "مرحبا",
+    "hola",
+    "bonjour",
+    "merhaba",
+    "hey",
+    "welcome"
+   ],
+   "pose": "wave",
+   "face": "smile"
+  },
+  {
+   "words": [
+    "dollar",
+    "dollars",
+    "paisa",
+    "paise",
+    "earn",
+    "kamao",
+    "kamai",
+    "ڈالر",
+    "پیسے",
+    "कमाओ",
+    "डॉलर",
+    "money",
+    "cash",
+    "دولار",
+    "dinero",
+    "argent",
+    "para",
+    "income",
+    "paid",
+    "pay"
+   ],
+   "pose": "present",
+   "face": "dollar"
+  },
+  {
+   "words": [
+    "link",
+    "comment",
+    "description",
+    "bio",
+    "لنک",
+    "کمنٹ",
+    "लिंक",
+    "कमेंट",
+    "رابط",
+    "enlace",
+    "lien",
+    "bağlantı"
+   ],
+   "pose": "point_down",
+   "face": "smile"
+  },
+  {
+   "words": [
+    "free",
+    "muft",
+    "mufat",
+    "مفت",
+    "मुफ़्त",
+    "मुफ्त",
+    "gratis",
+    "gratuit",
+    "ücretsiz",
+    "مجاني"
+   ],
+   "pose": "thumbs",
+   "face": "check"
+  },
+  {
+   "words": [
+    "secret",
+    "raaz",
+    "راز",
+    "राज़",
+    "سر",
+    "secreto",
+    "secret",
+    "gizli",
+    "hidden"
+   ],
+   "pose": "point",
+   "face": "wink"
+  },
+  {
+   "words": [
+    "wow",
+    "unbelievable",
+    "insane",
+    "crazy",
+    "hairat",
+    "حیرت",
+    "अविश्वसनीय",
+    "increíble",
+    "incroyable",
+    "inanılmaz",
+    "omg"
+   ],
+   "pose": "shrug",
+   "face": "shock"
+  },
+  {
+   "words": [
+    "idea",
+    "tip",
+    "trick",
+    "hack",
+    "tarkeeb",
+    "ترکیب",
+    "ट्रिक",
+    "consejo",
+    "astuce",
+    "ipucu"
+   ],
+   "pose": "point_up",
+   "face": "idea"
+  },
+  {
+   "words": [
+    "warning",
+    "careful",
+    "scam",
+    "fraud",
+    "dhoka",
+    "دھوکہ",
+    "धोखा",
+    "cuidado",
+    "attention",
+    "dikkat",
+    "احذر"
+   ],
+   "pose": "stop",
+   "face": "cross"
+  },
+  {
+   "words": [
+    "best",
+    "top",
+    "number one",
+    "sab se",
+    "behtareen",
+    "بہترین",
+    "सबसे",
+    "mejor",
+    "meilleur",
+    "en iyi",
+    "أفضل"
+   ],
+   "pose": "hips",
+   "face": "cool"
+  }
+ ]
+}

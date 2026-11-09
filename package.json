@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "8.2.1",
+  "version": "8.2.2",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -60,6 +60,10 @@
       {
         "from": "assets/sfx",
         "to": "sfx"
+      },
+      {
+        "from": "assets/characters",
+        "to": "characters"
       },
       {
         "from": "assets/icons/icon.png",

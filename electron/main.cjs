@@ -421,7 +421,7 @@ ipcMain.handle('make-preview', async (e, srcPath, force, checkOnly, startPct) =>
     return { ok: false, path: null, error: m.slice(0, 400) };
   }
 });
-ipcMain.handle('edit-prepare', async (e, a) => { try { const r = await EDIT.prepare(a.outDir, a.index); return { ok: true, url: require('url').pathToFileURL(r.base).toString(), dims: r.dims, footage: r.footage || null }; } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 300) }; } });
+ipcMain.handle('edit-prepare', async (e, a) => { try { if (!editJob && !currentRun) resetCancel(); /* an old "cancel" flag makes every ffmpeg call fail with CANCELLED */ let r; try { r = await EDIT.prepare(a.outDir, a.index); } catch (e1) { if (/CANCELLED/.test(String(e1.message || e1)) && !editJob && !currentRun) { resetCancel(); r = await EDIT.prepare(a.outDir, a.index); } else throw e1; } return { ok: true, url: require('url').pathToFileURL(r.base).toString(), dims: r.dims, footage: r.footage || null }; } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 300) }; } });
 // ---- Edit many clips as one background job (progress events go to the screen; pause / resume / cancel) ----
 let editJob = null;
 ipcMain.handle('edit-batch-start', async (e, a) => {
@@ -567,6 +567,37 @@ ipcMain.handle('delete-clip-file', async (e, { outputPath, outputDir }) => {
   } catch (err) { return { ok: false, error: String(err.message || err) }; }
 });
 ipcMain.handle('cancel-pipeline', async () => { killAll(); if (currentRun) { try { await currentRun; } catch {} } return true; });
+// ---- Script to Short (voice-over -> finished 9:16 short + thumbnails + platform texts) ----
+let storyRun = null;
+const storyShot = async (htmlFile) => {              // one thumbnail: load the HTML in a hidden window and take a picture
+  const w = new BrowserWindow({ show: false, width: 1080, height: 1920, useContentSize: true, enableLargerThanScreen: true, webPreferences: { backgroundThrottling: false, contextIsolation: true } });
+  try {
+    await w.loadFile(htmlFile);
+    await w.webContents.executeJavaScript('document.fonts.ready.then(() => new Promise(r => setTimeout(r, 350)))');
+    const img = await w.webContents.capturePage({ x: 0, y: 0, width: 1080, height: 1920 });
+    const sz = img.getSize();
+    return (sz.width !== 1080 ? img.resize({ width: 1080, height: 1920, quality: 'best' }) : img).toPNG();
+  } finally { try { w.destroy(); } catch {} }
+};
+ipcMain.handle('story-start', async (e, job) => {
+  if (currentRun || storyRun) return { ok: false, error: 'Another job is still running. Wait for it to finish first.' };
+  resetCancel();
+  job = { ...job, clipsBase: Settings.clipsDir() };
+  const p = require('./engine/story.cjs').runStory(job, (ev) => send('story-event', ev), { shot: storyShot });
+  const tracked = storyRun = p.catch(() => {}).then(() => { if (storyRun === tracked) storyRun = null; });
+  try { return { ok: true, result: await p }; }
+  catch (err) { const m = String(err && err.message || err); return { ok: false, cancelled: /CANCELLED/.test(m), error: m.slice(0, 500) }; }
+});
+ipcMain.handle('story-cancel', async () => { killAll(); if (storyRun) { try { await storyRun; } catch {} } return true; });
+ipcMain.handle('story-pick-voice', async () => {
+  const r = await dialog.showOpenDialog(mainWindow, { properties: ['openFile'], filters: [{ name: 'Voice-over (audio or video)', extensions: ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'opus', 'wma', 'mp4', 'mov', 'mkv', 'webm'] }] });
+  return r.canceled ? null : { path: r.filePaths[0], name: path.basename(r.filePaths[0]) };
+});
+ipcMain.handle('story-characters', async () => {
+  const U = require('url'); const C = require('./engine/characters.cjs');
+  return C.summary().map(c => ({ ...c, preview: c.preview ? U.pathToFileURL(c.preview).toString() : null, previewHead: c.previewHead ? U.pathToFileURL(c.previewHead).toString() : null }));
+});
+ipcMain.handle('story-open-characters', async () => shell.openPath(require('./engine/characters.cjs').userDir()));
 ipcMain.handle('discard-checkpoint', async (e, job) => { try { fs.rmSync(workDirFor(job), { recursive: true, force: true }); } catch {} return true; });
 
 // Utility: version check of bundled ffmpeg

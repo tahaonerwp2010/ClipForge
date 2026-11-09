@@ -24,6 +24,7 @@ import { Sidebar, ActiveNavView } from './components/SidebarRail';
 import { RecentProjects, TipCard, HomeAside } from './components/HomeExtras';
 import { StatusBar } from './components/StatusBar';
 import { LandingStartPage } from './components/LandingStartPage';
+import { StoryStudio } from './components/StoryStudio';
 import { StudioHeader } from './components/StudioHeader';
 import { PhonePreview } from './components/PhonePreview';
 import { footageRectFor } from './utils/captionHelpers';
@@ -521,6 +522,7 @@ export default function App() {
                   selectedVideo={selectedVideo}
                   onSelectVideo={(video) => setSelectedVideo(video)}
                   onVideoSelectedAndContinue={handleProceedToStudio}
+                  onOpenStory={() => setActiveView('story')}
                 />
                 <RecentProjects
                   projects={projects}
@@ -533,6 +535,8 @@ export default function App() {
             </div>
           </main>
         )}
+
+        {activeView === 'story' && <StoryStudio onBack={() => setActiveView('home')} onSettings={() => setActiveView('settings')} />}
 
         {/* VIEW 2: MY PROJECTS */}
         {activeView === 'my_projects' && (

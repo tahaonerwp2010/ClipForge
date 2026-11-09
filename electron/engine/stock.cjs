@@ -111,4 +111,20 @@ async function forClip({ segs, dur, cfg, gemini, log, keys, seen }) {
   log('Stock B-roll', out.length ? `${out.length} stock clip${out.length === 1 ? '' : 's'} found (${have.join(', ')})` : 'No matching stock clips found for this clip', out.length ? 'info' : 'warn');
   return out;
 }
-module.exports = { test, forClip, ORDER };
+
+// One search for the "Script to Short" planner: the best fresh short clip for these (English) search words -> { path, dur, name } or null
+async function search(q, keys, seen, log) {
+  const have = ORDER.filter(p => keys && keys[p] && String(keys[p]).trim());
+  if (!have.length) return null;
+  for (const prov of have) {
+    try {
+      const ck = prov + '|' + q; let list = seen.q.get(ck);
+      if (!list) { list = await PROV[prov](String(keys[prov]).trim(), q, {}); seen.q.set(ck, list); }
+      const h = list.filter(x => (x.dur || 6) >= 3 && !seen.used.has(x.id))[0]; if (!h) continue;
+      const f = await fileFor(h, keys[prov], prov);
+      seen.used.add(h.id); return { path: f, dur: h.dur || 8, name: q + ' (' + prov + ')', w: h.w || 0, h: h.h || 0 };
+    } catch (e) { if (String(e.message) === 'CANCELLED') throw e; if (e.kind === 'invalid' && !seen['bad' + prov]) { seen['bad' + prov] = 1; log && log('Stock footage', prov + ' did not accept the key - check Settings > Stock footage.', 'warn'); } }
+  }
+  return null;
+}
+module.exports = { test, forClip, search, ORDER };

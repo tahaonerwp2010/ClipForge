@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Home, Folder, Settings, RotateCw, ArrowUpCircle, Crown, Database } from 'lucide-react';
 import { UpdateChecker, APP_VERSION } from './UpdateChecker';
 
-export type ActiveNavView = 'home' | 'my_projects' | 'settings' | 'studio' | 'progress' | 'clips';
+export type ActiveNavView = 'home' | 'my_projects' | 'settings' | 'studio' | 'progress' | 'clips' | 'story';
 
 interface SidebarProps {
   activeView: ActiveNavView;
@@ -22,7 +22,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, proj
   const [logoOk, setLogoOk] = useState(true);
   useEffect(() => { setLogoOk(true); }, []);
   const items: { id: 'home' | 'my_projects' | 'settings'; label: string; Icon: React.ElementType; active: boolean; count?: number }[] = [
-    { id: 'home', label: 'Home', Icon: Home, active: activeView === 'home' || activeView === 'studio' },
+    { id: 'home', label: 'Home', Icon: Home, active: activeView === 'home' || activeView === 'story' || activeView === 'studio' },
     { id: 'my_projects', label: 'Projects', Icon: Folder, active: activeView === 'my_projects' || activeView === 'progress' || activeView === 'clips', count: projectsCount },
     { id: 'settings', label: 'Settings', Icon: Settings, active: activeView === 'settings' },
   ];

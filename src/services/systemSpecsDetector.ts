@@ -72,6 +72,12 @@ declare global {
       importFont?: () => Promise<{ family: string; file: string; url: string }[]>;
       removeUserFont?: (family: string) => Promise<boolean>;
       pickAudio?: () => Promise<{ path: string; name: string; url: string } | null>;
+      storyStart?: (job: any) => Promise<{ ok: boolean; result?: any; cancelled?: boolean; error?: string }>;
+      storyCancel?: () => Promise<boolean>;
+      storyPickVoice?: () => Promise<{ path: string; name: string } | null>;
+      storyCharacters?: () => Promise<{ id: string; name: string; builtin: boolean; count: number; preview: string | null; previewHead: string | null }[]>;
+      storyOpenCharacters?: () => Promise<string>;
+      onStoryEvent?: (cb: (ev: any) => void) => () => void;
       pickImage?: () => Promise<{ path: string; name: string; dataUrl: string } | null>;
       discardCheckpoint?: (job: { id?: string; name?: string }) => Promise<boolean>;
       onPipelineEvent?: (cb: (ev: any) => void) => () => void;
