@@ -344,18 +344,19 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
           { id: 'short' as const, Icon: Scissors, title: 'Edit already cut clips', text: 'Add captions and styling to clips you have already made.', points: ['Your edit stays untouched', 'Captions and style only', 'Up to 30 clips at once'] },
           { id: 'split' as const, Icon: Rows2, title: 'Split screen', text: 'Facecam on top, game or footage below.', points: ['Finds the facecam for you', 'Two videos synced by sound', 'Adjustable layout'] },
           { id: 'youtube' as const, Icon: LinkIcon, title: 'Paste a YouTube link', text: 'For videos you own or have permission to use.', points: ['Imported up to 1080p', 'Live download progress', 'Then works like a long video'] },
+          ...(onOpenStory && !(window as any).electronAPI?.isMobile ? [{ id: 'story' as const, Icon: Wand2, title: 'Script to Short', text: 'Add a voice-over. The AI asks a few questions, then builds the whole short for you.', points: ['Visuals, arrows, captions and sound effects', 'Characters, stock footage and your recordings', 'Thumbnails and post texts for every platform'], badge: 'New' }] : []),
         ]).map(c => {
           const on = activeCard === c.id;
           return (
-            <button key={c.id} type="button" onClick={() => setActiveCard(c.id)}
-              className={`relative text-left p-4 rounded-2xl border transition-all cursor-pointer flex flex-col ${on ? 'bg-[#0f1f17] border-[#3f9a5a] shadow-[0_0_0_1px_rgba(63,154,90,0.35),0_8px_30px_-12px_rgba(190,242,100,0.25)]' : 'bg-[#0b1611] border-[#17291f] hover:border-[#2a4a38] hover:bg-[#0d1a14]'}`}>
+            <button key={c.id} type="button" onClick={() => c.id === 'story' ? onOpenStory?.() : setActiveCard(c.id)}
+              className={`relative text-left p-4 rounded-2xl border transition-all cursor-pointer flex flex-col ${c.id === 'story' ? 'sm:col-span-2 ' : ''}${on ? 'bg-[#0f1f17] border-[#3f9a5a] shadow-[0_0_0_1px_rgba(63,154,90,0.35),0_8px_30px_-12px_rgba(190,242,100,0.25)]' : 'bg-[#0b1611] border-[#17291f] hover:border-[#2a4a38] hover:bg-[#0d1a14]'}`}>
               {c.badge && <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#bef264] text-black">{c.badge}</span>}
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 border ${on ? 'bg-[#bef264] text-black border-transparent' : 'bg-[#13241b] text-[#8fd0a4] border-[#1d3228]'}`}>
                 <c.Icon className="w-[18px] h-[18px]" />
               </div>
               <h3 className="text-[13px] font-bold text-white leading-snug flex items-center gap-1.5 flex-wrap">{c.title}{c.id === 'split' && <ProTag />}</h3>
               <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">{c.text}</p>
-              <ul className="mt-3 space-y-1">
+              <ul className={`mt-3 space-y-1 ${c.id === 'story' ? 'sm:grid sm:grid-cols-3 sm:gap-x-4 sm:space-y-0' : ''}`}>
                 {c.points.map(pt => (
                   <li key={pt} className="flex items-center gap-1.5 text-[11px] text-neutral-300"><Check className="w-3 h-3 text-[#3f9a5a] shrink-0" />{pt}</li>
                 ))}
@@ -363,14 +364,6 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
             </button>
           );
         })}
-        {onOpenStory && !(window as any).electronAPI?.isMobile && (
-          <button type="button" onClick={onOpenStory} className="relative text-left p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-4 sm:col-span-2 bg-[#0b1611] border-[#3f9a5a]/50 hover:border-[#3f9a5a] hover:bg-[#0f1f17]">
-            <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#bef264] text-black">New</span>
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center border bg-[#13241b] text-[#bef264] border-[#1d3228] shrink-0"><Wand2 className="w-[18px] h-[18px]" /></div>
-            <div><h3 className="text-[13px] font-bold text-white leading-snug">Script to Short</h3>
-              <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">Add a voice-over and music. The app adds visuals, motion graphics, characters, sound effects, thumbnails and post texts for every platform.</p></div>
-          </button>
-        )}
       </div>
 
       {/* 5. DYNAMIC INPUT AREA BELOW CARDS */}

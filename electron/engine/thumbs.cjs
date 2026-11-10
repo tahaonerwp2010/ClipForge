@@ -38,7 +38,7 @@ const star = () => `<div class="abs" style="inset:0;background:repeating-conic-g
 const LAYOUTS = [
   // 1) laptop + headline on top + red arrow + ribbon
   (o, t) => `<div class="abs" style="inset:0;background:linear-gradient(160deg,#0b1020,#1d2a5b 60%,#0b1020)"></div>${star()}
-   <div class="abs h" style="left:50px;right:50px;top:90px;text-align:center">${head(t)}</div>
+   <div class="abs h" data-mh="600" style="left:50px;right:50px;top:90px;text-align:center">${head(t)}</div>
    <div class="abs" style="left:70px;top:760px;width:940px;height:590px;background:#1a1a1f;border-radius:34px;padding:26px 26px 0;box-shadow:0 30px 60px rgba(0,0,0,.6)">${scr(o, 'position:relative;width:100%;height:100%;border-radius:14px 14px 0 0')}</div>
    <div class="abs" style="left:20px;top:1340px;width:1040px;height:40px;background:linear-gradient(#c9ccd3,#8c919c);border-radius:0 0 60px 60px"></div>
    ${ARROW('#ef4444').replace('class="arrow"', 'class="arrow" style="left:700px;top:560px;transform:rotate(18deg)"')}
@@ -48,13 +48,13 @@ const LAYOUTS = [
   // 2) character shocked, huge headline, blurred screenshot background
   (o, t) => `${scr(o, 'inset:-40px;filter:blur(26px) brightness(.45) saturate(1.3);border-radius:0')}${star()}
    <div class="abs" style="left:0;right:0;top:0;height:900px;background:linear-gradient(#000a,transparent)"></div>
-   <div class="abs h" style="left:50px;right:50px;top:120px;font-size:230px;text-align:left">${head(t)}</div>
+   <div class="abs h" data-mh="820" style="left:50px;right:50px;top:120px;font-size:230px;text-align:left">${head(t)}</div>
    ${scr(o, 'left:90px;right:90px;top:1010px;height:560px;border:12px solid #fff;border-radius:22px;transform:rotate(-3deg);box-shadow:0 24px 50px #000a')}
    ${ch(o, 'left:-60px;bottom:-40px;height:1000px')}
    <div class="abs" style="right:60px;bottom:110px"><span class="rib" style="transform:rotate(-3deg)">${esc(o.cta)}</span></div>`,
   // 3) checklist
   (o, t) => `<div class="abs" style="inset:0;background:linear-gradient(180deg,#14532d,#052e16)"></div>${star()}
-   <div class="abs h" style="left:50px;right:50px;top:100px;text-align:center;font-size:200px">${head(t)}</div>
+   <div class="abs h" data-mh="600" style="left:50px;right:50px;top:100px;text-align:center;font-size:200px">${head(t)}</div>
    <div class="abs" style="left:80px;top:770px;display:flex;flex-direction:column;gap:30px">${(o.checklist.length ? o.checklist : ['100% FREE', 'NO SIGN UP', 'WORKS NOW']).slice(0, 3).map(x => `<div class="chip"><i>✓</i>${esc(String(x).toUpperCase())}</div>`).join('')}</div>
    ${scr(o, 'right:60px;bottom:330px;width:620px;height:420px;border:10px solid #fff;transform:rotate(5deg);box-shadow:0 20px 40px #000a')}
    ${ch(o, 'left:-40px;bottom:-30px;height:760px')}
@@ -63,14 +63,14 @@ const LAYOUTS = [
   (o, t) => `${scr(o, 'left:0;right:0;top:0;height:1000px;border-radius:0')}
    <div class="abs" style="left:0;right:0;top:1000px;height:920px;background:${o.accent}"></div>
    <div class="abs" style="left:0;right:0;top:940px;height:90px;background:#000;transform:skewY(-3deg)"></div>
-   <div class="abs h" style="left:50px;right:420px;top:1090px;text-align:left;color:#000;-webkit-text-stroke:0;text-shadow:none;font-size:170px">${esc(t)}</div>
+   <div class="abs h" data-mh="640" style="left:50px;right:420px;top:1090px;text-align:left;color:#000;-webkit-text-stroke:0;text-shadow:none;font-size:170px">${esc(t)}</div>
    <div class="abs" style="left:0;right:0;bottom:50px;text-align:center"><span class="rib" style="background:#000;box-shadow:0 10px 0 #333">${esc(o.cta)}</span></div>
    ${ch(o, 'right:-10px;bottom:120px;height:800px')}`
 ];
 function html(i, o) {
   const t = (o.titles[i % Math.max(1, o.titles.length)] || o.tool || 'WATCH THIS');
   const fs_ = SCRIPTS.test(t) ? 'font-size:150px;' : '';
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${css(o)}${fs_ ? '.h{' + fs_ + '}' : ''}</style></head><body>${LAYOUTS[i](o, t)}</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${css(o)}${fs_ ? '.h{' + fs_ + '}' : ''}</style></head><body>${LAYOUTS[i](o, t)}<script>document.querySelectorAll('.h').forEach(function(e){var m=+e.dataset.mh||600,f=parseFloat(getComputedStyle(e).fontSize),n=0;while((e.offsetHeight>m||e.scrollWidth>e.clientWidth+2)&&f>50&&n++<60){f-=6;e.style.fontSize=f+'px';}});</script></body></html>`;
 }
 // shot(htmlFilePath) -> Buffer(PNG 1080x1920)
 async function make(o, shot) {

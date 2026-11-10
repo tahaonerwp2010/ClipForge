@@ -50,7 +50,7 @@ function build(o) {
     const text = up(esc(k.text)).trim(); if (!text) return;
     const at = Math.max(b.t0, k.at != null ? k.at - 0.05 : b.t0), dur = Math.min(2.3, Math.max(1.0, (k.dur || 1.4)));
     const stat = k.kind === 'stat';
-    let size = stat ? 210 : 165; const maxW = W * 0.88;
+    let size = stat ? 150 : 108; const maxW = W * 0.88;
     let lines = [text];
     if (width(kinFont, text, size) > maxW) { const w = text.split(/\s+/); if (w.length > 1) { let best = 1, d = 1e9; for (let c = 1; c < w.length; c++) { const x = Math.abs(w.slice(0, c).join(' ').length - w.slice(c).join(' ').length); if (x < d) { d = x; best = c; } } lines = [w.slice(0, best).join(' '), w.slice(best).join(' ')]; } }
     const widest = Math.max(...lines.map(l => width(kinFont, l, size)));

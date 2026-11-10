@@ -24,7 +24,10 @@ import { Sidebar, ActiveNavView } from './components/SidebarRail';
 import { RecentProjects, TipCard, HomeAside } from './components/HomeExtras';
 import { StatusBar } from './components/StatusBar';
 import { LandingStartPage } from './components/LandingStartPage';
-import { StoryStudio } from './components/StoryStudio';
+import { StoryStudio, StoryStart } from './components/StoryStudio';
+import { StoryRun } from './components/StoryRun';
+import { StoryStore } from './services/storyStore';
+import { fileUrl } from './utils/fileUrl';
 import { StudioHeader } from './components/StudioHeader';
 import { PhonePreview } from './components/PhonePreview';
 import { footageRectFor } from './utils/captionHelpers';
@@ -357,6 +360,34 @@ export default function App() {
   };
 
   const activeProject = projects.find(p => p.id === activeProjectId) || projects[0];
+  // ---- Script to Short: runs live in StoryStore, the project card follows along ----
+  useEffect(() => {
+    StoryStore.setProjectHook((id, patch) => setProjects(prev => prev.map(p => {
+      if (p.id !== id) return p;
+      const { result, ...rest } = patch;
+      const next: ProjectItem = { ...p, ...rest, lastEdited: 'Just now' };
+      if (result) {
+        next.clipCount = 1; next.sourceDuration = result.duration || p.sourceDuration;
+        if (result.thumbs?.[0]) next.thumbnail = fileUrl(result.thumbs[0]);
+        next.story = { ...(p.story as any), video: result.video, outDir: result.outDir, thumbs: result.thumbs || [], platforms: result.platforms || null, duration: result.duration };
+      }
+      return next;
+    })));
+  }, []);
+  const launchStory = (id: string, s: StoryStart) => StoryStore.start(id, { voicePath: s.voicePath, musicPath: s.musicPath, recordings: s.recordings, name: s.name, options: s.options });
+  const startStory = (s: StoryStart) => {
+    const id = 'story_' + Date.now();
+    const proj: ProjectItem = { id, name: s.name, sourceVideoName: s.name, sourceVideoUrl: '', thumbnail: '', diskSize: '', sourceDuration: 0, clipCount: 0, status: 'Processing', currentStep: 1, progressPercent: 1, createdAt: 'today', lastEdited: 'Just now', framingMode: 'fill-crop', story: { voicePath: s.voicePath, musicPath: s.musicPath, recordings: s.recordings, options: s.options } };
+    setProjects(prev => [proj, ...prev]);
+    setActiveProjectId(id); setActiveView('story_run');
+    launchStory(id, s);
+  };
+  const restartStory = (p: ProjectItem) => {
+    if (!p.story) return;
+    StoryStore.forget(p.id);
+    setProjects(prev => prev.map(x => x.id === p.id ? { ...x, status: 'Processing', progressPercent: 1 } : x));
+    launchStory(p.id, { name: p.name, voicePath: p.story.voicePath, musicPath: p.story.musicPath || null, recordings: p.story.recordings, options: p.story.options });
+  };
 
   const handleOpenProject = (project: ProjectItem) => {
     const matched = SAMPLE_VIDEOS.find(s => s.url === project.sourceVideoUrl) || {
@@ -526,7 +557,7 @@ export default function App() {
                 />
                 <RecentProjects
                   projects={projects}
-                  onOpen={(p) => { setActiveProjectId(p.id); setActiveView(p.status === 'Finished' ? 'clips' : 'progress'); }}
+                  onOpen={(p) => { setActiveProjectId(p.id); setActiveView(p.story ? 'story_run' : p.status === 'Finished' ? 'clips' : 'progress'); }}
                   onViewAll={() => setActiveView('my_projects')}
                 />
                 <TipCard />
@@ -536,7 +567,8 @@ export default function App() {
           </main>
         )}
 
-        {activeView === 'story' && <StoryStudio onBack={() => setActiveView('home')} onSettings={() => setActiveView('settings')} />}
+        {activeView === 'story' && <StoryStudio onBack={() => setActiveView('home')} onSettings={() => setActiveView('settings')} onStart={startStory} />}
+        {activeView === 'story_run' && activeProject?.story && <StoryRun key={activeProject.id} project={activeProject} onBack={() => setActiveView('my_projects')} onRestart={() => restartStory(activeProject)} />}
 
         {/* VIEW 2: MY PROJECTS */}
         {activeView === 'my_projects' && (
@@ -545,11 +577,11 @@ export default function App() {
               projects={projects}
               onOpenClips={(proj) => {
                 setActiveProjectId(proj.id);
-                setActiveView('clips');
+                setActiveView(proj.story ? 'story_run' : 'clips');
               }}
               onOpenProgress={(proj) => {
                 setActiveProjectId(proj.id);
-                setActiveView('progress');
+                setActiveView(proj.story ? 'story_run' : 'progress');
               }}
               onDeleteProject={requestDelete}
               onNewProject={() => setActiveView('home')}

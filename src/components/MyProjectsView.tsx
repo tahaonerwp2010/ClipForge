@@ -98,7 +98,7 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
                     title={isFinished ? '' : 'Clips open when processing is finished'}
                     className={`px-5 py-2 rounded-xl font-extrabold text-xs transition-all ${isFinished ? 'bg-[#bef264] hover:bg-[#a3e635] text-black shadow-md shadow-[#3f9a5a]/15 active:scale-95 cursor-pointer' : 'bg-[#1a2a22] text-neutral-500 cursor-not-allowed opacity-60'}`}
                   >
-                    Clips
+                    {project.story ? 'Result' : 'Clips'}
                   </button>
 
                   {/* 2. PROGRESS (Dark Button) */}

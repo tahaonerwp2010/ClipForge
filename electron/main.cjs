@@ -570,14 +570,22 @@ ipcMain.handle('cancel-pipeline', async () => { killAll(); if (currentRun) { try
 // ---- Script to Short (voice-over -> finished 9:16 short + thumbnails + platform texts) ----
 let storyRun = null;
 const storyShot = async (htmlFile) => {              // one thumbnail: load the HTML in a hidden window and take a picture
-  const w = new BrowserWindow({ show: false, width: 1080, height: 1920, useContentSize: true, enableLargerThanScreen: true, webPreferences: { backgroundThrottling: false, contextIsolation: true } });
-  try {
-    await w.loadFile(htmlFile);
-    await w.webContents.executeJavaScript('document.fonts.ready.then(() => new Promise(r => setTimeout(r, 350)))');
-    const img = await w.webContents.capturePage({ x: 0, y: 0, width: 1080, height: 1920 });
-    const sz = img.getSize();
-    return (sz.width !== 1080 ? img.resize({ width: 1080, height: 1920, quality: 'best' }) : img).toPNG();
-  } finally { try { w.destroy(); } catch {} }
+  // Some PCs squeeze a hidden window to the screen height, which used to stretch the picture. Draw it off-screen first and
+  // check the shape; if it is still wrong, draw at half size with page zoom and scale up evenly (never stretch).
+  const attempt = async (scale) => {
+    const w = new BrowserWindow({ show: false, width: Math.round(1080 * scale), height: Math.round(1920 * scale), useContentSize: true, frame: false, enableLargerThanScreen: true, webPreferences: { offscreen: scale === 1, backgroundThrottling: false, contextIsolation: true, zoomFactor: scale } });
+    try {
+      await w.loadFile(htmlFile);
+      await w.webContents.executeJavaScript('document.fonts.ready.then(() => new Promise(r => setTimeout(r, 400)))');
+      const img = await w.webContents.capturePage();
+      const sz = img.getSize();
+      if (Math.abs(sz.width / sz.height - 1080 / 1920) > 0.01 || sz.width < 500) return null;
+      return (sz.width !== 1080 ? img.resize({ width: 1080, height: 1920, quality: 'best' }) : img).toPNG();
+    } finally { try { w.destroy(); } catch {} }
+  };
+  const a = (await attempt(1)) || (await attempt(0.5));
+  if (!a) throw new Error('could not draw the thumbnail on this screen');
+  return a;
 };
 ipcMain.handle('story-start', async (e, job) => {
   if (currentRun || storyRun) return { ok: false, error: 'Another job is still running. Wait for it to finish first.' };
@@ -587,6 +595,18 @@ ipcMain.handle('story-start', async (e, job) => {
   const tracked = storyRun = p.catch(() => {}).then(() => { if (storyRun === tracked) storyRun = null; });
   try { return { ok: true, result: await p }; }
   catch (err) { const m = String(err && err.message || err); return { ok: false, cancelled: /CANCELLED/.test(m), error: m.slice(0, 500) }; }
+});
+ipcMain.handle('story-analyze', async (e, job) => {
+  if (currentRun || storyRun) return { ok: false, error: 'Another job is still running. Wait for it to finish first.' };
+  resetCancel();
+  const p = require('./engine/story.cjs').analyzeStory(job, (ev) => send('story-event', ev));
+  const tracked = storyRun = p.catch(() => {}).then(() => { if (storyRun === tracked) storyRun = null; });
+  try { return { ok: true, analysis: await p }; }
+  catch (err) { const m = String(err && err.message || err); return { ok: false, cancelled: /CANCELLED/.test(m), error: m.slice(0, 500) }; }
+});
+ipcMain.handle('story-pick-video', async () => {
+  const r = await dialog.showOpenDialog(mainWindow, { properties: ['openFile'], filters: [{ name: 'Screen recording', extensions: ['mp4', 'mov', 'mkv', 'webm', 'avi', 'm4v'] }] });
+  return r.canceled ? null : { path: r.filePaths[0], name: path.basename(r.filePaths[0]) };
 });
 ipcMain.handle('story-cancel', async () => { killAll(); if (storyRun) { try { await storyRun; } catch {} } return true; });
 ipcMain.handle('story-pick-voice', async () => {

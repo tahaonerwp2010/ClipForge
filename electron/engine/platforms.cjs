@@ -48,6 +48,7 @@ async function make(ctx) {
       const prompt = `You write social media copy for a short vertical video. The voice-over (the script) is below. Write everything in ${ctx.lang && ctx.lang !== 'auto' ? ctx.lang : "the SAME language as the script"} (if the script is Roman Urdu / Hinglish, write in Roman Urdu / Hinglish).
 Script: """${script}"""
 ${ctx.tool ? 'Promoted tool / product: ' + ctx.tool : ''}
+${ctx.facts ? 'Facts from the creator and from the linked websites (use them, do not invent beyond them):\n' + ctx.facts : ''}
 Be catchy and clickbait-style but honest: never promise things the script does not say. Match each platform:
 - youtube: title (max 100 chars), description (2-4 short lines + call to action), hashtags (3-6)
 - instagram: title (hook line), description (caption, line breaks, call to action), hashtags (8-12)

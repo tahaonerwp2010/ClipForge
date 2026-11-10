@@ -233,6 +233,18 @@ export interface PipelineStep {
   percent?: number;
 }
 
+export interface StoryMeta {
+  voicePath: string;
+  musicPath?: string | null;
+  recordings: string[];
+  options: Record<string, any>;
+  video?: string;
+  outDir?: string;
+  thumbs?: string[];
+  platforms?: any;
+  duration?: number;
+}
+
 export interface ProjectItem {
   id: string;
   name: string;
@@ -256,6 +268,7 @@ export interface ProjectItem {
   framingMode: InnerFramingMode;
   clips?: GeneratedClip[];
   elapsedSeconds?: number;
+  story?: StoryMeta;       // set for "Script to Short" projects
 }
 
 export interface SpeechModelItem {

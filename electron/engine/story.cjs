@@ -50,10 +50,10 @@ function planOffline(sentences, words, o, menuId) {
   const hasRec = (o.recordings || []).length > 0, hasStock = !!o.hasStock;
   beats.forEach((b, i) => {
     b.visual = hasRec && (i % 3 !== 2 || !hasStock) ? 'screen' : hasStock ? 'broll' : 'solid';
-    const ws = words.slice(sentences[b.s].a, sentences[b.e].b + 1);
+    const ws = inRange(words, b.s, b.e);
     b.query = ws.filter(w => /^[a-z]{5,}$/i.test(nrm(w.word)) && !STOPW.has(nrm(w.word))).slice(0, 3).map(w => nrm(w.word)).join(' ');
     if (b.visual === 'broll' && !b.query) b.visual = hasRec ? 'screen' : 'solid';
-    const kw = (i === 0 || i % 2 === 0) ? bestWord(ws) : null;
+    const kw = (i % 3 === 0) ? bestWord(ws) : null;
     if (kw) b.kin = { text: nrm(kw.word), at: kw.start, kind: isNum(kw.word) ? 'stat' : 'word' };
   });
   return { beats, title: [], tool: '', checklist: [] };
@@ -65,13 +65,13 @@ function menuText(id) {
   return `Character looks: ${m.looks.map(l => l.id).join(', ')}.`;
 }
 async function planAI(g, sentences, words, o, total, log) {
-  const list = sentences.slice(0, 90).map(s => `${s.i}. [${s.start.toFixed(1)}-${s.end.toFixed(1)}] ${s.text}`).join('\n');
+  const list = sentences.slice(0, 90).map(s => `${s.i}. [${s.start.toFixed(1)}-${s.end.toFixed(1)}] ${s.tt || s.text}`).join('\n');
   const rec = (o.recordings || []).length;
   const prompt = `You are a top short-form video editor (TikTok / Reels / Shorts). You get the transcript of a voice-over (it can be in ANY language; keep every on-screen word in the voice-over's own language, but write stock-footage search words in English).
 The video is vertical 9:16 and ${total.toFixed(0)} seconds long. Sentences with their times:
 ${list}
 
-Available picture sources: ${rec ? `${rec} screen recording(s) of the thing being talked about ("screen"), ` : ''}${o.hasStock ? 'free stock footage ("broll"), ' : ''}and an animated colour card ("solid"). ${rec ? 'Use "screen" whenever the voice-over is describing or showing the product, tool, website or app. ' : ''}${o.hasStock ? 'Use "broll" for the emotional / story / context moments. ' : ''}
+${o.notes ? `The editor answered your questions (treat these as facts, they are more important than guesses):\n${o.notes}\n` : ''}Available picture sources: ${rec ? `${rec} screen recording(s) of the thing being talked about ("screen"), ` : ''}${o.hasStock ? 'free stock footage ("broll"), ' : ''}and an animated colour card ("solid"). ${rec ? 'Use "screen" whenever the voice-over is describing or showing the product, tool, website or app. ' : ''}${o.hasStock ? 'Use "broll" for the emotional / story / context moments. ' : ''}
 ${o.character ? menuText(o.characterStyle) + '\nA cartoon character can pop in on a beat to react (e.g. a raised hand + surprised face on "wait", a wave on "hello", a pointing-down pose on "link in the comments", a $ face on money). Use him only where it adds something (at most about one beat in three), never twice in a row.' : 'Do not use a character.'}
 
 Merge consecutive sentences into BEATS of about 2.2 to 5 seconds (each beat covers sentence numbers s..e, no gaps, no overlap, all sentences used in order). For every beat decide:
@@ -87,22 +87,24 @@ Answer with JSON only: {"beats":[{"s":0,"e":1,"visual":"screen","query":"","kin"
 }
 
 // make any plan (AI or rules) valid: beats cover every sentence in order, times from the real words, trigger-word characters, sane limits
-function finalize(plan, sentences, words, o, total) {
+function finalize(plan, sentences, words, twords, o, total) {
   let beats = Array.isArray(plan.beats) ? plan.beats.filter(b => Number.isInteger(b.s) && Number.isInteger(b.e) && b.s <= b.e) : [];
   const ok = beats.length && beats[0].s === 0 && beats.every((b, i) => i === 0 || b.s === beats[i - 1].e + 1) && beats[beats.length - 1].e === sentences.length - 1;
-  if (!ok) beats = planOffline(sentences, words, o).beats;
+  if (!ok) beats = planOffline(sentences, twords, o).beats;
   const hasRec = (o.recordings || []).length > 0;
   beats = beats.map((b, i) => {
     const s0 = sentences[Math.min(b.s, sentences.length - 1)], s1 = sentences[Math.min(b.e, sentences.length - 1)];
     let visual = ['screen', 'broll', 'solid'].includes(b.visual) ? b.visual : 'solid';
     if (visual === 'screen' && !hasRec) visual = o.hasStock ? 'broll' : 'solid';
     if (visual === 'broll' && (!o.hasStock || !String(b.query || '').trim())) visual = hasRec ? 'screen' : 'solid';
-    return { ...b, s: b.s, e: b.e, i, t0: i === 0 ? 0 : s0.start, t1: 0, a: s0.a, b: s1.b, visual, query: String(b.query || '').trim() };
+    let rec = null; const asg = (o.assign || []).find(a => Math.min(a.to, s1.end) - Math.max(a.from, s0.start) > 0.4 * Math.max(0.5, s1.end - s0.start));
+    if (asg && asg.path) { visual = 'screen'; rec = asg.path; }
+    return { ...b, rec, s: b.s, e: b.e, i, t0: i === 0 ? 0 : s0.start, t1: 0, a: s0.a, b: s1.b, visual, query: String(b.query || '').trim() };
   });
   beats.forEach((b, i) => { b.t1 = i + 1 < beats.length ? beats[i + 1].t0 : total; if (b.t1 - b.t0 < 0.8) b.t1 = b.t0 + 0.8; });
   // kinetic words: find the spoken word to get a real start time
   beats.forEach((b, i) => {
-    const ws = words.slice(b.a, b.b + 1);
+    const ws = inRange(twords, b.s, b.e);
     let k = b.kin; if (k && typeof k === 'string') k = { text: k, kind: b.kind || 'word' };
     if (k && k.text) {
       const toks = nrm(k.text).split(/\s+/).filter(Boolean), hit = ws.find(w => toks.includes(nrm(w.word)));
@@ -189,6 +191,89 @@ async function renderBeat(b, src, charPng, outFile, opt) {
 }
 
 // ---------------- main ----------------
+
+const inRange = (tw, a, b) => tw.filter(w => w.si >= a && w.si <= b);
+const mmss = t => { t = Math.max(0, Math.round(t)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+// words with the sentence they belong to; a translated sentence gets its words spread over the sentence time
+function buildTwords(words, sentences) {
+  const out = [];
+  sentences.forEach(sn => {
+    if (sn.tt) {
+      const toks = sn.tt.split(/\s+/).filter(Boolean), tot = toks.reduce((a, t) => a + t.length + 1, 0) || 1, dur = Math.max(0.3, sn.end - sn.start); let t = sn.start;
+      toks.forEach(tk => { const d = dur * (tk.length + 1) / tot; out.push({ word: tk, start: +t.toFixed(3), end: +(t + d).toFixed(3), si: sn.i }); t += d; });
+    } else for (let k = sn.a; k <= sn.b; k++) out.push({ ...words[k], si: sn.i });
+  });
+  return out;
+}
+async function translateAll(g, sentences, lang, cta, log) {
+  const list = sentences.slice(0, 140).map((s, i) => `${i}. ${s.text}`).join('\n');
+  const prompt = `Translate every numbered line into ${lang}. Natural, short, spoken style. If a line is already in ${lang}, copy it unchanged. Keep names, brands and numbers as they are. Also translate this button text: ${JSON.stringify(cta || '')}.\n${list}\nJSON only: {"t":["translated line 0","translated line 1"],"cta":""}`;
+  const r = AI.parseJson((await AI.generate(g, { prompt, json: true, timeoutMs: 90000 })).text);
+  if (!r || !Array.isArray(r.t) || r.t.length < Math.min(sentences.length, 140)) throw new Error('translation came back incomplete');
+  sentences.forEach((s, i) => { if (r.t[i]) s.tt = String(r.t[i]).trim(); });
+  return r.cta ? String(r.cta).slice(0, 28) : cta;
+}
+// ---- questions the AI asks before it edits ----
+const URLRE = /(https?:\/\/[^\s"')]+|\b(?:[a-z0-9-]+\.)+(?:com|net|org|io|ai|app|co|me|fun|dev|tv|xyz|gg|so|to|in|pk|us|uk)\b(?:\/[^\s"')]*)?)/ig;
+function questionsOffline(sentences) {
+  const qs = []; const hit = /\b(link|links|website|web site|site|app|download|comment|click|tool|platform|software|dashboard|campaign|http|www|\.com)\b|लिंक|वेबसाइट|ऐप|डाउनलोड|कमेंट|لنک|لینک|ویب|ایپ|ڈاؤن/i;
+  for (const s of sentences) {
+    if (qs.length >= 6) break;
+    if (!hit.test(s.text)) continue;
+    const when = `${mmss(s.start)}-${mmss(s.end)}`, say = s.text.length > 70 ? s.text.slice(0, 67) + '...' : s.text;
+    qs.push({ id: 'q' + qs.length, from: s.start, to: s.end, kind: 'recording', text: `At ${when} you say: "${say}". Do you have a screen recording for this part?` });
+  }
+  if (qs.length) qs.push({ id: 'q' + qs.length, from: 0, to: 0, kind: 'link', text: 'Which website, app or link is this video about? Write its name and link, so the app can read about it.' });
+  return qs;
+}
+async function questionsAI(g, sentences, o) {
+  const list = sentences.slice(0, 120).map(s => `${s.i}. [${mmss(s.start)}-${mmss(s.end)} | ${s.start.toFixed(1)}-${s.end.toFixed(1)}s] ${s.text}`).join('\n');
+  const prompt = `You are the editor of a short vertical video made from the voice-over below (any language). Before editing you must remove every doubt. Read it carefully and ask the creator short questions about anything you cannot know from the words alone:
+- a website, tool, app, product or link that is mentioned or clicked ("go to the link") -> ask for its name and link (kind "link")
+- a moment where the viewer should SEE something on a screen (a website, app, steps, a result) -> ask if they have a screen recording for that part (kind "recording")
+- unclear things, numbers, names, goals, who the audience is, what the viewer should do at the end -> kind "detail"
+Rules: simple, easy ENGLISH only (even if the voice-over is in another language). Every question must point to the time it is about, like: You mention a website at 0:10-0:12. What is its name and link? Be specific, never generic. Between ${o.hasRec ? 3 : 2} and 8 questions, most important first, no duplicates, do not ask what is already clear. "from" and "to" are the start and end seconds (numbers) of the part it is about (0 and 0 if it is about the whole video).
+Voice-over:\n${list}\nJSON only: {"questions":[{"from":10.2,"to":12.4,"kind":"link","text":"..."}]}`;
+  const r = AI.parseJson((await AI.generate(g, { prompt, json: true, timeoutMs: 90000 })).text);
+  const qs = (r && r.questions || []).filter(q => q && q.text).slice(0, 8).map((q, i) => ({ id: 'q' + i, from: +q.from || 0, to: +q.to || 0, kind: ['link', 'recording', 'detail'].includes(q.kind) ? q.kind : 'detail', text: String(q.text).slice(0, 400) }));
+  if (!qs.length) throw new Error('no questions');
+  return qs;
+}
+async function getWords(job, wav, vdur, work, log, stage, lo, hi) {
+  let words = job.words || job.testWords || null;
+  if (!words) {
+    stage('Listening', lo, 'Transcribing the voice-over');
+    words = await W.transcribe(wav, { hardware: job.hardware, log, prompt: '', modelId: job.modelId, language: job.language || 'auto', workDir: work, duration: vdur, chunkSec: 300, slice: R.sliceAudio, onProgress: p => stage('Listening', lo + p * (hi - lo), 'Transcribing the voice-over') });
+    try { words = require('./sync.cjs').refineWords(words, wav); } catch {}
+  }
+  words = (words || []).filter(w => w.word && String(w.word).trim());
+  if (!words.length) throw new Error('No speech detected in this voice-over.');
+  return words;
+}
+// phase 1: listen + think, then hand the questions to the person
+async function analyzeStory(job, emit) {
+  const log = (src, msg, kind) => emit({ type: 'log', src, msg, kind: kind || 'info' });
+  const stage = (st, pct, msg) => emit({ type: 'progress', stage: st, pct: Math.round(pct), msg });
+  if (!job.voicePath || !fs.existsSync(job.voicePath)) throw new Error('Choose a voice-over file first.');
+  const work = path.join(P.workRoot(), 'storyA_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)); fs.mkdirSync(work, { recursive: true });
+  try {
+    stage('Listening', 2, 'Reading the voice-over');
+    const vinfo = await R.probe(job.voicePath); const vdur = vinfo.duration; if (!(vdur > 1)) throw new Error('The voice-over is empty or unreadable.');
+    const wav = path.join(work, 'voice.wav'); await R.extractAudio(job.voicePath, wav); checkCancel();
+    const words = await getWords(job, wav, vdur, work, log, stage, 4, 70); checkCancel();
+    const sentences = sentencesOf(words);
+    log('Script to Short', `${words.length} words, ${sentences.length} sentences, ${vdur.toFixed(1)} s`, 'success');
+    stage('Understanding', 74, 'Understanding what the voice-over is about');
+    const o = { hasRec: ((job.recordings || []).length) > 0 };
+    let questions = null;
+    if (AI.ready(job.gemini)) { try { questions = await questionsAI(job.gemini, sentences, o); log('AI editor', `${questions.length} question(s) ready`, 'success'); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('AI editor', 'The AI could not write questions (' + String(e.message).slice(0, 100) + '), using simple ones', 'warn'); } }
+    if (!questions) questions = questionsOffline(sentences);
+    const transcript = sentences.map(s => `[${mmss(s.start)}] ${s.text}`).join('\n');
+    stage('Understanding', 100, 'Waiting for your answers');
+    return { words, duration: vdur, questions, transcript };
+  } finally { try { fs.rmSync(work, { recursive: true, force: true }); } catch {} }
+}
+
 async function runStory(job, emit, hooks = {}) {
   const log = (src, msg, kind) => emit({ type: 'log', src, msg, kind: kind || 'info' });
   const stage = (st, pct, msg) => emit({ type: 'progress', stage: st, pct: Math.round(pct), msg });
@@ -208,26 +293,36 @@ async function runStory(job, emit, hooks = {}) {
     const wav = path.join(work, 'voice.wav'); await R.extractAudio(job.voicePath, wav);
     checkCancel();
 
-    // 1) words
-    let words = job.testWords || null;
-    if (!words) {
-      stage('Listening', 5, 'Transcribing the voice-over');
-      words = await W.transcribe(wav, { hardware: job.hardware, log, prompt: '', modelId: job.modelId, language: job.language || 'auto', workDir: work, duration: vdur, chunkSec: 300, slice: R.sliceAudio, onProgress: p => stage('Listening', 5 + p * 25, 'Transcribing the voice-over') });
-      try { words = require('./sync.cjs').refineWords(words, wav); } catch {}
-    }
-    if (!words.length) throw new Error('No speech detected in this voice-over.');
-    words = words.filter(w => w.word && String(w.word).trim());
+    // 1) words (already known when the questions were asked)
+    const words = await getWords(job, wav, vdur, work, log, stage, 5, 30);
     checkCancel();
     const sentences = sentencesOf(words);
     log('Script to Short', `${words.length} words, ${sentences.length} sentences, ${vdur.toFixed(1)} s`, 'success');
 
+    // 1b) answers + links the editor gave
+    const answers = (job.answers || []).filter(a => a && (String(a.text || '').trim() || a.rec));
+    o.assign = answers.filter(a => a.rec && fs.existsSync(a.rec)).map(a => ({ from: +a.from || 0, to: +a.to || 0, path: a.rec })).filter(a => a.to > a.from);
+    o.recordings = [...new Set([...o.recordings, ...o.assign.map(a => a.path)])];
+    const urls = [...new Set(answers.flatMap(a => (String(a.text).match(URLRE) || []).map(u => u.replace(/[.,;]+$/, ''))))].slice(0, 4);
+    let facts = [];
+    if (urls.length) { stage('Researching', 31, 'Reading the links you gave'); try { facts = await require('./research.cjs').research(urls, log); } catch (e) { log('Research', 'Could not read the links: ' + String(e.message).slice(0, 100), 'warn'); } }
+    o.notes = [...answers.map(a => `Q: ${a.q || ''}\nA: ${String(a.text || '').trim()}${a.rec ? ' (screen recording provided for this part)' : ''}`),
+      ...facts.map(f => `About ${f.url}: "${f.title}". ${f.desc} ${f.text}`.slice(0, 900))].join('\n').slice(0, 5000);
+    const tl = String(o.textLang || '').trim();
+    if (tl) {
+      stage('Translating', 33, 'Translating captions and texts to ' + tl);
+      if (AI.ready(job.gemini)) { try { o.cta = await translateAll(job.gemini, sentences, tl, o.cta, log); o.thumbCta = o.cta; log('AI editor', 'Translated to ' + tl, 'success'); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; sentences.forEach(s => { s.tt = null; }); log('AI editor', 'Translation failed (' + String(e.message).slice(0, 100) + '), keeping the original language', 'warn'); } }
+      else log('AI editor', 'Translating needs an AI key: keeping the voice-over language', 'warn');
+    }
+    const twords = buildTwords(words, sentences);
+
     // 2) plan
     stage('Planning', 32, 'Planning the edit');
     let raw = null;
-    if (AI.ready(job.gemini)) { try { raw = await planAI(job.gemini, sentences, words, o, total, log); log('AI editor', 'Edit plan ready', 'success'); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('AI editor', 'The AI plan failed (' + String(e.message).slice(0, 120) + '), using the built-in rules instead', 'warn'); } }
+    if (AI.ready(job.gemini)) { try { raw = await planAI(job.gemini, sentences, twords, o, total, log); log('AI editor', 'Edit plan ready', 'success'); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('AI editor', 'The AI plan failed (' + String(e.message).slice(0, 120) + '), using the built-in rules instead', 'warn'); } }
     else log('AI editor', 'No AI key: using the built-in editing rules (add an AI key in Settings for smarter cuts, hooks and headlines)', 'info');
-    if (!raw) raw = planOffline(sentences, words, o);
-    const beats = finalize(raw, sentences, words, o, total);
+    if (!raw) raw = planOffline(sentences, twords, o);
+    const beats = finalize(raw, sentences, words, twords, o, total);
     if (!(raw.title && raw.title.length)) raw.title = beats.filter(b => b.kin && b.kin.text).slice(0, 4).map(b => b.kin.text.toUpperCase());
     const tool = String(raw.tool || job.options && job.options.toolName || '').trim().slice(0, 28);
     checkCancel();
@@ -246,14 +341,14 @@ async function runStory(job, emit, hooks = {}) {
         if (!src) { b.visual = recs.length ? 'screen' : 'solid'; log('Stock footage', `No clip for "${b.query}", using ${b.visual === 'screen' ? 'your recording' : 'an animated card'}`, 'info'); }
       }
       if (b.visual === 'screen' && recs.length) {
-        const r = recs[ri % recs.length];
+        const pool = recs.filter(x => !(o.assign || []).some(a => a.path === x.path)), r = (b.rec && recs.find(x => x.path === b.rec)) || (pool.length ? pool[ri % pool.length] : recs[ri % recs.length]);
         // walk through the recording in order: each screen beat continues where the last one stopped, speeding up or slowing down to fit the sentence
         const left = r.dur - r.pos; let speed = 1, ss = r.pos;
         if (left < D * 0.55) { ss = 0; r.pos = 0; }
         const avail = r.dur - r.pos; speed = Math.min(2.2, Math.max(0.6, Math.min(avail, Math.max(D, 3)) / D));
         if (avail > D * 2.2) speed = 1.0 + Math.min(1.0, (avail / (D * 3)) * 0.25);
         src = { path: r.path, ss: r.pos, speed, w: r.w, h: r.h, crop: r.crop, loop: false };
-        r.pos = Math.min(r.dur - 0.2, r.pos + D * speed); if (r.dur - r.pos < 1) { r.pos = 0; ri++; }
+        r.pos = Math.min(r.dur - 0.2, r.pos + D * speed); if (r.dur - r.pos < 1) { r.pos = 0; if (!b.rec) ri++; }
       } else if (b.visual === 'screen') b.visual = 'solid';
       srcs.push(src);
       checkCancel();
@@ -288,7 +383,7 @@ async function runStory(job, emit, hooks = {}) {
     stage('Graphics', 82, 'Adding motion graphics and captions');
     const lbl = tool && beats.length ? (() => { const w = words.find(x => nrm(x.word).includes(nrm(tool).split(/\s+/)[0])); return { text: tool, at: w ? Math.max(0.3, w.start - 0.1) : 0.6 }; })() : null;
     const checklist = (raw.checklist || []).filter(c => c && c.text && Number.isInteger(c.s) && sentences[c.s]).slice(0, 3).map(c => ({ text: String(c.text).slice(0, 26), at: sentences[c.s].start }));
-    const mg = MG.build({ W: W_, H: H_, total, words, beats, accent: o.accent, motion: o.motion, captions: o.captions, capFont: o.capFont, label: lbl, checklist, cta: o.cta ? { text: o.cta, at: Math.max(0, vdur - 2.2) } : null, charSpans: beats.filter(b => b.char).map(b => ({ a: b.char.at, b: b.char.at + b.char.dur })) });
+    const mg = MG.build({ W: W_, H: H_, total, words: twords, beats, accent: o.accent, motion: o.motion, captions: o.captions, capFont: o.capFont, label: lbl, checklist, cta: o.cta ? { text: o.cta, at: Math.max(0, vdur - 2.2) } : null, charSpans: beats.filter(b => b.char).map(b => ({ a: b.char.at, b: b.char.at + b.char.dur })) });
     fs.writeFileSync(path.join(work, 'captions.ass'), mg.ass);
     FONTS.stageFonts(path.join(work, 'fonts'), mg.fonts);
 
@@ -335,7 +430,7 @@ async function runStory(job, emit, hooks = {}) {
       else await run(ffmpeg(), ['-y', '-ss', String(Math.min(total * 0.3, total - 1)), '-i', base, '-frames:v', '1', '-q:v', '2', sp]);
       shot = sp;
     } catch {}
-    try { result.platforms = await require('./platforms.cjs').make({ gemini: job.gemini, sentences, tool, title: raw.title || [], lang: o.textLang, outDir }); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('Platform texts', 'Skipped: ' + String(e.message).slice(0, 120), 'warn'); }
+    try { result.platforms = await require('./platforms.cjs').make({ gemini: job.gemini, sentences, tool, title: raw.title || [], lang: o.textLang, facts: o.notes, outDir }); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('Platform texts', 'Skipped: ' + String(e.message).slice(0, 120), 'warn'); }
     if (hooks.shot) {
       try {
         const titles = (result.platforms && result.platforms.thumbTitles && result.platforms.thumbTitles.length ? result.platforms.thumbTitles : (raw.title || [])).filter(Boolean).slice(0, 4);
@@ -349,4 +444,4 @@ async function runStory(job, emit, hooks = {}) {
     return result;
   } finally { try { fs.rmSync(work, { recursive: true, force: true }); } catch {} }
 }
-module.exports = { runStory, sentencesOf, planOffline, finalize };
+module.exports = { analyzeStory, runStory, sentencesOf, planOffline, finalize };

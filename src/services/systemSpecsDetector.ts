@@ -72,6 +72,8 @@ declare global {
       importFont?: () => Promise<{ family: string; file: string; url: string }[]>;
       removeUserFont?: (family: string) => Promise<boolean>;
       pickAudio?: () => Promise<{ path: string; name: string; url: string } | null>;
+      storyAnalyze?: (job: any) => Promise<{ ok: boolean; analysis?: any; cancelled?: boolean; error?: string }>;
+      storyPickVideo?: () => Promise<{ path: string; name: string } | null>;
       storyStart?: (job: any) => Promise<{ ok: boolean; result?: any; cancelled?: boolean; error?: string }>;
       storyCancel?: () => Promise<boolean>;
       storyPickVoice?: () => Promise<{ path: string; name: string } | null>;

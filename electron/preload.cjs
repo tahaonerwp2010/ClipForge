@@ -64,6 +64,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeUserFont: (f) => ipcRenderer.invoke('remove-user-font', f),
   pickAudio: () => ipcRenderer.invoke('pick-audio'),
   pickImage: () => ipcRenderer.invoke('pick-image'),
+  storyAnalyze: (job) => ipcRenderer.invoke('story-analyze', job),
+  storyPickVideo: () => ipcRenderer.invoke('story-pick-video'),
   storyStart: (job) => ipcRenderer.invoke('story-start', job),
   storyCancel: () => ipcRenderer.invoke('story-cancel'),
   storyPickVoice: () => ipcRenderer.invoke('story-pick-voice'),
