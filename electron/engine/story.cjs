@@ -10,6 +10,7 @@ const AI = require('./ai.cjs');
 const ST = require('./stock.cjs');
 const CH = require('./characters.cjs');
 const MG = require('./mg.cjs');
+const MO = require('./motion.cjs');
 const FONTS = require('./fonts.cjs');
 const { run, checkCancel } = require('./proc.cjs');
 const ffmpeg = () => P.binOrPath('ffmpeg');
@@ -71,17 +72,31 @@ async function planAI(g, sentences, words, o, total, log) {
 The video is vertical 9:16 and ${total.toFixed(0)} seconds long. Sentences with their times:
 ${list}
 
-${o.notes ? `The editor answered your questions (treat these as facts, they are more important than guesses):\n${o.notes}\n` : ''}Available picture sources: ${rec ? `${rec} screen recording(s) of the thing being talked about ("screen"), ` : ''}${o.hasStock ? 'free stock footage ("broll"), ' : ''}and an animated colour card ("solid"). ${rec ? 'Use "screen" whenever the voice-over is describing or showing the product, tool, website or app. ' : ''}${o.hasStock ? 'Use "broll" for the emotional / story / context moments. ' : ''}
+${o.recDesc ? `What the screen recordings show (frame by frame, x and y are 0..1 positions of the important thing):\n${o.recDesc}\n` : ''}${o.notes ? `The editor answered your questions (treat these as facts, they are more important than guesses):\n${o.notes}\n` : ''}Available picture sources: ${rec ? `${rec} screen recording(s) of the thing being talked about ("screen"), ` : ''}${o.hasStock ? 'free stock footage ("broll"), ' : ''}and an animated colour card ("solid"). ${rec ? 'Use "screen" whenever the voice-over is describing or showing the product, tool, website or app. ' : ''}${o.hasStock ? 'Use "broll" for the emotional / story / context moments. ' : ''}
 ${o.character ? menuText(o.characterStyle) + '\nA cartoon character can pop in on a beat to react (e.g. a raised hand + surprised face on "wait", a wave on "hello", a pointing-down pose on "link in the comments", a $ face on money). Use him only where it adds something (at most about one beat in three), never twice in a row.' : 'Do not use a character.'}
 
 Merge consecutive sentences into BEATS of about 2.2 to 5 seconds (each beat covers sentence numbers s..e, no gaps, no overlap, all sentences used in order). For every beat decide:
 - "visual": ${['screen', 'broll', 'solid'].filter(v => v === 'solid' || (v === 'screen' && rec) || (v === 'broll' && o.hasStock)).map(v => `"${v}"`).join(' | ')}
 - "query": 2-3 English words for stock footage when visual is "broll", else ""
-- "kin": the 1-3 most powerful words of that beat, copied EXACTLY as spoken (big animated text), or "" if the beat has nothing worth stressing. "kind": "stat" for numbers / money / percentages, else "word".
+${o.html ? `- "scene": you are also the MOTION DESIGNER. Design animated graphics like a professional product-explainer short: clean, playful, full of REAL content. Rules:
+  * a beat whose visual is "solid" MUST get a full-screen scene built from real content: the real product / site name, real steps, real numbers and benefits taken from the voice-over, the editor's answers and the researched facts. Never generic filler.
+  * a beat whose visual is "screen" or "broll" may get a small overlay or null: {"type":"callout","text":"Pick a campaign","x":0.5,"y":0.4} (ring + label pointing at a spot of the picture, x and y from 0 to 1; use the recording description to choose a real spot) or {"type":"badge","text":"Step 2"}.
+  * full-screen scene types (every text short, in the transcript's language):
+    {"type":"hero","title":"max 6 words","hi":"1-2 words of the title to highlight","sub":"optional short line"}
+    {"type":"step","n":1,"label":"short action"}
+    {"type":"flow","title":"","center":"the main thing","nodes":["3 to 5 short items around it"]}
+    {"type":"compare","left":"Before","right":"After","caption":""}
+    {"type":"checks","title":"","items":["2 to 4 benefits"]}
+    {"type":"link","text":"Link copied","url":"the real link or site name"}
+    {"type":"stat","value":"$1,000","label":"what it counts"}
+  * vary the types and never use the same type twice in a row: "step" for numbered how-to moments, "flow" for features or options, "stat" for numbers, "link" when the voice-over says to click or open a link, "hero" for hooks and statements.
+- "theme": {"mode":"light" or "dark","accent":"#hex","accent2":"#hex"} chosen to fit the brand and topic (use the product's own colours if the facts mention them). Light is the default look.
+` : `- "kin": the 1-3 most powerful words of that beat, copied EXACTLY as spoken (big animated text), or "" if the beat has nothing worth stressing. "kind": "stat" for numbers / money / percentages, else "word".
+`}
 ${o.character ? '- "char": null or {"pose": <pose>, "face": <face>}' : ''}
-- "arrow": true when an arrow should point at the screen content (only on "screen" beats, at most twice in the video)
+${o.html ? '' : '- "arrow": true when an arrow should point at the screen content (only on "screen" beats, at most twice in the video)'}
 Also give: "title": 4 different clickbait thumbnail headlines (2-6 words each, in the voice-over language, curiosity or shock, no lies), "tool": the name of the website / product / app being promoted exactly as spoken ("" if none), "checklist": up to 3 short benefit phrases {"text","s"} where s is the sentence number in which the benefit is said (only if the voice-over lists benefits such as free / no sign up / all in one place).
-Answer with JSON only: {"beats":[{"s":0,"e":1,"visual":"screen","query":"","kin":"","kind":"word","char":null,"arrow":false}],"title":[],"tool":"","checklist":[]}`;
+Answer with JSON only: ${o.html ? '{"beats":[{"s":0,"e":1,"visual":"solid","query":"","scene":{"type":"hero","title":"...","hi":"..."},"char":null}],"theme":{"mode":"light","accent":"#FFD400","accent2":"#FFE45C"},"title":[],"tool":"","checklist":[]}' : '{"beats":[{"s":0,"e":1,"visual":"screen","query":"","kin":"","kind":"word","char":null,"arrow":false}],"title":[],"tool":"","checklist":[]}'}`;
   const r = await AI.generate(g, { prompt, json: true, timeoutMs: 90000 });
   return AI.parseJson(r.text);
 }
@@ -129,7 +144,14 @@ function finalize(plan, sentences, words, twords, o, total) {
     });
   }
   beats.forEach(b => { if (!b.char || !b.char.at) b.char = null; b.arrow = b.arrow === true && b.visual === 'screen' ? { at: b.t0 + 0.5 } : null; });
-  let arrows = 0; beats.forEach(b => { if (b.arrow && ++arrows > 2) b.arrow = null; });
+  let arrows = 0; beats.forEach(b => { if (b.arrow && ++arrows > 4) b.arrow = null; });
+  if (o.html) beats.forEach(b => {
+    b.kin = null; b.arrow = null;
+    let sc = MO.normalize(b.scene);
+    if (sc && MO.FULL.includes(sc.type)) b.visual = 'solid';
+    else if (sc && b.visual !== 'screen' && b.visual !== 'broll') sc = null;
+    b.scene = sc;
+  });
   return beats;
 }
 
@@ -195,23 +217,49 @@ async function renderBeat(b, src, charPng, outFile, opt) {
 const inRange = (tw, a, b) => tw.filter(w => w.si >= a && w.si <= b);
 const mmss = t => { t = Math.max(0, Math.round(t)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
 // words with the sentence they belong to; a translated sentence gets its words spread over the sentence time
+function phrasesOf(words, sentences) {   // short chunks of spoken words: the unit for translating / correcting captions
+  sentences.forEach(sn => {
+    sn.ph = []; let cur = [];
+    const flush = () => { if (cur.length) { sn.ph.push({ a: cur[0], b: cur[cur.length - 1], start: words[cur[0]].start, end: words[cur[cur.length - 1]].end, tt: null }); cur = []; } };
+    for (let k = sn.a; k <= sn.b; k++) { cur.push(k); const w = words[k], nx = words[k + 1]; if (cur.length >= 5 || /[,;:.!?؟،۔।…]$/.test(w.word) || (nx && k < sn.b && nx.start - w.end > 0.35)) flush(); }
+    flush();
+  });
+  return sentences.flatMap(sn => sn.ph.map(p => (p.si = sn.i, p)));
+}
+// each phrase keeps the exact time of the spoken words it replaces, so captions stay in sync
 function buildTwords(words, sentences) {
   const out = [];
   sentences.forEach(sn => {
-    if (sn.tt) {
-      const toks = sn.tt.split(/\s+/).filter(Boolean), tot = toks.reduce((a, t) => a + t.length + 1, 0) || 1, dur = Math.max(0.3, sn.end - sn.start); let t = sn.start;
-      toks.forEach(tk => { const d = dur * (tk.length + 1) / tot; out.push({ word: tk, start: +t.toFixed(3), end: +(t + d).toFixed(3), si: sn.i }); t += d; });
-    } else for (let k = sn.a; k <= sn.b; k++) out.push({ ...words[k], si: sn.i });
+    for (const ph of (sn.ph || [{ a: sn.a, b: sn.b, start: sn.start, end: sn.end, tt: null }])) {
+      if (ph.tt) {
+        const toks = ph.tt.split(/\s+/).filter(Boolean), tot = toks.reduce((a, t) => a + t.length + 1, 0) || 1, dur = Math.max(0.25, ph.end - ph.start); let t = ph.start;
+        toks.forEach(tk => { const d = dur * (tk.length + 1) / tot; out.push({ word: tk, start: +t.toFixed(3), end: +(t + d).toFixed(3), si: sn.i }); t += d; });
+      } else for (let k = ph.a; k <= ph.b; k++) out.push({ ...words[k], si: sn.i });
+    }
+    sn.tt = sn.ph && sn.ph.some(p => p.tt) ? sn.ph.map(p => p.tt || sn.text).join(' ') : null;
   });
   return out;
 }
-async function translateAll(g, sentences, lang, cta, log) {
-  const list = sentences.slice(0, 140).map((s, i) => `${i}. ${s.text}`).join('\n');
-  const prompt = `Translate every numbered line into ${lang}. Natural, short, spoken style. If a line is already in ${lang}, copy it unchanged. Keep names, brands and numbers as they are. Also translate this button text: ${JSON.stringify(cta || '')}.\n${list}\nJSON only: {"t":["translated line 0","translated line 1"],"cta":""}`;
-  const r = AI.parseJson((await AI.generate(g, { prompt, json: true, timeoutMs: 90000 })).text);
-  if (!r || !Array.isArray(r.t) || r.t.length < Math.min(sentences.length, 140)) throw new Error('translation came back incomplete');
-  sentences.forEach((s, i) => { if (r.t[i]) s.tt = String(r.t[i]).trim(); });
-  return r.cta ? String(r.cta).slice(0, 28) : cta;
+// lang set -> translate every phrase; lang empty -> only fix mis-heard words / names using the editor's notes
+async function rewritePhrases(g, phrases, words, lang, notes, cta) {
+  let newCta = cta, changed = 0;
+  for (let off = 0; off < phrases.length; off += 140) {
+    const part = phrases.slice(off, off + 140), list = part.map((p, i) => `${i}. ${words.slice(p.a, p.b + 1).map(w => w.word).join(' ')}`).join('\n');
+    const prompt = lang
+      ? `Translate every numbered phrase into ${lang}. Natural spoken style. One output per input, same order, and keep the meaning of each phrase inside its own phrase (never move words between phrases). If a phrase is already in ${lang}, copy it. Keep names, brands, numbers as they are.${notes && off === 0 ? '\nContext about the video (names and facts):\n' + notes.slice(0, 1500) : ''}${off === 0 ? '\nAlso translate this button text: ' + JSON.stringify(cta || '') : ''}\n${list}\nJSON only: {"t":["..."],"cta":""}`
+      : `These phrases were machine-transcribed from a voice-over and may contain mis-heard words, wrong spellings or wrongly written names. Fix ONLY real mistakes, using this context. Keep the same language and script, keep the same number of words where possible, one output per input in the same order. If a phrase is fine, copy it exactly.\nContext (names, links, facts):\n${(notes || '').slice(0, 1800)}\n${list}\nJSON only: {"t":["..."]}`;
+    const r = AI.parseJson((await AI.generate(g, { prompt, json: true, timeoutMs: 90000 })).text);
+    if (!r || !Array.isArray(r.t) || r.t.length !== part.length) throw new Error('the AI answer did not match the phrases');
+    part.forEach((p, i) => {
+      const t = String(r.t[i] == null ? '' : r.t[i]).trim(), orig = words.slice(p.a, p.b + 1).map(w => w.word).join(' ');
+      if (!t || t === orig) return;
+      const ratio = t.split(/\s+/).length / Math.max(1, p.b - p.a + 1);
+      if (!lang && (ratio < 0.5 || ratio > 2)) return;
+      p.tt = t; changed++;
+    });
+    if (lang && off === 0 && r.cta) newCta = String(r.cta).slice(0, 28);
+  }
+  return { cta: newCta, changed };
 }
 // ---- questions the AI asks before it edits ----
 const URLRE = /(https?:\/\/[^\s"')]+|\b(?:[a-z0-9-]+\.)+(?:com|net|org|io|ai|app|co|me|fun|dev|tv|xyz|gg|so|to|in|pk|us|uk)\b(?:\/[^\s"')]*)?)/ig;
@@ -274,10 +322,44 @@ async function analyzeStory(job, emit) {
   } finally { try { fs.rmSync(work, { recursive: true, force: true }); } catch {} }
 }
 
+
+function autoScene(b, ws, i) {   // used when the AI gave no usable scene (or there is no AI)
+  const cl = w => String(w.word).replace(/[.,!?;:،۔؟]+$/g, ''), text = ws.map(cl).join(' ');
+  const num = ws.find(w => { const d = String(w.word).replace(/\D/g, ''); return d.length >= 3 || (/\d/.test(w.word) && /[$€£₹%]|k\b/i.test(w.word)); });
+  if (num) return { type: 'stat', value: cl(num), label: text.slice(0, 40) };
+  const kw = bestWord(ws), short = ws.slice(0, 6).map(cl).join(' ');
+  if (i % 3 === 1 && kw) return { type: 'step', n: Math.floor(i / 2) + 1, label: short.slice(0, 28) };
+  return { type: 'hero', title: short.slice(0, 48), hi: kw ? cl(kw) : '', sub: '' };
+}
+function rectOf(src, visual) {   // where the recording sits inside the 1080x1920 frame (same maths as renderBeat)
+  if (visual !== 'screen' || !src) return { x: 0, y: 0, w: 1080, h: 1920 };
+  const cw = src.crop ? src.crop.w : src.w, ch = src.crop ? src.crop.h : src.h, fit = Math.min(1000 / cw, 1380 / ch), fw = Math.round(cw * fit / 2) * 2, fh = Math.round(ch * fit / 2) * 2;
+  return { x: (W_ - fw) / 2, y: (H_ - fh) / 2 - 70, w: fw, h: fh };
+}
+// the AI looks at a few frames of each recording so it knows what is on screen and where
+async function describeRecordings(g, files, work, log) {
+  const out = [];
+  for (let k = 0; k < Math.min(3, files.length); k++) {
+    const f = files[k];
+    try {
+      const info = await R.probe(f), crop = await detectCrop(f, info.duration, info.width, info.height), n = 6, parts = [], times = [];
+      for (let j = 0; j < n; j++) {
+        const t = Math.max(0, Math.min(info.duration - 0.3, info.duration * (j + 0.5) / n)), jpg = path.join(work, `rd${k}_${j}.jpg`);
+        await run(ffmpeg(), ['-y', '-ss', t.toFixed(2), '-i', f, '-frames:v', '1', '-vf', `${crop ? `crop=${crop.w}:${crop.h}:${crop.x}:${crop.y},` : ''}scale=640:-2`, '-q:v', '5', jpg]);
+        times.push(t); parts.push({ text: `Frame ${j + 1} at ${t.toFixed(1)} s:` }, { inlineData: { mimeType: 'image/jpeg', data: fs.readFileSync(jpg).toString('base64') } });
+      }
+      parts.unshift({ text: `These ${n} frames come from a screen recording of an app or website. Say in one short sentence what it shows (name the app or site if you can read it). Then for each frame name the single most important button / area and its center as x,y from 0 to 1 (0,0 = top-left). JSON only: {"summary":"","frames":[{"t":0.0,"what":"","x":0.5,"y":0.5}]}` });
+      const r = AI.parseJson((await AI.generate(g, { parts, json: true, timeoutMs: 90000 })).text);
+      out.push(`Recording ${k + 1} (${path.basename(f)}, ${info.duration.toFixed(0)} s): ${String(r.summary || '').slice(0, 200)}\n` + (r.frames || []).slice(0, n).map((fr, j) => `  at ${(+fr.t || times[j] || 0).toFixed(1)} s: ${String(fr.what || '').slice(0, 60)} (x ${(+fr.x || 0.5).toFixed(2)}, y ${(+fr.y || 0.5).toFixed(2)})`).join('\n'));
+    } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('AI editor', 'Could not look at ' + path.basename(f) + ': ' + String(e.message).slice(0, 80), 'warn'); }
+  }
+  return out.join('\n');
+}
 async function runStory(job, emit, hooks = {}) {
   const log = (src, msg, kind) => emit({ type: 'log', src, msg, kind: kind || 'info' });
   const stage = (st, pct, msg) => emit({ type: 'progress', stage: st, pct: Math.round(pct), msg });
   const o = { motion: 'bold', captions: true, accent: '#FFD400', character: true, characterStyle: 'suit', charLevel: 'normal', cta: 'COMMENT "LINK"', sfx: true, musicVol: 16, broll: true, ...(job.options || {}) };
+  o.html = !!hooks.frames && o.motionHtml !== false;
   o.recordings = (job.recordings || []).filter(f => fs.existsSync(f));
   o.hasStock = !!(o.broll && job.stockKeys && Object.values(job.stockKeys).some(k => k && String(k).trim()));
   if (!job.voicePath || !fs.existsSync(job.voicePath)) throw new Error('Choose a voice-over file first.');
@@ -309,17 +391,20 @@ async function runStory(job, emit, hooks = {}) {
     o.notes = [...answers.map(a => `Q: ${a.q || ''}\nA: ${String(a.text || '').trim()}${a.rec ? ' (screen recording provided for this part)' : ''}`),
       ...facts.map(f => `About ${f.url}: "${f.title}". ${f.desc} ${f.text}`.slice(0, 900))].join('\n').slice(0, 5000);
     const tl = String(o.textLang || '').trim();
-    if (tl) {
-      stage('Translating', 33, 'Translating captions and texts to ' + tl);
-      if (AI.ready(job.gemini)) { try { o.cta = await translateAll(job.gemini, sentences, tl, o.cta, log); o.thumbCta = o.cta; log('AI editor', 'Translated to ' + tl, 'success'); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; sentences.forEach(s => { s.tt = null; }); log('AI editor', 'Translation failed (' + String(e.message).slice(0, 100) + '), keeping the original language', 'warn'); } }
-      else log('AI editor', 'Translating needs an AI key: keeping the voice-over language', 'warn');
-    }
+    const phrases = phrasesOf(words, sentences);
+    if (AI.ready(job.gemini) && (tl || o.notes)) {
+      stage(tl ? 'Translating' : 'Understanding', 33, tl ? 'Translating captions and texts to ' + tl : 'Checking the spelling of the captions');
+      try { const rr = await rewritePhrases(job.gemini, phrases, words, tl, o.notes, o.cta); o.cta = rr.cta; if (tl) o.thumbCta = o.cta; log('AI editor', tl ? 'Translated to ' + tl : `Fixed ${rr.changed} mis-heard caption phrase(s)`, 'success'); }
+      catch (e) { if (String(e.message) === 'CANCELLED') throw e; phrases.forEach(p => { p.tt = null; }); log('AI editor', (tl ? 'Translation' : 'Caption check') + ' failed (' + String(e.message).slice(0, 100) + '), keeping the original words', 'warn'); }
+    } else if (tl) log('AI editor', 'Translating needs an AI key: keeping the voice-over language', 'warn');
     const twords = buildTwords(words, sentences);
 
     // 2) plan
     stage('Planning', 32, 'Planning the edit');
     let raw = null;
-    if (AI.ready(job.gemini)) { try { raw = await planAI(job.gemini, sentences, twords, o, total, log); log('AI editor', 'Edit plan ready', 'success'); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('AI editor', 'The AI plan failed (' + String(e.message).slice(0, 120) + '), using the built-in rules instead', 'warn'); } }
+    if (o.html && AI.ready(job.gemini) && o.recordings.length) { stage('Planning', 34, 'Looking at your recordings'); try { o.recDesc = await describeRecordings(job.gemini, o.recordings, work, log); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; } }
+    if (job.testPlan) raw = job.testPlan;
+    else if (AI.ready(job.gemini)) { try { raw = await planAI(job.gemini, sentences, twords, o, total, log); log('AI editor', 'Edit plan ready', 'success'); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('AI editor', 'The AI plan failed (' + String(e.message).slice(0, 120) + '), using the built-in rules instead', 'warn'); } }
     else log('AI editor', 'No AI key: using the built-in editing rules (add an AI key in Settings for smarter cuts, hooks and headlines)', 'info');
     if (!raw) raw = planOffline(sentences, twords, o);
     const beats = finalize(raw, sentences, words, twords, o, total);
@@ -354,6 +439,11 @@ async function runStory(job, emit, hooks = {}) {
       checkCancel();
     }
 
+    // 3b) every beat without footage gets an animated scene (the AI's own, or a simple one built from the words)
+    if (o.html) beats.forEach((b, i) => {
+      if (b.visual === 'solid' && !(b.scene && MO.FULL.includes(b.scene.type))) b.scene = autoScene(b, inRange(twords, b.s, b.e), i);
+    });
+
     // 4) characters
     const charPngs = [];
     let charAspect = 0.82;
@@ -371,19 +461,37 @@ async function runStory(job, emit, hooks = {}) {
     const palettes = [['0d1b2a', '1b263b'], ['1a0f2e', '3a1d5c'], ['0b2a24', '14524a'], ['2b0f12', '5a1a22']];
     const segs = [];
     for (let i = 0; i < beats.length; i++) {
-      stage('Editing', 52 + 28 * i / beats.length, `Editing scene ${i + 1} of ${beats.length}`);
+      stage('Editing', 52 + 26 * i / beats.length, `Editing scene ${i + 1} of ${beats.length}`);
       const f = path.join(segDir, `s${i}.mp4`);
-      await renderBeat(beats[i], srcs[i], charPngs[i], f, { charH: o.charH || 760, charAspect, accentDark: palettes[i % palettes.length] });
+      await renderBeat(beats[i], srcs[i], (o.html && beats[i].scene && MO.FULL.includes(beats[i].scene.type)) ? null : charPngs[i], f, { charH: o.charH || 760, charAspect, accentDark: palettes[i % palettes.length] });
       segs.push(f); checkCancel();
     }
     const list = path.join(work, 'list.txt'); fs.writeFileSync(list, segs.map(f => `file '${f.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`).join('\n'));
     const base = path.join(work, 'base.mp4'); await run(ffmpeg(), ['-y', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', base]);
 
-    // 6) motion graphics + captions
-    stage('Graphics', 82, 'Adding motion graphics and captions');
+    // 6) motion graphics (animated scenes) + captions
+    stage('Graphics', 79, 'Adding motion graphics and captions');
+    let motion = [];
+    if (o.html) {
+      const th = (raw.theme && typeof raw.theme === 'object') ? raw.theme : {}, acc = MO.hex(th.accent, o.accent), mode = ['light', 'dark'].includes(o.sceneMode) ? o.sceneMode : (['light', 'dark'].includes(th.mode) ? th.mode : (String(o.accent).toLowerCase() === '#ffffff' ? 'dark' : 'light'));
+      const items = [];
+      beats.forEach((b, i) => {
+        if (!b.scene) return; const sc = { ...b.scene };
+        if (sc.type === 'callout') { const r = rectOf(srcs[i], b.visual); sc.px = Math.round(r.x + Math.min(0.95, Math.max(0.05, +sc.x || 0.5)) * r.w); sc.py = Math.round(r.y + Math.min(0.95, Math.max(0.05, +sc.y || 0.45)) * r.h); }
+        if (MO.FULL.includes(sc.type) && b.char && charPngs[i]) sc.ch = { src: charPngs[i], at: Math.max(0, b.char.at - b.t0), dur: b.char.dur, side: b.char.side, h: o.charH || 760 };
+        items.push({ id: 'b' + i, scene: sc, t0: b.t0, t1: b.t1, dur: +(b.t1 - b.t0).toFixed(3) });
+      });
+      if (o.cta) { const t0 = Math.max(0, vdur - 2.4); items.push({ id: 'cta', scene: { type: 'cta', text: o.cta }, t0, t1: total, dur: +(total - t0).toFixed(3) }); }
+      try {
+        motion = await MO.renderAll(items, { mode, accent: acc, accent2: MO.hex(th.accent2, acc), fontsDir: P.fontsDir(), fps: 24 }, hooks, work, log, (k, n, ty) => { stage('Graphics', 79 + 10 * k / n, `Drawing motion graphics ${k + 1} of ${n}`); checkCancel(); });
+        if (motion.some(m => m.over && !m.alpha)) { log('Motion graphics', 'This PC could not draw see-through graphics, so overlays on recordings were skipped', 'warn'); motion = motion.filter(m => !(m.over && !m.alpha)); }
+        log('Motion graphics', `${motion.length} animated scene(s) drawn`, 'success');
+      } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('Motion graphics', 'Could not draw the animated scenes (' + String(e.message).slice(0, 100) + '), continuing without them', 'warn'); motion = []; }
+    }
+    const ctaDrawn = motion.some(m => m.id === 'cta');
     const lbl = tool && beats.length ? (() => { const w = words.find(x => nrm(x.word).includes(nrm(tool).split(/\s+/)[0])); return { text: tool, at: w ? Math.max(0.3, w.start - 0.1) : 0.6 }; })() : null;
     const checklist = (raw.checklist || []).filter(c => c && c.text && Number.isInteger(c.s) && sentences[c.s]).slice(0, 3).map(c => ({ text: String(c.text).slice(0, 26), at: sentences[c.s].start }));
-    const mg = MG.build({ W: W_, H: H_, total, words: twords, beats, accent: o.accent, motion: o.motion, captions: o.captions, capFont: o.capFont, label: lbl, checklist, cta: o.cta ? { text: o.cta, at: Math.max(0, vdur - 2.2) } : null, charSpans: beats.filter(b => b.char).map(b => ({ a: b.char.at, b: b.char.at + b.char.dur })) });
+    const mg = MG.build({ W: W_, H: H_, total, words: twords, beats, accent: o.accent, motion: o.motion, captions: o.captions, capFont: o.capFont, label: o.html ? null : lbl, checklist: o.html ? [] : checklist, cta: o.cta && !ctaDrawn ? { text: o.cta, at: Math.max(0, vdur - 2.2) } : null, charSpans: beats.filter(b => b.char).map(b => ({ a: b.char.at, b: b.char.at + b.char.dur })) });
     fs.writeFileSync(path.join(work, 'captions.ass'), mg.ass);
     FONTS.stageFonts(path.join(work, 'fonts'), mg.fonts);
 
@@ -392,7 +500,7 @@ async function runStory(job, emit, hooks = {}) {
     if (o.sfx !== false) {
       let lib = null; try { lib = require('./sfxlib.cjs'); } catch {}
       const events = [];
-      beats.forEach((b, i) => { if (i > 0) events.push({ t: b.t0, role: 'whoosh' }); if (b.kin) events.push({ t: b.kin.at, role: b.kin.kind === 'stat' ? 'hit' : 'pop' }); if (b.char) events.push({ t: b.char.at, role: 'pop' }); });
+      beats.forEach((b, i) => { if (i > 0) events.push({ t: b.t0, role: 'whoosh' }); if (b.kin) events.push({ t: b.kin.at, role: b.kin.kind === 'stat' ? 'hit' : 'pop' }); if (b.char) events.push({ t: b.char.at, role: 'pop' }); if (b.scene && motion.some(m => m.id === 'b' + i)) events.push({ t: b.t0 + (MO.FULL.includes(b.scene.type) ? 0.45 : 0.5), role: b.scene.type === 'stat' ? 'hit' : 'pop' }); });
       checklist.forEach(c => events.push({ t: c.at, role: 'pop' }));
       if (o.cta) events.push({ t: Math.max(0, vdur - 2.2), role: 'reward' });
       events.sort((a, c) => a.t - c.t); let lastT = -9; const cnt = {};
@@ -401,7 +509,7 @@ async function runStory(job, emit, hooks = {}) {
         try { const list = lib && lib.byRole ? lib.byRole(e.role) : []; if (!list.length) continue; const pick = list[(cnt[e.role] = (cnt[e.role] || 0) + 1) % list.length]; const file = pick.path; if (file && fs.existsSync(file)) sfx.push({ t: e.t, file, gainDb: pick.gainDb || 0, role: e.role }); } catch {}
       }
     }
-    stage('Mixing', 86, 'Mixing voice, music and effects');
+    stage('Mixing', 90, 'Mixing voice, music and effects');
     const out = path.join(outDir, 'short.mp4');
     const inputs = ['-i', base, '-i', job.voicePath]; let mi = -1;
     if (job.musicPath && fs.existsSync(job.musicPath)) { inputs.push('-stream_loop', '-1', '-i', job.musicPath); mi = 2; }
@@ -413,15 +521,20 @@ async function runStory(job, emit, hooks = {}) {
     } else mix.push('[vo]');
     sfx.forEach((s, k) => { const ms = Math.max(0, Math.round(s.t * 1000)); af += `;[${sfxStart + k}:a]${AF},adelay=${ms}|${ms},volume=${(Math.pow(10, (s.gainDb || 0) / 20) * 0.7).toFixed(3)}[x${k}]`; mix.push(`[x${k}]`); });
     af += `;${mix.join('')}amix=inputs=${mix.length}:normalize=0:dropout_transition=0,alimiter=limit=0.95[aout]`;
-    const vf = `[0:v]ass=captions.ass:fontsdir=fonts[vout]`;
-    stage('Rendering', 88, 'Rendering the final video');
+    let ni = inputs.filter(x => x === '-i').length, cur = '0:v'; const vparts = [];
+    motion.forEach((m, j) => {
+      inputs.push('-framerate', '24', '-i', path.join(m.dir, '%05d.png')); const ix = ni++;
+      vparts.push(`[${ix}:v]format=rgba,setpts=PTS-STARTPTS+${m.t0.toFixed(3)}/TB[m${j}]`, `[${cur}][m${j}]overlay=eof_action=pass:repeatlast=0:enable='between(t,${m.t0.toFixed(3)},${m.t1.toFixed(3)})'[o${j}]`); cur = 'o' + j;
+    });
+    const vf = `${vparts.length ? vparts.join(';') + ';' : ''}[${cur}]ass=captions.ass:fontsdir=fonts[vout]`;
+    stage('Rendering', 92, 'Rendering the final video');
     await run(ffmpeg(), ['-y', ...inputs, '-filter_complex', `${vf};${af}`, '-map', '[vout]', '-map', '[aout]', '-t', String(total), '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-r', String(FPS), '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out], { cwd: work });
     checkCancel();
     log('Script to Short', `Video ready (${((Date.now() - t00) / 1000).toFixed(0)} s)`, 'success');
 
     // 8) thumbnails + platform texts (never fatal)
     const result = { outDir, video: out, duration: total, thumbs: [], platforms: null, plan: { beats: beats.length, tool, title: raw.title || [] } };
-    stage('Packaging', 94, 'Making thumbnails and platform texts');
+    stage('Packaging', 97, 'Making thumbnails and platform texts');
     let shot = null;
     try {
       const rsrc = recs[0] ? { f: recs[0].path, t: Math.min(recs[0].dur * 0.4, recs[0].dur - 0.5), crop: recs[0].crop } : null;

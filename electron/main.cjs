@@ -587,11 +587,31 @@ const storyShot = async (htmlFile) => {              // one thumbnail: load the 
   if (!a) throw new Error('could not draw the thumbnail on this screen');
   return a;
 };
+// Animated motion-graphics scenes: seek the page to each moment and save the frame (see-through where the page is empty).
+const storyFrames = async ({ htmlFile, outDir, dur, fps, needAlpha }) => {
+  const w = new BrowserWindow({ show: false, width: 1080, height: 1920, useContentSize: true, frame: false, transparent: true, enableLargerThanScreen: true, webPreferences: { offscreen: true, backgroundThrottling: false, contextIsolation: true } });
+  try {
+    await w.loadFile(htmlFile);
+    await w.webContents.executeJavaScript('document.fonts.ready.then(() => new Promise(r => setTimeout(r, 300)))');
+    const n = Math.max(1, Math.round(dur * fps)); let alpha = true;
+    for (let i = 0; i < n; i++) {
+      await w.webContents.executeJavaScript(`window.seek(${(i / fps).toFixed(4)}); new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`);
+      const img = await w.webContents.capturePage(); const sz = img.getSize();
+      if (i === 0) {
+        if (Math.abs(sz.width / sz.height - 1080 / 1920) > 0.01) throw new Error('the drawing window has the wrong shape');
+        if (needAlpha) { try { alpha = img.toBitmap()[3] === 0; } catch { alpha = false; } }
+      }
+      fs.writeFileSync(path.join(outDir, String(i + 1).padStart(5, '0') + '.png'), (sz.width !== 1080 ? img.resize({ width: 1080, height: 1920, quality: 'good' }) : img).toPNG());
+      if (i % 12 === 0) require('./engine/proc.cjs').checkCancel();
+    }
+    return { frames: n, alpha };
+  } finally { try { w.destroy(); } catch {} }
+};
 ipcMain.handle('story-start', async (e, job) => {
   if (currentRun || storyRun) return { ok: false, error: 'Another job is still running. Wait for it to finish first.' };
   resetCancel();
   job = { ...job, clipsBase: Settings.clipsDir() };
-  const p = require('./engine/story.cjs').runStory(job, (ev) => send('story-event', ev), { shot: storyShot });
+  const p = require('./engine/story.cjs').runStory(job, (ev) => send('story-event', ev), { shot: storyShot, frames: storyFrames });
   const tracked = storyRun = p.catch(() => {}).then(() => { if (storyRun === tracked) storyRun = null; });
   try { return { ok: true, result: await p }; }
   catch (err) { const m = String(err && err.message || err); return { ok: false, cancelled: /CANCELLED/.test(m), error: m.slice(0, 500) }; }

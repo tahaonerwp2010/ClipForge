@@ -41,6 +41,7 @@ export const StoryStudio: React.FC<{ onBack: () => void; onSettings: () => void;
   const [charId, setCharId] = useState('suit');
   const [motion, setMotion] = useState('bold');
   const [charLevel, setCharLevel] = useState('normal');
+  const [sceneMode, setSceneMode] = useState('auto');
   const [captions, setCaptions] = useState(true);
   const [sfx, setSfx] = useState(true);
   const [broll, setBroll] = useState(true);
@@ -60,7 +61,7 @@ export const StoryStudio: React.FC<{ onBack: () => void; onSettings: () => void;
     if (!voice) return;
     onStart({
       name: base(voice.path).replace(/\.[^.]+$/, ''), voicePath: voice.path, musicPath: music?.path || null, recordings: recs,
-      options: { motion, captions, sfx, broll: broll && hasStock, accent, musicVol, cta: cta.trim(), thumbCta: cta.trim() || 'LINK IN COMMENTS', character: charId !== 'none', characterStyle: charId, charLevel, textLang: lang }
+      options: { motion, captions, sfx, broll: broll && hasStock, accent, musicVol, cta: cta.trim(), thumbCta: cta.trim() || 'LINK IN COMMENTS', character: charId !== 'none', characterStyle: charId, charLevel, sceneMode, textLang: lang }
     });
   };
 
@@ -116,8 +117,9 @@ export const StoryStudio: React.FC<{ onBack: () => void; onSettings: () => void;
               </div>
               <span className={`${lab} mt-3`}>How often</span><Seg value={charLevel} onChange={setCharLevel} items={[['few', 'Few'], ['normal', 'Normal'], ['many', 'Many']]} />
             </Section>
-            <Section title="Motion graphics" hint="Small touches: arrows, key words, a checklist and a button at the end.">
+            <Section title="Motion graphics" hint="The AI designs animated scenes from your script and links: titles, steps, flows, checklists, call-outs on your recordings and a button at the end.">
               <Seg value={motion} onChange={setMotion} items={[['clean', 'Clean'], ['bold', 'Bold'], ['wild', 'Wild']]} />
+              <span className={`${lab} mt-4`}>Scene look</span><Seg value={sceneMode} onChange={setSceneMode} items={[['auto', 'Auto (AI picks)'], ['light', 'Light'], ['dark', 'Dark']]} />
               <span className={`${lab} mt-4`}>Accent colour</span>
               <div className="flex gap-2">{ACCENTS.map(c => <button key={c} type="button" aria-label={`Accent ${c}`} onClick={() => setAccent(c)} className={`w-9 h-9 rounded-full cursor-pointer border-2 ${ring} ${accent === c ? 'border-white' : 'border-transparent'}`} style={{ background: c }} />)}</div>
             </Section>
