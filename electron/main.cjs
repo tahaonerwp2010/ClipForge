@@ -603,7 +603,9 @@ const storyShot = async (htmlFile) => {              // one thumbnail: load the 
 const storyFrames = async ({ htmlFile, outDir, dur, fps, bg }) => {
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   const attempt = async (offscreen) => {
-    const sc = offscreen ? 1 : 0.5;     // a normal hidden window may be squeezed to the screen: draw at half size and scale up evenly
+    // a normal hidden window is squeezed to the screen (and Windows display scaling of 125-175% makes it even smaller): pick a size that always fits, draw zoomed out, scale up evenly
+    let sc = 1;
+    if (!offscreen) { try { const wa = require('electron').screen.getPrimaryDisplay().workAreaSize; sc = Math.max(0.2, Math.min(0.5, Math.floor(wa.height * 0.85) / 1920)); } catch { sc = 0.3; } }
     const w = new BrowserWindow({ show: false, width: Math.round(1080 * sc), height: Math.round(1920 * sc), useContentSize: true, frame: false, backgroundColor: '#000000', enableLargerThanScreen: true, webPreferences: { offscreen, backgroundThrottling: false, contextIsolation: true, zoomFactor: sc } });
     try {
       await w.loadFile(htmlFile);
@@ -616,7 +618,7 @@ const storyFrames = async ({ htmlFile, outDir, dur, fps, bg }) => {
       for (let i = 0; i < n; i++) {
         await w.webContents.executeJavaScript(`window.seek(${(i / fps).toFixed(4)}); new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`);
         const img = await grab(); const sz = img.getSize();
-        if (Math.abs(sz.width / sz.height - 1080 / 1920) > 0.01) throw new Error(`the drawing window has the wrong shape (${sz.width}x${sz.height})`);
+        if (Math.abs(sz.width / sz.height - 1080 / 1920) > 0.02) throw new Error(`the drawing window has the wrong shape (${sz.width}x${sz.height})`);
         fs.writeFileSync(path.join(outDir, String(i + 1).padStart(5, '0') + '.png'), (sz.width !== 1080 ? img.resize({ width: 1080, height: 1920, quality: 'good' }) : img).toPNG());
         if (i % 12 === 0) require('./engine/proc.cjs').checkCancel();
       }
@@ -624,7 +626,11 @@ const storyFrames = async ({ htmlFile, outDir, dur, fps, bg }) => {
     } finally { try { w.destroy(); } catch {} }
   };
   try { return await attempt(true); }
-  catch (e) { if (/CANCELLED/.test(String(e.message))) throw e; return await attempt(false); }
+  catch (e1) {
+    if (/CANCELLED/.test(String(e1.message))) throw e1;
+    try { return await attempt(false); }
+    catch (e2) { if (/CANCELLED/.test(String(e2.message))) throw e2; throw new Error(`${String(e2.message)}; first try: ${String(e1.message)}`); }
+  }
 };
 ipcMain.handle('story-start', async (e, job) => {
   if (currentRun || storyRun) return { ok: false, error: 'Another job is still running. Wait for it to finish first.' };

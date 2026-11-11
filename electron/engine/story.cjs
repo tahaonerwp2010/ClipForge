@@ -272,15 +272,21 @@ async function rewritePhrases(g, phrases, words, lang, notes, cta) {
       ? `You subtitle a voice-over. The text was machine-transcribed, so some words may be mis-heard (Hindi/Urdu/English mixed speech especially): first understand each whole SENTENCE and the context, then translate into ${lang}. Output one ${lang} text for every numbered phrase, same order. Rules: each output translates ONLY its own numbered phrase (never move words between phrases, never leave a phrase empty), read in order the phrases of a sentence must form one natural sentence, spoken style, short. Keep names, brands, links as written. Write digits only where a number was really spoken. If a phrase is already in ${lang}, copy it.${notes && off === 0 ? '\nContext about the video (names and facts):\n' + notes.slice(0, 1500) : ''}${off === 0 ? '\nAlso translate this button text: ' + JSON.stringify(cta || '') : ''}\n${list}\nJSON only: {"t":["..."],"cta":""}`
       : `These phrases were machine-transcribed from a voice-over and may contain mis-heard words, wrong spellings or wrongly written names. Fix ONLY real mistakes, using this context and the whole sentence. Keep the same language and script, keep the same number of words where possible, one output per numbered phrase in the same order. If a phrase is fine, copy it exactly.\nContext (names, links, facts):\n${(notes || '').slice(0, 1800)}\n${list}\nJSON only: {"t":["..."]}`;
     const r = AI.parseJson((await AI.generate(g, { prompt, json: true, timeoutMs: 90000 })).text);
-    if (!r || !Array.isArray(r.t) || r.t.length !== part.length) throw new Error('the AI answer did not match the phrases');
+    // accept an array, or an object keyed by the phrase number; answers like "3. text" are matched by their number; the rest keep the original words
+    const got = new Array(part.length).fill(null); const src = r && (r.t !== undefined ? r.t : r.translations !== undefined ? r.translations : r);
+    if (Array.isArray(src)) {
+      if (src.length === part.length) src.forEach((v, i) => { got[i] = v; });
+      else src.forEach((v, i) => { const m = /^\s*(\d+)\s*[.):\-]\s*([\s\S]*)$/.exec(String(v)); if (m && +m[1] < part.length) got[+m[1]] = m[2]; else if (v && typeof v === 'object' && v.i !== undefined) got[+v.i] = v.t || v.text; });
+    } else if (src && typeof src === 'object') Object.keys(src).forEach(k => { if (/^\d+$/.test(k) && +k < part.length) got[+k] = src[k]; });
+    if (got.filter(v => v != null && String(v).trim()).length < part.length * 0.6) throw new Error('the AI answer did not match the phrases');
     part.forEach((p, i) => {
-      const t = String(r.t[i] == null ? '' : r.t[i]).trim(), orig = words.slice(p.a, p.b + 1).map(w => w.word).join(' ');
+      const t = String(got[i] == null ? '' : got[i]).trim(), orig = words.slice(p.a, p.b + 1).map(w => w.word).join(' ');
       if (!t || t === orig) return;
       const ratio = t.split(/\s+/).length / Math.max(1, p.b - p.a + 1);
       if (!lang && (ratio < 0.5 || ratio > 2)) return;
       p.tt = t; changed++;
     });
-    if (lang && off === 0 && r.cta) newCta = String(r.cta).slice(0, 28);
+    if (lang && off === 0 && r && r.cta) newCta = String(r.cta).slice(0, 28);
   }
   return { cta: newCta, changed };
 }
@@ -297,6 +303,8 @@ function questionsOffline(sentences) {
   if (qs.length) qs.push({ id: 'q' + qs.length, from: 0, to: 0, kind: 'link', text: 'Which website, app or link is this video about? Write its name and link, so the app can read about it.' });
   return qs;
 }
+// AI answers are not always shaped exactly as asked: take the first list found
+const listOf = (r, key) => Array.isArray(r) ? r : (r && typeof r === 'object' ? (Array.isArray(r[key]) ? r[key] : (Object.values(r).find(v => Array.isArray(v)) || (r[key] && typeof r[key] === 'object' ? Object.values(r[key]) : null))) : null) || [];
 async function questionsAI(g, sentences, o) {
   const list = sentences.slice(0, 120).map(s => `${s.i}. [${mmss(s.start)}-${mmss(s.end)} | ${s.start.toFixed(1)}-${s.end.toFixed(1)}s] ${s.text}`).join('\n');
   const prompt = `You are the editor of a short vertical video made from the voice-over below (any language). Before editing you must remove every doubt. Read it carefully and ask the creator short questions about anything you cannot know from the words alone:
@@ -305,9 +313,13 @@ async function questionsAI(g, sentences, o) {
 - unclear things, numbers, names, goals, who the audience is, what the viewer should do at the end -> kind "detail"
 Rules: simple, easy ENGLISH only (even if the voice-over is in another language). Every question must point to the time it is about, like: You mention a website at 0:10-0:12. What is its name and link? Be specific, never generic. Between ${o.hasRec ? 3 : 2} and 8 questions, most important first, no duplicates, do not ask what is already clear. "from" and "to" are the start and end seconds (numbers) of the part it is about (0 and 0 if it is about the whole video).
 Voice-over:\n${list}\nJSON only: {"questions":[{"from":10.2,"to":12.4,"kind":"link","text":"..."}]}`;
-  const r = AI.parseJson((await AI.generate(g, { prompt, json: true, timeoutMs: 90000 })).text);
-  const qs = (r && r.questions || []).filter(q => q && q.text).slice(0, 8).map((q, i) => ({ id: 'q' + i, from: +q.from || 0, to: +q.to || 0, kind: ['link', 'recording', 'detail'].includes(q.kind) ? q.kind : 'detail', text: String(q.text).slice(0, 400) }));
-  if (!qs.length) throw new Error('no questions');
+  let qs = [], last = '';
+  for (let tries = 0; tries < 2 && !qs.length; tries++) {
+    const raw = (await AI.generate(g, { prompt, json: true, timeoutMs: 90000 })).text; last = String(raw || '').slice(0, 80);
+    qs = listOf(AI.parseJson(raw), 'questions').map(q => (typeof q === 'string' ? { text: q } : q)).filter(q => q && (q.text || q.question)).slice(0, 8)
+      .map((q, i) => ({ id: 'q' + i, from: +q.from || 0, to: +q.to || 0, kind: ['link', 'recording', 'detail'].includes(q.kind) ? q.kind : 'detail', text: String(q.text || q.question).slice(0, 400) }));
+  }
+  if (!qs.length) throw new Error('no questions; the AI said: ' + last.replace(/\s+/g, ' '));
   return qs;
 }
 async function getWords(job, wav, vdur, work, log, stage, lo, hi) {

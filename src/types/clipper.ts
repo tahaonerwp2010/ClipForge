@@ -268,6 +268,7 @@ export interface ProjectItem {
   framingMode: InnerFramingMode;
   clips?: GeneratedClip[];
   elapsedSeconds?: number;
+  settings?: any;          // the settings this project was started with (kept on disk, so a restart or power cut continues with them)
   story?: StoryMeta;       // set for "Script to Short" projects
 }
 

@@ -4,6 +4,8 @@
 - **Script to Short: the AI plan is repaired, not thrown away.** A plan with small gaps or overlaps used to be replaced by an all-screen plan.
 - **Better caption translation.** The AI reads the whole sentence for meaning and still answers phrase by phrase, so captions stay in sync and use the right words.
 - New **Spoken language** choice for the voice-over (Hindi, Urdu, Arabic and more) for more accurate transcription.
+- Fixed: animated scenes failing on Windows screens with display scaling; AI questions and translation no longer fail on slightly different AI answer shapes.
+- Fixed: after a power cut or restart, "Continue" now keeps the project's own settings (clip count, captions, framing, etc.) instead of falling back to defaults.
 - Every short now saves a `log.txt` and a fuller `plan.json` next to the video, to make problems easy to report.
 
 - **Motion scenes are drawn more reliably on Windows.** The drawing window no longer needs see-through support: overlays are drawn on black and on white and the transparency is worked out from the difference. A first empty picture from the window is waited out, with a second drawing method as backup.

@@ -503,6 +503,7 @@ export default function App() {
       setProjects(prev => prev.map(p => p.id === id ? { ...p, status: busy ? 'Queued' : 'Processing', currentStep: 1, progressPercent: 0 } : p));
     }
 
+    { const snap = settingsRef.current[id]; setProjects(prev => prev.map(p => p.id === id ? { ...p, settings: snap } : p)); }
     if (busy) {
       setQueue(q => [...q.filter(x => x !== id), id]);
       showToast('Another project is processing. This one was added to the queue and will start automatically.');
@@ -603,8 +604,8 @@ export default function App() {
                 onViewClips={() => { setActiveProjectId(id); setActiveView('clips'); }}
                 onNewProject={() => setActiveView('home')}
                 onUpdateProject={(updated) => setProjects(prev => prev.map(x => x.id === updated.id ? updated : x))}
-                settingsKnown={!!settingsRef.current[id]}
-                {...(settingsRef.current[id] || {})}
+                settingsKnown={!!(settingsRef.current[id] || p.settings)}
+                {...(settingsRef.current[id] || p.settings || {})}
               />
             </main>
           );

@@ -32,10 +32,16 @@ function normalizeJob(job) {
 // A resumed run must never reuse results made with OTHER settings (e.g. clips already rendered with default framing/captions).
 // We keep a fingerprint of the settings next to the checkpoints; on resume, anything that depends on a changed setting is thrown away.
 const CFG_KEYS = ['language', 'modelId', 'clipLength', 'targetClipsCount', 'aiPrompt', 'shorts', 'ratio', 'quality', 'split', 'framing', 'captions', 'grading', 'branding'];
+// A fresh start clears the work folder, but never the saved settings of a project the screen knows nothing about (app restarted).
+function wipeWork(job, work) {
+  let keep = null; if (job.settingsKnown === false) { try { keep = fs.readFileSync(path.join(work, 'cfg.json'), 'utf8'); } catch {} }
+  if (!job.resume) fs.rmSync(work, { recursive: true, force: true });
+  if (keep) { try { fs.mkdirSync(work, { recursive: true }); fs.writeFileSync(path.join(work, 'cfg.json'), keep); } catch {} }
+}
 function guardSettings(job, work, log) {
   const cfgF = path.join(work, 'cfg.json');
   // The app was restarted (power cut, crash): the screen only knows defaults, so continue with the settings this project was started with
-  if (job.resume && job.settingsKnown === false) {
+  if (job.settingsKnown === false) {
     let saved = null; try { saved = JSON.parse(fs.readFileSync(cfgF, 'utf8')); } catch {}
     if (saved) { for (const k of CFG_KEYS) if (saved[k] !== undefined) job[k] = saved[k]; log('System', 'Continuing with the settings this project was started with.', 'info'); }
     try { fs.mkdirSync(work, { recursive: true }); } catch {}
@@ -163,7 +169,7 @@ async function runInner(job, emit, deps = {}) {
 
   // Stable work dir per project => a paused run can resume from its checkpoints.
   const work = path.join(P.workRoot(), `job_${slug(job.id || job.name)}`);
-  if (!job.resume) fs.rmSync(work, { recursive: true, force: true });
+  wipeWork(job, work);
   guardSettings(job, work, log);
   fs.mkdirSync(work, { recursive: true });
   const f = n => path.join(work, n);
@@ -419,7 +425,7 @@ async function runShortsInner(job, emit, deps = {}) {
   fs.mkdirSync(outDir, { recursive: true });
   try { fs.writeFileSync(path.join(outDir, '.clipforge.json'), JSON.stringify({ projectId: String(job.id || job.name) })); } catch {}
   const work = path.join(P.workRoot(), `job_${slug(job.id || job.name)}`);
-  if (!job.resume) fs.rmSync(work, { recursive: true, force: true });
+  wipeWork(job, work);
   guardSettings(job, work, log);
   fs.mkdirSync(work, { recursive: true });
   const f = n => path.join(work, n);
