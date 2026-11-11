@@ -71,7 +71,14 @@ jobs:
       - name: Linux tools
         if: matrix.name == 'linux'
         run: |
-          sudo apt-get update && sudo apt-get install -y cmake build-essential xz-utils
+          # the Ubuntu mirrors sometimes fail to resolve on GitHub runners: retry a few times, and skip when the tools are already there
+          for i in 1 2 3 4; do
+            if command -v cmake >/dev/null && command -v xz >/dev/null && command -v make >/dev/null; then break; fi
+            sudo apt-get update -o Acquire::Retries=5 || true
+            sudo apt-get install -y -o Acquire::Retries=5 cmake build-essential xz-utils && break
+            sleep $((i * 15))
+          done
+          command -v cmake >/dev/null && command -v xz >/dev/null
           mkdir -p binaries tmp && cd tmp
           # static ffmpeg: GitHub (BtbN) first, then johnvansickle; every try has a time limit and is checked to be a real archive
           got=0
