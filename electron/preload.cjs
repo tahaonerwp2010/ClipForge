@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFolder: (p, projectId) => ipcRenderer.invoke('open-folder', p, projectId),
   kvLoad: (name) => ipcRenderer.invoke('kv-load', name),
   kvSave: (name, val) => ipcRenderer.invoke('kv-save', name, val),
+  kvLoadSync: (name) => ipcRenderer.sendSync('kv-load-sync', name),
+  kvSaveSync: (name, val) => ipcRenderer.sendSync('kv-save-sync', name, val),
   projectsLoad: () => ipcRenderer.invoke('projects-load'),
   projectsSave: (list) => ipcRenderer.invoke('projects-save', list),
   licenseStatus: (o) => ipcRenderer.invoke('license-status', o),

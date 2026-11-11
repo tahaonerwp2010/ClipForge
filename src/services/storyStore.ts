@@ -51,7 +51,7 @@ export const StoryStore = {
     runs.set(projectId, { projectId, phase: 'analyzing', stage: 'Listening', pct: 1, msg: 'Starting', step: 0, logs: [], questions: [], analysis: null, job, result: null, error: '', startedAt: Date.now() });
     emit();
     projectHook(projectId, { status: 'Processing', progressPercent: 1, stepsDone: 0, stepsTotal: STORY_STEPS.length });
-    const full = { ...job, modelId: SoftwareManager.getActiveModelId(), language: 'auto', hardware: getHardware(), gemini: AiService.forJob(), stockKeys: StockService.keys() };
+    const full = { ...job, modelId: SoftwareManager.getActiveModelId(), language: job.options?.voiceLang && job.options.voiceLang !== 'auto' ? job.options.voiceLang : 'auto', hardware: getHardware(), gemini: AiService.forJob(), stockKeys: StockService.keys() };
     runs.set(projectId, { ...runs.get(projectId)!, job: full });
     const r = await api().storyAnalyze(full);
     if (!r.ok) { if (r.cancelled) { upd(projectId, { phase: 'error', error: 'Cancelled.' }); projectHook(projectId, { status: 'Paused' }); } else { upd(projectId, { phase: 'error', error: r.error || 'Something went wrong.' }); projectHook(projectId, { status: 'Failed' }); } return; }

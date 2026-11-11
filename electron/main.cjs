@@ -398,8 +398,20 @@ ipcMain.handle('pick-folder', async () => {
 const projectsFile = () => path.join(app.getPath('userData'), 'projects.json');
 // Small settings kept in a real file next to the projects, so they survive even if the browser storage of the window is ever reset (e.g. API keys).
 const kvFile = (n) => path.join(app.getPath('userData'), 'kv_' + String(n).replace(/[^\w\-]/g, '_') + '.json');
-ipcMain.handle('kv-load', async (e, name) => { for (const f of [kvFile(name), kvFile(name) + '.bak']) { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch {} } return null; });
-ipcMain.handle('kv-save', async (e, name, val) => { try { const f = kvFile(name); const t = JSON.stringify(val); try { if (fs.existsSync(f)) fs.copyFileSync(f, f + '.bak'); } catch {} fs.writeFileSync(f + '.tmp', t); fs.renameSync(f + '.tmp', f); return true; } catch { return false; } });
+// Three copies of every small setting: the main file, a .bak, and one outside the app's data folder (so a changed/cleaned data folder cannot lose the API keys).
+const kvSpare = (n) => path.join(os.homedir(), '.clipforge', 'kv_' + String(n).replace(/[^\w\-]/g, '_') + '.json');
+const kvRead = (n) => { for (const f of [kvFile(n), kvFile(n) + '.bak', kvSpare(n)]) { try { const v = JSON.parse(fs.readFileSync(f, 'utf8')); if (v != null) return v; } catch {} } return null; };
+const kvWrite = (n, val) => {
+  let ok = false; const t = JSON.stringify(val);
+  try { const f = kvFile(n); fs.mkdirSync(path.dirname(f), { recursive: true }); try { if (fs.existsSync(f)) fs.copyFileSync(f, f + '.bak'); } catch {} fs.writeFileSync(f + '.tmp', t); fs.renameSync(f + '.tmp', f); ok = true; } catch {}
+  try { const g = kvSpare(n); fs.mkdirSync(path.dirname(g), { recursive: true }); fs.writeFileSync(g, t); ok = true; } catch {}
+  return ok;
+};
+ipcMain.handle('kv-load', async (e, name) => kvRead(name));
+ipcMain.handle('kv-save', async (e, name, val) => kvWrite(name, val));
+// Synchronous versions: the window reads/writes keys without waiting, so nothing is lost if the app is closed right after a change.
+ipcMain.on('kv-load-sync', (e, name) => { e.returnValue = kvRead(name); });
+ipcMain.on('kv-save-sync', (e, name, val) => { e.returnValue = kvWrite(name, val); });
 ipcMain.handle('projects-load', async () => { try { return JSON.parse(fs.readFileSync(projectsFile(), 'utf8')); } catch { return []; } });
 ipcMain.handle('projects-save', async (e, list) => { try { const f = projectsFile(); fs.writeFileSync(f + '.tmp', JSON.stringify(list)); fs.renameSync(f + '.tmp', f); return true; } catch { return false; } });
 // ---- Edit a finished clip (captions + hook only) ----
@@ -588,24 +600,31 @@ const storyShot = async (htmlFile) => {              // one thumbnail: load the 
   return a;
 };
 // Animated motion-graphics scenes: seek the page to each moment and save the frame (see-through where the page is empty).
-const storyFrames = async ({ htmlFile, outDir, dur, fps, needAlpha }) => {
-  const w = new BrowserWindow({ show: false, width: 1080, height: 1920, useContentSize: true, frame: false, transparent: true, enableLargerThanScreen: true, webPreferences: { offscreen: true, backgroundThrottling: false, contextIsolation: true } });
-  try {
-    await w.loadFile(htmlFile);
-    await w.webContents.executeJavaScript('document.fonts.ready.then(() => new Promise(r => setTimeout(r, 300)))');
-    const n = Math.max(1, Math.round(dur * fps)); let alpha = true;
-    for (let i = 0; i < n; i++) {
-      await w.webContents.executeJavaScript(`window.seek(${(i / fps).toFixed(4)}); new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`);
-      const img = await w.webContents.capturePage(); const sz = img.getSize();
-      if (i === 0) {
-        if (Math.abs(sz.width / sz.height - 1080 / 1920) > 0.01) throw new Error('the drawing window has the wrong shape');
-        if (needAlpha) { try { alpha = img.toBitmap()[3] === 0; } catch { alpha = false; } }
+const storyFrames = async ({ htmlFile, outDir, dur, fps, bg }) => {
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  const attempt = async (offscreen) => {
+    const sc = offscreen ? 1 : 0.5;     // a normal hidden window may be squeezed to the screen: draw at half size and scale up evenly
+    const w = new BrowserWindow({ show: false, width: Math.round(1080 * sc), height: Math.round(1920 * sc), useContentSize: true, frame: false, backgroundColor: '#000000', enableLargerThanScreen: true, webPreferences: { offscreen, backgroundThrottling: false, contextIsolation: true, zoomFactor: sc } });
+    try {
+      await w.loadFile(htmlFile);
+      await w.webContents.executeJavaScript(`document.fonts.ready.then(() => new Promise(r => setTimeout(r, 300))).then(() => { window.setBg && window.setBg(${JSON.stringify(bg || '#000000')}); })`);
+      const grab = async () => {           // the first picture of an off-screen window can be empty: wait for a real paint
+        for (let k = 0; k < 40; k++) { const img = await w.webContents.capturePage(); const z = img.getSize(); if (z.width > 0 && z.height > 0) return img; await sleep(100); }
+        throw new Error('the drawing window never painted');
+      };
+      const n = Math.max(1, Math.round(dur * fps));
+      for (let i = 0; i < n; i++) {
+        await w.webContents.executeJavaScript(`window.seek(${(i / fps).toFixed(4)}); new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`);
+        const img = await grab(); const sz = img.getSize();
+        if (Math.abs(sz.width / sz.height - 1080 / 1920) > 0.01) throw new Error(`the drawing window has the wrong shape (${sz.width}x${sz.height})`);
+        fs.writeFileSync(path.join(outDir, String(i + 1).padStart(5, '0') + '.png'), (sz.width !== 1080 ? img.resize({ width: 1080, height: 1920, quality: 'good' }) : img).toPNG());
+        if (i % 12 === 0) require('./engine/proc.cjs').checkCancel();
       }
-      fs.writeFileSync(path.join(outDir, String(i + 1).padStart(5, '0') + '.png'), (sz.width !== 1080 ? img.resize({ width: 1080, height: 1920, quality: 'good' }) : img).toPNG());
-      if (i % 12 === 0) require('./engine/proc.cjs').checkCancel();
-    }
-    return { frames: n, alpha };
-  } finally { try { w.destroy(); } catch {} }
+      return { frames: n, alpha: true };
+    } finally { try { w.destroy(); } catch {} }
+  };
+  try { return await attempt(true); }
+  catch (e) { if (/CANCELLED/.test(String(e.message))) throw e; return await attempt(false); }
 };
 ipcMain.handle('story-start', async (e, job) => {
   if (currentRun || storyRun) return { ok: false, error: 'Another job is still running. Wait for it to finish first.' };

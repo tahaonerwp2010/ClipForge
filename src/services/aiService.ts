@@ -22,7 +22,14 @@ export class AiService {
   static getConfig(): AiConfig {
     const base = blank();
     try {
-      const raw = localStorage.getItem(STORE);
+      let raw = localStorage.getItem(STORE);
+      // Window storage empty or without keys? Rebuild from the real file right now (synchronously), so keys never "vanish".
+      const kc = (c: any) => PROVIDER_ORDER.reduce((n, id) => n + ((c?.providers?.[id]?.keys || []).length), 0);
+      let parsed: any = null; try { parsed = raw ? JSON.parse(raw) : null; } catch { /* ignore */ }
+      if (kc(parsed) === 0) {
+        let disk: any = null; try { disk = window.electronAPI?.kvLoadSync?.('ai_config'); } catch { /* ignore */ }
+        if (kc(disk) > 0) { raw = JSON.stringify(disk); try { localStorage.setItem(STORE, raw); } catch { /* ignore */ } }
+      }
       if (raw) {
         const c = JSON.parse(raw);
         for (const id of PROVIDER_ORDER) if (c.providers?.[id]) base.providers[id] = { ...base.providers[id], ...c.providers[id] };
@@ -49,7 +56,7 @@ export class AiService {
   }
   static saveConfig(cfg: AiConfig): AiConfig {
     try { localStorage.setItem(STORE, JSON.stringify(cfg)); } catch { /* ignore */ }
-    try { window.electronAPI?.kvSave?.('ai_config', cfg); } catch { /* ignore */ }      // second copy in a real file
+    try { const a = window.electronAPI; if (a?.kvSaveSync) a.kvSaveSync('ai_config', cfg); else a?.kvSave?.('ai_config', cfg); } catch { /* ignore */ }      // second copy in a real file (written at once)
     // keep the older single-key settings in step (used by the browser preview paths)
     const g = cfg.providers.gemini;
     GeminiService.saveSettings({ enabled: cfg.enabled, apiKey: g.keys[0]?.key || '', model: g.model });

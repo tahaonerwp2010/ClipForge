@@ -37,6 +37,8 @@ declare global {
       updateInstall?: (filePath: string) => Promise<{ ok: boolean; mode?: string; error?: string }>;
       kvLoad?: (name: string) => Promise<any>;
       kvSave?: (name: string, val: any) => Promise<boolean>;
+      kvLoadSync?: (name: string) => any;
+      kvSaveSync?: (name: string, val: any) => boolean;
       projectsLoad?: () => Promise<any[]>;
       projectsSave?: (list: any[]) => Promise<boolean>;
       licenseStatus?: (o?: { trial?: boolean }) => Promise<{ id: string; pro: boolean; forever: boolean; proDaysLeft: number | null; trial: boolean; trialDaysLeft: number; configured: boolean; online: boolean }>;

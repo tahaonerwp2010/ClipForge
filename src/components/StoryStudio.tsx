@@ -5,6 +5,7 @@ import { StockService } from '../services/stockService';
 import { AiService } from '../services/aiService';
 
 type Char = { id: string; name: string; builtin: boolean; count: number; preview: string | null };
+export const VLANGS: [string, string][] = [['en', 'English'], ['hi', 'Hindi / Hinglish'], ['ur', 'Urdu'], ['ar', 'Arabic'], ['es', 'Spanish'], ['fr', 'French'], ['de', 'German'], ['pt', 'Portuguese'], ['tr', 'Turkish'], ['id', 'Indonesian'], ['bn', 'Bengali'], ['ru', 'Russian'], ['it', 'Italian'], ['fa', 'Persian'], ['ja', 'Japanese'], ['ko', 'Korean']];
 export const LANGS = ['English', 'Urdu', 'Hindi', 'Arabic', 'Spanish', 'French', 'German', 'Portuguese', 'Turkish', 'Indonesian', 'Bengali', 'Russian', 'Italian', 'Persian', 'Japanese', 'Korean'];
 const ACCENTS = ['#FFD400', '#22E3A1', '#FF3B5C', '#3BA7FF', '#FFFFFF'];
 const base = (p: string) => p.split(/[\\/]/).pop() || p;
@@ -49,6 +50,7 @@ export const StoryStudio: React.FC<{ onBack: () => void; onSettings: () => void;
   const [musicVol, setMusicVol] = useState(16);
   const [cta, setCta] = useState('COMMENT "LINK"');
   const [lang, setLang] = useState('');
+  const [vlang, setVlang] = useState('auto');
   const hasStock = StockService.hasAny();
   const hasAi = (() => { try { return !!AiService.forJob(); } catch { return false; } })();
 
@@ -61,7 +63,7 @@ export const StoryStudio: React.FC<{ onBack: () => void; onSettings: () => void;
     if (!voice) return;
     onStart({
       name: base(voice.path).replace(/\.[^.]+$/, ''), voicePath: voice.path, musicPath: music?.path || null, recordings: recs,
-      options: { motion, captions, sfx, broll: broll && hasStock, accent, musicVol, cta: cta.trim(), thumbCta: cta.trim() || 'LINK IN COMMENTS', character: charId !== 'none', characterStyle: charId, charLevel, sceneMode, textLang: lang }
+      options: { motion, captions, sfx, broll: broll && hasStock, accent, musicVol, cta: cta.trim(), thumbCta: cta.trim() || 'LINK IN COMMENTS', character: charId !== 'none', characterStyle: charId, charLevel, sceneMode, textLang: lang, voiceLang: vlang }
     });
   };
 
@@ -96,6 +98,12 @@ export const StoryStudio: React.FC<{ onBack: () => void; onSettings: () => void;
           {tab === 'setup' && <>
             <Section title="Voice-over" hint="Any language. This is the only thing you must add.">
               <div className="flex items-center gap-3 flex-wrap"><button onClick={pickVoice} className={btn}><Mic className="w-4 h-4" />{voice ? 'Change file' : 'Choose file'}</button>{voice && <span className="text-[11px] text-[#8fd0a4] truncate max-w-[320px]">{voice.name}</span>}</div>
+              <label className="mt-3 flex items-center gap-2 text-[11px] text-neutral-400">Spoken language
+                <select value={vlang} onChange={e => setVlang(e.target.value)} aria-label="Spoken language of the voice-over" className={`bg-[#0b1511] border border-[#1d3228] rounded-lg px-2 min-h-[32px] text-neutral-200 ${ring}`}>
+                  <option value="auto">Auto detect</option>{VLANGS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+                </select>
+                <span className="text-neutral-500">Pick it for Hindi, Urdu or mixed speech: the words come out more accurate.</span>
+              </label>
             </Section>
             <Section title="Background music" hint="Optional. It gets quieter whenever you speak.">
               <div className="flex items-center gap-2 flex-wrap"><button onClick={pickMusic} className={btn}><Music className="w-4 h-4" />{music ? 'Change file' : 'Choose file'}</button>{music && <><span className="text-[11px] text-[#8fd0a4] truncate max-w-[260px]">{music.name}</span><button aria-label="Remove music" className={btn} onClick={() => setMusic(null)}><X className="w-4 h-4" /></button></>}</div>

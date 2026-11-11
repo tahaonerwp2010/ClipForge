@@ -1,4 +1,14 @@
 ## What's new
+
+- **API keys no longer vanish** after closing the app. Keys (AI and stock footage) are now saved to a file at the very moment you add them, in three places, and are restored automatically if the window storage is ever empty.
+- **Script to Short: the AI plan is repaired, not thrown away.** A plan with small gaps or overlaps used to be replaced by an all-screen plan.
+- **Better caption translation.** The AI reads the whole sentence for meaning and still answers phrase by phrase, so captions stay in sync and use the right words.
+- New **Spoken language** choice for the voice-over (Hindi, Urdu, Arabic and more) for more accurate transcription.
+- Every short now saves a `log.txt` and a fuller `plan.json` next to the video, to make problems easy to report.
+
+- **Motion scenes are drawn more reliably on Windows.** The drawing window no longer needs see-through support: overlays are drawn on black and on white and the transparency is worked out from the difference. A first empty picture from the window is waited out, with a second drawing method as backup.
+- **Recordings no longer fill the whole video.** At most two recording scenes in a row and about half of the time (unless you gave a recording for that exact part); the rest are animated scenes. Step badges are now a big headline card above the recording.
+- **Update check no longer fails when GitHub is busy.** If GitHub limits requests, the app now reads the normal release pages instead of showing an error.
 - **Real motion graphics.** The AI now designs animated scenes in the style of product-explainer shorts: hero titles with a highlighter swipe, step cards, flow diagrams with connected chips, before/after compare, checklists, "link copied" cards, counting numbers, call-out rings and labels on your recordings, and an animated end button. It builds them from your script, your answers and the websites you linked, and looks at frames of your recordings to point at the right spot. Pick Light, Dark or Auto look. Every part of the video that has no footage now gets one of these scenes, so nothing is empty.
 - **Captions stay in sync.** Translating or fixing captions now works phrase by phrase, so each phrase keeps the time of the words it replaces. The AI also corrects mis-heard words and names using your answers.
 - **Script to Short, second round:**

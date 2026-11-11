@@ -7,9 +7,26 @@ function newer(a, b) { const x = parse(a), y = parse(b); for (let i = 0; i < 3; 
 async function getJson(url) {
   const r = await fetch(url, { headers: UA, signal: AbortSignal.timeout(15000) });
   if (r.status === 404) return null;
-  if (r.status === 403) throw new Error('GitHub is limiting requests right now. Try again in a few minutes.');
+  if (r.status === 403 || r.status === 429) throw Object.assign(new Error('GitHub is limiting requests right now. Try again in a few minutes.'), { limited: true });
   if (!r.ok) throw new Error(`GitHub answered HTTP ${r.status}`);
   return r.json();
+}
+
+// The GitHub API allows only 60 checks an hour per internet connection. When that is used up, read the normal web pages instead (no limit).
+async function releaseViaWeb(repo) {
+  const r = await fetch(`https://github.com/${repo}/releases/latest`, { redirect: 'manual', headers: { 'User-Agent': 'ClipForge-Updater' }, signal: AbortSignal.timeout(15000) });
+  const loc = r.headers.get('location') || '', m = loc.match(/\/releases\/tag\/([^/?#]+)/);
+  if (!m) return null;
+  const tag = decodeURIComponent(m[1]); let assets = [];
+  try {
+    const h = await (await fetch(`https://github.com/${repo}/releases/expanded_assets/${encodeURIComponent(tag)}`, { headers: { 'User-Agent': 'ClipForge-Updater' }, signal: AbortSignal.timeout(15000) })).text();
+    assets = [...h.matchAll(/href="(\/[^"]+\/releases\/download\/[^"]+)"/g)].map(x => ({ name: decodeURIComponent(x[1].split('/').pop()), browser_download_url: 'https://github.com' + x[1], size: 0 }));
+  } catch { /* no asset list: the update page link still works */ }
+  return { tag_name: tag, html_url: `https://github.com/${repo}/releases/tag/${encodeURIComponent(tag)}`, assets, body: '' };
+}
+async function getRelease(repo) {
+  try { return await getJson(`https://api.github.com/repos/${repo}/releases/latest`); }
+  catch (e) { if (!e.limited) throw e; const w = await releaseViaWeb(repo); if (w) return w; throw e; }
 }
 
 // What changed in the new version: RELEASE_NOTES.md from the release's own commit (written by hand, in plain English), else the release text
@@ -26,7 +43,7 @@ async function check(repoIn, current) {
   const repo = cleanRepo(repoIn);
   if (!/^[\w.\-]+\/[\w.\-]+$/.test(repo)) return { ok: false, error: 'no-repo', message: 'No GitHub repository is set for updates.' };
   try {
-    const rel = await getJson(`https://api.github.com/repos/${repo}/releases/latest`);
+    const rel = await getRelease(repo);
     if (rel && rel.tag_name) {
       const assets = rel.assets || [];
       const plat = process.platform === 'android' ? { os: /android/i, ext: /\.apk$/i } : process.platform === 'win32' ? { os: /windows|win/i, ext: /\.exe$/i } : process.platform === 'darwin' ? { os: /mac|darwin|osx/i, ext: /\.dmg$/i } : { os: /linux/i, ext: /\.appimage$/i };

@@ -104,7 +104,20 @@ Answer with JSON only: ${o.html ? '{"beats":[{"s":0,"e":1,"visual":"solid","quer
 // make any plan (AI or rules) valid: beats cover every sentence in order, times from the real words, trigger-word characters, sane limits
 function finalize(plan, sentences, words, twords, o, total) {
   let beats = Array.isArray(plan.beats) ? plan.beats.filter(b => Number.isInteger(b.s) && Number.isInteger(b.e) && b.s <= b.e) : [];
-  const ok = beats.length && beats[0].s === 0 && beats.every((b, i) => i === 0 || b.s === beats[i - 1].e + 1) && beats[beats.length - 1].e === sentences.length - 1;
+  // Repair instead of throwing the AI plan away: sort, clamp, close gaps / overlaps, make the first start at 0 and the last end at the last sentence.
+  const last = sentences.length - 1;
+  beats = beats.map(b => ({ ...b, s: Math.max(0, Math.min(last, b.s)), e: Math.max(0, Math.min(last, b.e)) })).filter(b => b.s <= b.e).sort((x, y) => x.s - y.s);
+  const fixed = [];
+  for (const b of beats) {
+    const prev = fixed[fixed.length - 1];
+    if (prev && b.e <= prev.e) continue;                    // fully inside the previous beat
+    if (prev) b.s = prev.e + 1;                             // closes gaps, trims overlaps
+    else b.s = 0;
+    fixed.push(b);
+  }
+  if (fixed.length) fixed[fixed.length - 1].e = last;
+  beats = fixed;
+  const ok = beats.length > 0;
   if (!ok) beats = planOffline(sentences, twords, o).beats;
   const hasRec = (o.recordings || []).length > 0;
   beats = beats.map((b, i) => {
@@ -145,6 +158,13 @@ function finalize(plan, sentences, words, twords, o, total) {
   }
   beats.forEach(b => { if (!b.char || !b.char.at) b.char = null; b.arrow = b.arrow === true && b.visual === 'screen' ? { at: b.t0 + 0.5 } : null; });
   let arrows = 0; beats.forEach(b => { if (b.arrow && ++arrows > 4) b.arrow = null; });
+  if (o.html) {   // a recording never fills the whole video: at most two screen beats in a row (unless the editor gave a recording for that exact part) and about half of the time
+    let run = 0, screenT = 0;
+    beats.forEach(b => {
+      if (b.visual === 'screen' && !b.rec) { if (run >= 2 || screenT > total * 0.5) { b.visual = 'solid'; b.scene = MO.FULL.includes(String((b.scene || {}).type)) ? b.scene : null; run = 0; return; } }
+      if (b.visual === 'screen') { run++; screenT += b.t1 - b.t0; } else run = 0;
+    });
+  }
   if (o.html) beats.forEach(b => {
     b.kin = null; b.arrow = null;
     let sc = MO.normalize(b.scene);
@@ -244,10 +264,13 @@ function buildTwords(words, sentences) {
 async function rewritePhrases(g, phrases, words, lang, notes, cta) {
   let newCta = cta, changed = 0;
   for (let off = 0; off < phrases.length; off += 140) {
-    const part = phrases.slice(off, off + 140), list = part.map((p, i) => `${i}. ${words.slice(p.a, p.b + 1).map(w => w.word).join(' ')}`).join('\n');
+    const part = phrases.slice(off, off + 140), txt = p => words.slice(p.a, p.b + 1).map(w => w.word).join(' ');
+    // phrases grouped by their sentence: the AI reads the whole sentence for meaning, but must answer one text per numbered phrase
+    const groups = []; part.forEach((p, i) => { const gI = groups[groups.length - 1]; if (gI && gI.si === p.si) gI.items.push([i, p]); else groups.push({ si: p.si, items: [[i, p]] }); });
+    const list = groups.map(gr => `Sentence: ${gr.items.map(([, p]) => txt(p)).join(' ')}\n` + gr.items.map(([i, p]) => `  ${i}. ${txt(p)}`).join('\n')).join('\n');
     const prompt = lang
-      ? `Translate every numbered phrase into ${lang}. Natural spoken style. One output per input, same order, and keep the meaning of each phrase inside its own phrase (never move words between phrases). If a phrase is already in ${lang}, copy it. Keep names, brands, numbers as they are.${notes && off === 0 ? '\nContext about the video (names and facts):\n' + notes.slice(0, 1500) : ''}${off === 0 ? '\nAlso translate this button text: ' + JSON.stringify(cta || '') : ''}\n${list}\nJSON only: {"t":["..."],"cta":""}`
-      : `These phrases were machine-transcribed from a voice-over and may contain mis-heard words, wrong spellings or wrongly written names. Fix ONLY real mistakes, using this context. Keep the same language and script, keep the same number of words where possible, one output per input in the same order. If a phrase is fine, copy it exactly.\nContext (names, links, facts):\n${(notes || '').slice(0, 1800)}\n${list}\nJSON only: {"t":["..."]}`;
+      ? `You subtitle a voice-over. The text was machine-transcribed, so some words may be mis-heard (Hindi/Urdu/English mixed speech especially): first understand each whole SENTENCE and the context, then translate into ${lang}. Output one ${lang} text for every numbered phrase, same order. Rules: each output translates ONLY its own numbered phrase (never move words between phrases, never leave a phrase empty), read in order the phrases of a sentence must form one natural sentence, spoken style, short. Keep names, brands, links as written. Write digits only where a number was really spoken. If a phrase is already in ${lang}, copy it.${notes && off === 0 ? '\nContext about the video (names and facts):\n' + notes.slice(0, 1500) : ''}${off === 0 ? '\nAlso translate this button text: ' + JSON.stringify(cta || '') : ''}\n${list}\nJSON only: {"t":["..."],"cta":""}`
+      : `These phrases were machine-transcribed from a voice-over and may contain mis-heard words, wrong spellings or wrongly written names. Fix ONLY real mistakes, using this context and the whole sentence. Keep the same language and script, keep the same number of words where possible, one output per numbered phrase in the same order. If a phrase is fine, copy it exactly.\nContext (names, links, facts):\n${(notes || '').slice(0, 1800)}\n${list}\nJSON only: {"t":["..."]}`;
     const r = AI.parseJson((await AI.generate(g, { prompt, json: true, timeoutMs: 90000 })).text);
     if (!r || !Array.isArray(r.t) || r.t.length !== part.length) throw new Error('the AI answer did not match the phrases');
     part.forEach((p, i) => {
@@ -356,7 +379,8 @@ async function describeRecordings(g, files, work, log) {
   return out.join('\n');
 }
 async function runStory(job, emit, hooks = {}) {
-  const log = (src, msg, kind) => emit({ type: 'log', src, msg, kind: kind || 'info' });
+  let logFile = null; const logBuf = [];
+  const log = (src, msg, kind) => { emit({ type: 'log', src, msg, kind: kind || 'info' }); const line = `[${new Date().toISOString().slice(11, 19)}] ${kind || 'info'} ${src}: ${msg}\n`; try { if (logFile) fs.appendFileSync(logFile, line); else logBuf.push(line); } catch {} };
   const stage = (st, pct, msg) => emit({ type: 'progress', stage: st, pct: Math.round(pct), msg });
   const o = { motion: 'bold', captions: true, accent: '#FFD400', character: true, characterStyle: 'suit', charLevel: 'normal', cta: 'COMMENT "LINK"', sfx: true, musicVol: 16, broll: true, ...(job.options || {}) };
   o.html = !!hooks.frames && o.motionHtml !== false;
@@ -366,6 +390,7 @@ async function runStory(job, emit, hooks = {}) {
   const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12);
   const outDir = path.join(job.clipsBase || path.join(P.userDataDir(), 'out'), 'ScriptToShort', `${slug(job.name || path.basename(job.voicePath, path.extname(job.voicePath)))}_${stamp}`);
   fs.mkdirSync(outDir, { recursive: true });
+  logFile = path.join(outDir, 'log.txt'); try { fs.writeFileSync(logFile, logBuf.join('')); } catch {}
   const work = path.join(P.workRoot(), 'story_' + stamp + '_' + Math.random().toString(36).slice(2, 6)); fs.mkdirSync(work, { recursive: true });
   const t00 = Date.now();
   try {
@@ -523,8 +548,16 @@ async function runStory(job, emit, hooks = {}) {
     af += `;${mix.join('')}amix=inputs=${mix.length}:normalize=0:dropout_transition=0,alimiter=limit=0.95[aout]`;
     let ni = inputs.filter(x => x === '-i').length, cur = '0:v'; const vparts = [];
     motion.forEach((m, j) => {
-      inputs.push('-framerate', '24', '-i', path.join(m.dir, '%05d.png')); const ix = ni++;
-      vparts.push(`[${ix}:v]format=rgba,setpts=PTS-STARTPTS+${m.t0.toFixed(3)}/TB[m${j}]`, `[${cur}][m${j}]overlay=eof_action=pass:repeatlast=0:enable='between(t,${m.t0.toFixed(3)},${m.t1.toFixed(3)})'[o${j}]`); cur = 'o' + j;
+      const T = m.t0.toFixed(3), en = `enable='between(t,${T},${m.t1.toFixed(3)})'`;
+      if (m.bw) {   // overlay drawn on black + on white -> transparency from the difference
+        inputs.push('-framerate', '24', '-i', path.join(m.dirB, '%05d.png'), '-framerate', '24', '-i', path.join(m.dirW, '%05d.png')); const ib = ni++, iw = ni++;
+        vparts.push(`[${ib}:v]format=rgb24,setpts=PTS-STARTPTS+${T}/TB,split=2[kA${j}][kC${j}]`, `[${iw}:v]format=rgb24,setpts=PTS-STARTPTS+${T}/TB[wA${j}]`,
+          `[wA${j}][kA${j}]blend=all_expr='255-(A-B)',format=gray[al${j}]`, `[kC${j}][al${j}]alphamerge[m${j}]`, `[${cur}][m${j}]overlay=alpha=premultiplied:eof_action=pass:repeatlast=0:${en}[o${j}]`);
+      } else {
+        inputs.push('-framerate', '24', '-i', path.join(m.dir, '%05d.png')); const ix = ni++;
+        vparts.push(`[${ix}:v]format=rgba,setpts=PTS-STARTPTS+${T}/TB[m${j}]`, `[${cur}][m${j}]overlay=eof_action=pass:repeatlast=0:${en}[o${j}]`);
+      }
+      cur = 'o' + j;
     });
     const vf = `${vparts.length ? vparts.join(';') + ';' : ''}[${cur}]ass=captions.ass:fontsdir=fonts[vout]`;
     stage('Rendering', 92, 'Rendering the final video');
@@ -551,7 +584,7 @@ async function runStory(job, emit, hooks = {}) {
         result.thumbs = await require('./thumbs.cjs').make({ outDir, titles, tool, screenshot: shot, character: charPng, accent: o.accent, fontsDir: P.fontsDir(), cta: o.thumbCta || 'LINK IN COMMENTS', checklist: checklist.map(c => c.text) }, hooks.shot);
       } catch (e) { log('Thumbnails', 'Skipped: ' + String(e.message).slice(0, 120), 'warn'); }
     }
-    try { fs.writeFileSync(path.join(outDir, 'plan.json'), JSON.stringify({ beats: beats.map(({ i, t0, t1, visual, query, kin, char, arrow }) => ({ i, t0, t1, visual, query, kin, char, arrow })), tool, title: raw.title, checklist }, null, 1)); } catch {}
+    try { fs.writeFileSync(path.join(outDir, 'plan.json'), JSON.stringify({ beats: beats.map(({ i, t0, t1, visual, query, kin, char, arrow, scene, rec }) => ({ i, t0, t1, visual, query, kin, char, arrow, scene, rec })), tool, title: raw.title, checklist }, null, 1)); } catch {}
     stage('Done', 100, 'Finished');
     emit({ type: 'done', result });
     return result;

@@ -8,8 +8,12 @@ export const STOCK_PROVIDERS: StockProvider[] = [
 ];
 const STORE = 'clipforge_stock_keys';
 export const StockService = {
-  keys(): Record<string, string> { try { return JSON.parse(localStorage.getItem(STORE) || '{}') || {}; } catch { return {}; } },
-  setKey(id: string, key: string) { const k = this.keys(); if (key.trim()) k[id] = key.trim(); else delete k[id]; try { localStorage.setItem(STORE, JSON.stringify(k)); } catch {} return k; },
+  keys(): Record<string, string> {
+    let k: Record<string, string> = {}; try { k = JSON.parse(localStorage.getItem(STORE) || '{}') || {}; } catch { /* ignore */ }
+    if (!Object.keys(k).length) { try { const d = (window as any).electronAPI?.kvLoadSync?.('stock_keys'); if (d && Object.keys(d).length) { k = d; try { localStorage.setItem(STORE, JSON.stringify(k)); } catch { /* ignore */ } } } catch { /* ignore */ } }
+    return k;
+  },
+  setKey(id: string, key: string) { const k = this.keys(); if (key.trim()) k[id] = key.trim(); else delete k[id]; try { localStorage.setItem(STORE, JSON.stringify(k)); } catch {} try { (window as any).electronAPI?.kvSaveSync?.('stock_keys', k); } catch {} return k; },
   hasAny() { return Object.values(this.keys()).some(v => v && v.trim()); },
   async test(id: string, key: string): Promise<{ ok: boolean; message: string }> {
     const api: any = (window as any).electronAPI;

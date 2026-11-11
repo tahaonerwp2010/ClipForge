@@ -134,7 +134,10 @@ const S = {
     <div class="abs" style="left:${lx}px;top:${ly}px;${a('pop', .5, .5)}"><div style="position:relative;background:var(--ac);color:#111;border-radius:26px;padding:18px 36px;font-family:'MI','MAr','MDe';font-size:48px;white-space:nowrap;box-shadow:0 16px 34px rgba(0,0,0,.45)" dir="auto">${esc(label)}<div style="position:absolute;left:${Math.max(30, Math.min(w - 50, x - lx - 20))}px;${below ? 'top:-18px' : 'bottom:-18px'};width:0;height:0;border-left:20px solid transparent;border-right:20px solid transparent;${below ? 'border-bottom' : 'border-top'}:22px solid var(--ac)"></div></div></div>`;
   },
   badge(s, o, D) {
-    return `<div class="abs" style="left:56px;top:150px;${a('lft', .5, .15)}"><div style="background:var(--ac);color:#111;border-radius:22px;padding:14px 32px;font-family:'MI','MAr','MDe';font-size:44px;box-shadow:0 14px 30px rgba(0,0,0,.4)" dir="auto">${esc(cut(s.text, 24))}</div></div>`;
+    const m = String(s.text || '').match(/^\s*((?:step|steps|stage|part)\s*\d+|\d+)\s*[:.\-]?\s*(.*)$/i), tag = m && m[2] ? m[1].toUpperCase() : '', txt = m ? (m[2] || m[1]) : s.text;
+    return `<div class="abs c" style="top:230px;${a('pop', .55, .15)}"><div style="display:inline-block;max-width:940px;background:#14171f;border-radius:40px;padding:34px 56px;box-shadow:0 26px 60px rgba(0,0,0,.5),0 0 0 3px var(--ac) inset;text-align:center" dir="auto">
+      ${tag ? `<div style="font-family:'MB';font-size:32px;letter-spacing:8px;color:var(--ac);margin-bottom:10px">${esc(tag)}</div>` : ''}
+      <div style="font-size:${txt.length > 22 ? 62 : 78}px;line-height:1.08;color:#fff;font-weight:800">${esc(cut(txt || s.text, 40))}</div></div></div>`;
   },
   cta(s, o, D) {
     return `<div class="abs" style="left:0;right:0;top:1530px;text-align:center;${a('up', .6, .1)}"><div style="display:inline-flex;align-items:center;gap:22px;background:var(--ac);color:#111;border-radius:70px;padding:28px 64px;font-family:'MI','MAr','MDe';font-size:66px;box-shadow:0 20px 44px rgba(0,0,0,.5);animation:bump 1.1s ease-in-out .8s infinite" dir="auto">${esc(cut(s.text, 24))}<svg width="62" height="62" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="animation:flo 1s ease-in-out infinite"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div></div>`;
@@ -148,7 +151,7 @@ function charHtml(c, D) {
 }
 function html(scene, o) {
   const D = Math.max(.8, o.dur), isFull = FULL.includes(scene.type), body = (S[scene.type] || S.hero)(scene, o, D);
-  const fit = `<script>(function(){document.querySelectorAll('[data-fit]').forEach(function(e){var m=+e.dataset.fit,f=parseFloat(getComputedStyle(e.querySelector('.title')||e).fontSize),t=e.querySelector('.title')||e,n=0;while((e.scrollHeight>m+4||t.scrollWidth>t.clientWidth+4)&&f>46&&n++<50){f-=6;t.style.fontSize=f+'px';}});window.seek=function(t){document.getAnimations().forEach(function(a){a.pause();a.currentTime=t*1000});if(window.__tick)window.__tick(t);};})();</script>`;
+  const fit = `<script>(function(){document.querySelectorAll('[data-fit]').forEach(function(e){var m=+e.dataset.fit,f=parseFloat(getComputedStyle(e.querySelector('.title')||e).fontSize),t=e.querySelector('.title')||e,n=0;while((e.scrollHeight>m+4||t.scrollWidth>t.clientWidth+4)&&f>46&&n++<50){f-=6;t.style.fontSize=f+'px';}});window.setBg=function(c){document.documentElement.style.background=c};window.seek=function(t){document.getAnimations().forEach(function(a){a.pause();a.currentTime=t*1000});if(window.__tick)window.__tick(t);};})();</script>`;
   return `<!doctype html><html><head><meta charset="utf-8"><style>${css(o)}</style></head><body><div class="sc${isFull ? ' full' : ''}" style="${exit(D)}">${isFull ? `<div class="abs" style="inset:0;transform:translateY(130px)">${body}</div>` : body}${scene.ch ? charHtml(scene.ch, D) : ''}</div>${fit}</body></html>`;
 }
 
@@ -173,13 +176,22 @@ async function renderAll(items, ctx, hooks, work, log, onProg) {
   const out = []; let k = 0;
   for (const it of items) {
     k++;
-    const dir = path.join(work, 'mg_' + it.id); fs.mkdirSync(dir, { recursive: true });
     const hf = path.join(work, `mg_${it.id}.html`);
     fs.writeFileSync(hf, html(it.scene, { mode: it.scene.mode || ctx.mode, accent: ctx.accent, accent2: ctx.accent2, fontsDir: ctx.fontsDir, dur: it.dur }));
     onProg && onProg(k - 1, items.length, it.scene.type);
-    const r = await hooks.frames({ htmlFile: hf, outDir: dir, dur: it.dur, fps: ctx.fps, needAlpha: OVER.includes(it.scene.type) || it.scene.type === 'cta' });
-    if (!r || !r.frames) throw new Error('no frames');
-    out.push({ ...it, dir, frames: r.frames, alpha: r.alpha !== false, over: !!S[it.scene.type].over });
+    const over = !!S[it.scene.type].over, mk = n => { const d = path.join(work, `mg_${it.id}${n}`); fs.mkdirSync(d, { recursive: true }); return d; };
+    if (over) {
+      // no see-through window needed: draw the same overlay on black and on white, ffmpeg works the transparency out from the difference
+      const dB = mk('_k'), dW = mk('_w');
+      const rB = await hooks.frames({ htmlFile: hf, outDir: dB, dur: it.dur, fps: ctx.fps, bg: '#000000' });
+      const rW = await hooks.frames({ htmlFile: hf, outDir: dW, dur: it.dur, fps: ctx.fps, bg: '#ffffff' });
+      if (!rB || !rB.frames || !rW || rW.frames !== rB.frames) throw new Error('no frames');
+      out.push({ ...it, dirB: dB, dirW: dW, bw: true, frames: rB.frames, alpha: true, over: true });
+    } else {
+      const d = mk(''); const r = await hooks.frames({ htmlFile: hf, outDir: d, dur: it.dur, fps: ctx.fps, bg: '#000000' });
+      if (!r || !r.frames) throw new Error('no frames');
+      out.push({ ...it, dir: d, frames: r.frames, alpha: true, over: false });
+    }
   }
   return out;
 }
