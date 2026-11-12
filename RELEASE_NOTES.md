@@ -6,6 +6,10 @@
 - New **Spoken language** choice for the voice-over (Hindi, Urdu, Arabic and more) for more accurate transcription.
 - Fixed: animated scenes failing on Windows screens with display scaling; AI questions and translation no longer fail on slightly different AI answer shapes.
 - Fixed: after a power cut or restart, "Continue" now keeps the project's own settings (clip count, captions, framing, etc.) instead of falling back to defaults.
+- Fixed: resuming a paused or interrupted project now continues from its finished steps (no more starting over), always with the settings it was started with. Settings are also saved in the project's own folder.
+- Script to Short: captions no longer "translate" a voice-over that is already in the chosen language (this turned "campaign" into "company" and broke the timing). Spelling fixes can only change a word slightly.
+- Script to Short: each part of a graphic (flow steps, checklist items, link, number) now appears when its words are spoken. The flow scene has a cleaner layout, no cut-off names, and a "$$$" stat becomes a headline.
+- Thumbnails adapt to the screen size and report the reason when they fail.
 - Every short now saves a `log.txt` and a fuller `plan.json` next to the video, to make problems easy to report.
 
 - **Motion scenes are drawn more reliably on Windows.** The drawing window no longer needs see-through support: overlays are drawn on black and on white and the transparency is worked out from the difference. A first empty picture from the window is waited out, with a second drawing method as backup.

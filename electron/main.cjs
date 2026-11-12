@@ -591,12 +591,15 @@ const storyShot = async (htmlFile) => {              // one thumbnail: load the 
       await w.webContents.executeJavaScript('document.fonts.ready.then(() => new Promise(r => setTimeout(r, 400)))');
       const img = await w.webContents.capturePage();
       const sz = img.getSize();
-      if (Math.abs(sz.width / sz.height - 1080 / 1920) > 0.01 || sz.width < 500) return null;
+      if (Math.abs(sz.width / sz.height - 1080 / 1920) > 0.02 || sz.width < 300) return null;
       return (sz.width !== 1080 ? img.resize({ width: 1080, height: 1920, quality: 'best' }) : img).toPNG();
     } finally { try { w.destroy(); } catch {} }
   };
-  const a = (await attempt(1)) || (await attempt(0.5));
-  if (!a) throw new Error('could not draw the thumbnail on this screen');
+  let fit = 0.5; try { const wa = require('electron').screen.getPrimaryDisplay().workAreaSize; fit = Math.max(0.2, Math.min(0.5, Math.floor(wa.height * 0.85) / 1920)); } catch {}
+  let a = null, why = '';
+  try { a = await attempt(1); } catch (e) { why = String(e.message); }
+  if (!a) { try { a = await attempt(fit); } catch (e) { why += ' / ' + String(e.message); } }
+  if (!a) throw new Error('could not draw the thumbnail on this screen' + (why ? ' (' + why.slice(0, 120) + ')' : ''));
   return a;
 };
 // Animated motion-graphics scenes: seek the page to each moment and save the frame (see-through where the page is empty).

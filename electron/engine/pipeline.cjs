@@ -38,28 +38,34 @@ function wipeWork(job, work) {
   if (!job.resume) fs.rmSync(work, { recursive: true, force: true });
   if (keep) { try { fs.mkdirSync(work, { recursive: true }); fs.writeFileSync(path.join(work, 'cfg.json'), keep); } catch {} }
 }
-function guardSettings(job, work, log) {
-  const cfgF = path.join(work, 'cfg.json');
-  // The app was restarted (power cut, crash): the screen only knows defaults, so continue with the settings this project was started with
+function guardSettings(job, work, log, outDir) {
+  const cfgF = path.join(work, 'cfg.json'), cfgOut = outDir ? path.join(outDir, '.clipforge-settings.json') : null;
+  const readCfg = () => { for (const f of [cfgF, cfgOut]) { if (!f) continue; try { const v = JSON.parse(fs.readFileSync(f, 'utf8')); if (v && typeof v === 'object') return v; } catch {} } return null; };
+  const saveCfg = () => { const c = {}; for (const k of CFG_KEYS) if (job[k] !== undefined) c[k] = job[k]; const t = JSON.stringify(c); for (const f of [cfgF, cfgOut]) { if (!f) continue; try { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, t); } catch {} } };
+  // The app was restarted (power cut, crash, closed while paused): the screen only knows defaults, so this project continues with the settings it was started with,
+  // whether it has finished steps to continue from or has to start fresh. Default settings are never used for a project that was started with other ones.
   if (job.settingsKnown === false) {
-    let saved = null; try { saved = JSON.parse(fs.readFileSync(cfgF, 'utf8')); } catch {}
-    if (saved) { for (const k of CFG_KEYS) if (saved[k] !== undefined) job[k] = saved[k]; log('System', 'Continuing with the settings this project was started with.', 'info'); }
+    const saved = readCfg();
+    if (saved) { for (const k of CFG_KEYS) if (saved[k] !== undefined) job[k] = saved[k]; log('System', 'Continuing with the settings this project was started with.', 'info'); saveCfg(); }
+    else log('System', 'The settings of this project were not saved by an older version; the current ones are used.', 'warn');
     try { fs.mkdirSync(work, { recursive: true }); } catch {}
-    if (saved || fs.existsSync(path.join(work, 'sig.json'))) return;   // nothing to compare against: keep every checkpoint
+    return;       // keep every finished step as it is; nothing to compare against
   }
-  try { fs.mkdirSync(work, { recursive: true }); const c = {}; for (const k of CFG_KEYS) if (job[k] !== undefined) c[k] = job[k]; fs.writeFileSync(cfgF, JSON.stringify(c)); } catch {}
+  saveCfg();      // saved when the user presses Generate: next to the checkpoints and in the project's own folder
   const J = v => JSON.stringify(v === undefined ? null : v);
-  const sel = J({ f: job.filePath, files: (job.files || []).map(x => x.path), l: job.language, m: job.modelId, cl: job.clipLength, n: job.targetClipsCount, p: (job.aiPrompt || '').trim(), sp: !!job.shorts });
+  const sel = J({ f: job.filePath, files: (job.files || []).map(x => x.path), l: String(job.language || 'auto').toLowerCase(), m: job.modelId, cl: job.clipLength, n: job.targetClipsCount, p: (job.aiPrompt || '').trim(), sp: !!job.shorts });
+  const src = J({ f: job.filePath, files: (job.files || []).map(x => x.path) });
   const ren = J({ r: job.ratio, q: job.quality, sp: job.split, fr: job.framing, ca: job.captions, gr: job.grading, br: job.branding });
   const cap = J({ t: job.captions?.translateTo, ro: job.captions?.romanScript, en: job.captions?.enabled });
   const sigF = path.join(work, 'sig.json');
   let prev = null; try { prev = JSON.parse(fs.readFileSync(sigF, 'utf8')); } catch {}
+  const prevSrc = prev && prev.src;
   const rm = n => { try { fs.rmSync(path.join(work, n), { force: true, recursive: true }); } catch {} };
   const list = () => { try { return fs.readdirSync(work); } catch { return []; } };
   if (job.resume && fs.existsSync(work)) {
-    if (prev && prev.sel !== sel) {
+    if (prevSrc && prevSrc !== src) {
       for (const n of list()) rm(n);
-      log('System', 'Clip selection settings changed, starting this project fresh.', 'info');
+      log('System', 'The source video changed, starting this project fresh.', 'info');
     } else if (!prev || prev.ren !== ren || prev.cap !== cap) {
       for (const n of list()) if (/^(res_|track_|fr\d|c\d)/.test(n)) rm(n);
       let meta = null; try { meta = JSON.parse(fs.readFileSync(path.join(work, 'meta.json'), 'utf8')); } catch {}
@@ -71,7 +77,7 @@ function guardSettings(job, work, log) {
       log('System', 'Settings changed since the last run, re-rendering clips with your current settings.', 'info');
     }
   }
-  try { fs.mkdirSync(work, { recursive: true }); fs.writeFileSync(sigF, JSON.stringify({ sel, ren, cap })); } catch {}
+  try { fs.mkdirSync(work, { recursive: true }); fs.writeFileSync(sigF, JSON.stringify({ sel, ren, cap, src })); } catch {}
 }
 
 async function planFx(job, words, s, e, seed, log) {
@@ -170,7 +176,7 @@ async function runInner(job, emit, deps = {}) {
   // Stable work dir per project => a paused run can resume from its checkpoints.
   const work = path.join(P.workRoot(), `job_${slug(job.id || job.name)}`);
   wipeWork(job, work);
-  guardSettings(job, work, log);
+  guardSettings(job, work, log, outDir);
   fs.mkdirSync(work, { recursive: true });
   const f = n => path.join(work, n);
   const readJson = n => { try { return JSON.parse(fs.readFileSync(f(n), 'utf8')); } catch { return null; } };
@@ -426,7 +432,7 @@ async function runShortsInner(job, emit, deps = {}) {
   try { fs.writeFileSync(path.join(outDir, '.clipforge.json'), JSON.stringify({ projectId: String(job.id || job.name) })); } catch {}
   const work = path.join(P.workRoot(), `job_${slug(job.id || job.name)}`);
   wipeWork(job, work);
-  guardSettings(job, work, log);
+  guardSettings(job, work, log, outDir);
   fs.mkdirSync(work, { recursive: true });
   const f = n => path.join(work, n);
   const readJson = n => { try { return JSON.parse(fs.readFileSync(f(n), 'utf8')); } catch { return null; } };

@@ -247,6 +247,48 @@ function phrasesOf(words, sentences) {   // short chunks of spoken words: the un
   return sentences.flatMap(sn => sn.ph.map(p => (p.si = sn.i, p)));
 }
 // each phrase keeps the exact time of the spoken words it replaces, so captions stay in sync
+// ---- timing of the graphics: each part of a scene appears when its words are spoken ----
+const STOP = new Set('the a an and or of to in on at for with your you our we is are be it this that these those then than from as by so do does did not no yes into up out how what when why who will can get got have has had just very more most also about over after before them they their its'.split(' '));
+const stem = w => String(w).toLowerCase().replace(/[\s.,!?;:'"’“”()\-–—%$#@*_]/g, '');
+function spokenAt(text, ws, from) {      // first moment (seconds) one of the important words of `text` is spoken, after `from`
+  const toks = String(text || '').split(/\s+/).map(stem).filter(t => t.length >= 3 && !STOP.has(t));
+  let best = null;
+  for (const w of ws) {
+    if (w.start < from) continue; const x = stem(w.word); if (x.length < 3) continue;
+    if (toks.some(t => { const n = Math.min(5, t.length, x.length); return t.slice(0, n) === x.slice(0, n) && Math.abs(t.length - x.length) <= 4; })) { best = w.start; break; }
+  }
+  return best;
+}
+function cuesFor(sc, ws, t0, dur) {
+  const lead = .28, lim = Math.max(1, dur - 1.1), rel = t => (t == null ? null : Math.min(lim, Math.max(.3, +(t - t0 - lead).toFixed(2))));
+  const seq = (list, step) => { let last = -1, out = []; list.forEach((x, i) => { let t = rel(spokenAt(x, ws, last < 0 ? t0 : t0 + last + .05)); if (t == null || t <= last) t = Math.min(lim, (last < 0 ? .6 : last + step)); out.push(+t.toFixed(2)); last = t; }); return out; };
+  const one = x => { const t = rel(spokenAt(x, ws, t0)); return t == null ? null : t; };
+  const cue = {};
+  if (sc.type === 'flow') { cue.nodes = seq(sc.nodes || [], .8); cue.center = .25; }
+  else if (sc.type === 'checks') cue.items = seq(sc.items || [], .9);
+  else if (sc.type === 'link') { cue.main = .15; const u = rel(spokenAt('link comment comments description bio', ws, t0)); if (u != null) cue.url = Math.max(.7, u); }
+  else if (sc.type === 'stat') { const v = rel(spokenAt(String(sc.label || '') + ' ' + String(sc.value || ''), ws, t0)); if (v != null) cue.value = Math.min(v, lim - 1); }
+  else if (sc.type === 'hero') { const u = sc.sub ? rel(spokenAt(sc.sub, ws, t0)) : null; if (u != null) cue.sub = Math.max(.9, u); }
+  else if (sc.type === 'step') { const u = rel(spokenAt(sc.label, ws, t0)); if (u != null) cue.label = Math.max(.6, u); }
+  return Object.keys(cue).length ? cue : null;
+}
+// same language already? then do not "translate" (this is what turned "campaign" into "company")
+const ENSTOP = new Set('the a an and to of in is it you your that this for on with are we i be can will not have but they so just what how if or at as by from do get one all about more when there their'.split(' '));
+function alreadyIn(lang, words) {
+  const L = String(lang || '').toLowerCase(), t = words.map(w => String(w.word)).filter(Boolean); if (!t.length) return false;
+  const frac = re => t.filter(w => re.test(w)).length / t.length;
+  if (/^(en|english)/.test(L)) { const plain = frac(/^[A-Za-z0-9'’.,!?;:%$\-"()]+$/), stop = t.filter(w => ENSTOP.has(w.toLowerCase().replace(/[^a-z']/g, ''))).length / t.length; return plain > .9 && stop > .14; }
+  if (/hindi|hi\b/.test(L)) return frac(/[\u0900-\u097F]/) > .6;
+  if (/urdu|arabic|persian|farsi/.test(L)) return frac(/[\u0600-\u06FF]/) > .6;
+  return false;
+}
+const lev = (a, b) => { const m = a.length, n = b.length; if (!m) return n; if (!n) return m; let p = Array.from({ length: n + 1 }, (_, j) => j); for (let i = 1; i <= m; i++) { const c = [i]; for (let j = 1; j <= n; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); p = c; } return p[n]; };
+// a spelling fix may only change a word a little (never swap it for another real word)
+function safeFix(orig, fixed) {
+  const A = orig.split(/\s+/).filter(Boolean), B = fixed.split(/\s+/).filter(Boolean);
+  if (A.length !== B.length) return false;
+  return A.every((x, i) => { const a = x.toLowerCase().replace(/[\s.,!?;:'"’“”()\-–—%$#@*_]/g, ''), b = B[i].toLowerCase().replace(/[\s.,!?;:'"’“”()\-–—%$#@*_]/g, ''); return a === b || lev(a, b) / Math.max(a.length, b.length, 1) <= .3; });
+}
 function buildTwords(words, sentences) {
   const out = [];
   sentences.forEach(sn => {
@@ -283,7 +325,7 @@ async function rewritePhrases(g, phrases, words, lang, notes, cta) {
       const t = String(got[i] == null ? '' : got[i]).trim(), orig = words.slice(p.a, p.b + 1).map(w => w.word).join(' ');
       if (!t || t === orig) return;
       const ratio = t.split(/\s+/).length / Math.max(1, p.b - p.a + 1);
-      if (!lang && (ratio < 0.5 || ratio > 2)) return;
+      if (!lang && (ratio < 0.5 || ratio > 2 || !safeFix(orig, t))) return;
       p.tt = t; changed++;
     });
     if (lang && off === 0 && r && r.cta) newCta = String(r.cta).slice(0, 28);
@@ -427,7 +469,8 @@ async function runStory(job, emit, hooks = {}) {
     if (urls.length) { stage('Researching', 31, 'Reading the links you gave'); try { facts = await require('./research.cjs').research(urls, log); } catch (e) { log('Research', 'Could not read the links: ' + String(e.message).slice(0, 100), 'warn'); } }
     o.notes = [...answers.map(a => `Q: ${a.q || ''}\nA: ${String(a.text || '').trim()}${a.rec ? ' (screen recording provided for this part)' : ''}`),
       ...facts.map(f => `About ${f.url}: "${f.title}". ${f.desc} ${f.text}`.slice(0, 900))].join('\n').slice(0, 5000);
-    const tl = String(o.textLang || '').trim();
+    let tl = String(o.textLang || '').trim();
+    if (tl && alreadyIn(tl, words)) { log('AI editor', 'The voice-over is already in ' + tl + ': the captions keep the spoken words exactly (only small spelling fixes)', 'info'); tl = ''; }
     const phrases = phrasesOf(words, sentences);
     if (AI.ready(job.gemini) && (tl || o.notes)) {
       stage(tl ? 'Translating' : 'Understanding', 33, tl ? 'Translating captions and texts to ' + tl : 'Checking the spelling of the captions');
@@ -516,6 +559,7 @@ async function runStory(job, emit, hooks = {}) {
         if (!b.scene) return; const sc = { ...b.scene };
         if (sc.type === 'callout') { const r = rectOf(srcs[i], b.visual); sc.px = Math.round(r.x + Math.min(0.95, Math.max(0.05, +sc.x || 0.5)) * r.w); sc.py = Math.round(r.y + Math.min(0.95, Math.max(0.05, +sc.y || 0.45)) * r.h); }
         if (MO.FULL.includes(sc.type) && b.char && charPngs[i]) sc.ch = { src: charPngs[i], at: Math.max(0, b.char.at - b.t0), dur: b.char.dur, side: b.char.side, h: o.charH || 760 };
+        try { const cue = cuesFor(sc, inRange(twords, b.s, b.e), b.t0, b.t1 - b.t0); if (cue) sc.cue = cue; } catch {}
         items.push({ id: 'b' + i, scene: sc, t0: b.t0, t1: b.t1, dur: +(b.t1 - b.t0).toFixed(3) });
       });
       if (o.cta) { const t0 = Math.max(0, vdur - 2.4); items.push({ id: 'cta', scene: { type: 'cta', text: o.cta }, t0, t1: total, dur: +(total - t0).toFixed(3) }); }

@@ -70,12 +70,15 @@ function words(title, hi, t0, size) {
   return `<div class="c title" style="font-size:${size || 150}px;line-height:1.04;padding:0 70px;letter-spacing:-2px;font-weight:800" dir="auto">${html}</div>`;
 }
 
+// when each part appears: seconds after the scene starts, worked out from the moment its words are spoken (s.cue); `def` when unknown
+const cu = (s, k, i, def) => { const v = s && s.cue && s.cue[k]; const x = Array.isArray(v) ? v[i] : (i === undefined || i === null ? v : undefined); return typeof x === 'number' && isFinite(x) ? Math.max(0, x) : def; };
+
 const S = {
   hero(s, o, D) {
     return `${blobs()}
     <div class="abs" style="left:0;right:0;top:330px;height:700px;display:flex;flex-direction:column;justify-content:center;gap:40px" data-fit="700">
       ${words(cut(s.title, 60), s.hi, .15, 150)}
-      ${s.sub ? `<div class="c sub" style="${a('up', .6, 1.0)}" dir="auto">${esc(cut(s.sub, 50))}</div>` : ''}
+      ${s.sub ? `<div class="c sub" style="${a('up', .6, cu(s, 'sub', null, 1.0))}" dir="auto">${esc(cut(s.sub, 50))}</div>` : ''}
     </div>`;
   },
   step(s, o, D) {
@@ -84,20 +87,22 @@ const S = {
       <div class="abs" style="inset:-34px;border-radius:70px;border:3px dashed var(--ac);opacity:.55;animation:spin 14s linear infinite;border-style:dashed"></div>
       <div class="abs" style="inset:0;border-radius:56px;background:#14171f;box-shadow:0 40px 90px var(--sh),0 0 0 2px #2a3040 inset"></div>
       <div class="abs" style="left:0;right:0;top:100px;text-align:center;font-family:'MB';font-size:34px;letter-spacing:9px;color:#8a93a6;${a('fade', .5, .5)}">STEP ${esc(String(s.n || '01').padStart(2, '0'))}</div>
-      <div class="abs" style="left:30px;right:30px;top:190px;text-align:center;font-size:96px;line-height:1.05;color:#fff;font-weight:800;${a('up', .6, .6)}" dir="auto" data-fit="260">${esc(first)} <span style="color:var(--ac)">${esc(last)}</span></div>
+      <div class="abs" style="left:30px;right:30px;top:190px;text-align:center;font-size:96px;line-height:1.05;color:#fff;font-weight:800;${a('up', .6, cu(s, 'label', null, .6))}" dir="auto" data-fit="260">${esc(first)} <span style="color:var(--ac)">${esc(last)}</span></div>
       <div class="abs" style="left:150px;right:150px;bottom:80px;height:10px;border-radius:5px;background:#2a3040;overflow:hidden"><div style="height:100%;background:var(--ac);border-radius:5px;animation:grow ${Math.max(1, D - 1)}s linear .6s both"></div></div>
     </div>`;
   },
   flow(s, o, D) {
-    const nodes = (s.nodes || []).slice(0, 5).map(x => cut(x, 14)), n = Math.max(2, nodes.length), cx = 540, cy = 640, R = 330;
+    const nodes = (s.nodes || []).slice(0, 5).map(x => cut(x, 20)), n = Math.max(2, nodes.length), cx = 540, cy = 800, R = 330;
     const col = ['#ff5d8f', '#7c5cff', '#22b8cf', '#f59f00', '#37b24d'];
-    const pos = nodes.map((_, i) => { const ang = -Math.PI / 2 + (i + .5) * 2 * Math.PI / n; return [cx + R * Math.cos(ang) * 1.0, cy + R * 1.05 * Math.sin(ang)]; });
-    const lines = pos.map((p, i) => { const L = Math.hypot(p[0] - cx, p[1] - cy); return `<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="var(--ac)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${L}" style="--l:${L};stroke-dashoffset:${L};${a('draw', .6, .5 + i * .12, 'ease-out')}"/>`; }).join('');
-    const chips = nodes.map((t, i) => `<div class="abs" style="left:${pos[i][0]}px;top:${pos[i][1]}px;transform:translate(-50%,-50%)"><div style="${a('pop', .5, .8 + i * .12)}"><div class="pill" style="animation:flo ${3 + i * .4}s ease-in-out ${-i}s infinite;font-size:44px"><span class="dot" style="background:${col[i % 5]}">${esc([...t][0] || '•').toUpperCase()}</span>${esc(t)}</div></div></div>`).join('');
+    // nodes sit on an oval around the hub, wide enough apart that two chips never touch; long names wrap to two lines instead of being cut
+    const pos = nodes.map((_, i) => { const ang = -Math.PI / 2 + (i + .5) * 2 * Math.PI / n; return [cx + R * Math.cos(ang) * 1.02, cy + R * 0.95 * Math.sin(ang)]; });
+    const when = i => cu(s, 'nodes', i, .8 + i * .5);
+    const lines = pos.map((p, i) => { const L = Math.hypot(p[0] - cx, p[1] - cy); return `<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="var(--ac)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${L}" style="--l:${L};stroke-dashoffset:${L};${a('draw', .5, when(i) - .1, 'ease-out')}"/>`; }).join('');
+    const chips = nodes.map((t, i) => `<div class="abs" style="left:${pos[i][0]}px;top:${pos[i][1]}px;transform:translate(-50%,-50%)"><div style="${a('pop', .5, when(i) + .1)}"><div class="pill" style="animation:flo ${3 + i * .4}s ease-in-out ${-i}s infinite;font-size:40px;white-space:normal;max-width:430px;line-height:1.08;padding:20px 34px;text-align:left"><span class="dot" style="background:${col[i % 5]}">${esc([...t][0] || '•').toUpperCase()}</span><span>${esc(t)}</span></div></div></div>`).join('');
     return `${blobs()}
-    ${s.title ? `<div class="abs c" style="top:150px;font-size:96px;line-height:1.05;padding:0 60px;${a('up', .6, .1)}" dir="auto" data-fit="220">${esc(cut(s.title, 40))}</div>` : ''}
-    <svg class="abs" style="left:0;top:0" width="1080" height="1300">${lines}</svg>
-    <div class="abs" style="left:${cx}px;top:${cy}px;transform:translate(-50%,-50%)"><div style="${a('pop', .6, .25)}"><div style="width:290px;height:290px;border-radius:50%;background:#14171f;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;font-size:50px;line-height:1.1;padding:30px;box-shadow:0 30px 70px var(--sh),0 0 0 10px var(--ac);animation:bump 2.2s ease-in-out 1s infinite" dir="auto">${esc(cut(s.center, 22))}</div></div></div>
+    ${s.title ? `<div class="abs c" style="top:130px;font-size:88px;line-height:1.05;padding:0 60px;${a('up', .6, .1)}" dir="auto" data-fit="210">${esc(cut(s.title, 32))}</div>` : ''}
+    <svg class="abs" style="left:0;top:0" width="1080" height="1500">${lines}</svg>
+    <div class="abs" style="left:${cx}px;top:${cy}px;transform:translate(-50%,-50%)"><div style="${a('pop', .6, cu(s, 'center', null, .25))}"><div style="width:290px;height:290px;border-radius:50%;background:#14171f;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;font-size:50px;line-height:1.1;padding:30px;box-shadow:0 0 0 10px var(--bg),0 0 0 16px var(--ac),0 30px 60px var(--sh)" dir="auto">${esc(cut(s.center, 22))}</div></div></div>
     ${chips}`;
   },
   compare(s, o, D) {
@@ -109,22 +114,22 @@ const S = {
   checks(s, o, D) {
     const items = (s.items || []).slice(0, 4).map(x => cut(x, 26));
     return `${blobs()}${s.title ? `<div class="abs c" style="top:170px;font-size:104px;line-height:1.05;padding:0 60px;${a('up', .6, .1)}" dir="auto" data-fit="240">${esc(cut(s.title, 36))}</div>` : ''}
-    <div class="abs" style="left:90px;right:90px;top:${s.title ? 470 : 330}px;display:flex;flex-direction:column;gap:34px">${items.map((t, i) => `<div class="pill" style="${a('pop', .5, .5 + i * .35)};font-size:62px;padding:30px 48px;justify-content:flex-start" dir="auto"><span class="dot" style="background:#22a559;width:78px;height:78px;font-size:46px">✓</span>${esc(t)}</div>`).join('')}</div>`;
+    <div class="abs" style="left:90px;right:90px;top:${s.title ? 470 : 330}px;display:flex;flex-direction:column;gap:34px">${items.map((t, i) => `<div class="pill" style="${a('pop', .5, cu(s, 'items', i, .5 + i * .6))};font-size:62px;padding:30px 48px;justify-content:flex-start" dir="auto"><span class="dot" style="background:#22a559;width:78px;height:78px;font-size:46px">✓</span>${esc(t)}</div>`).join('')}</div>`;
   },
   link(s, o, D) {
     return `${blobs()}
-    <div class="abs" style="left:0;right:0;top:420px;text-align:center;${a('pop', .6, .15)}"><span class="pill" style="font-size:72px;padding:36px 64px"><svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.6" stroke-linecap="round"><path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1"/><path d="M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/></svg>${esc(cut(s.text || 'Link copied', 22))}</span></div>
-    <div class="abs" style="left:0;right:0;top:700px;text-align:center;${a('pop', .6, .7)}"><span class="pill" style="font-size:54px;font-family:'MB'"><span style="display:inline-block;animation:type 1.1s steps(18) 1.2s both">${esc(cut(s.url || '', 34))}</span></span></div>
-    <div class="abs" style="left:0;right:0;top:960px;text-align:center;${a('pop', .5, 1.4)}"><span style="display:inline-block;background:#14171f;color:#fff;font-family:'MI';font-size:60px;padding:26px 56px;border-radius:26px;box-shadow:0 14px 0 #000,0 26px 40px var(--sh);animation:press 1.4s ease-in-out 1.8s infinite">Ctrl  C</span></div>`;
+    <div class="abs" style="left:0;right:0;top:420px;text-align:center;${a('pop', .6, cu(s, 'main', null, .15))}"><span class="pill" style="font-size:72px;padding:36px 64px"><svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.6" stroke-linecap="round"><path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1"/><path d="M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/></svg>${esc(cut(s.text || 'Link copied', 22))}</span></div>
+    <div class="abs" style="left:0;right:0;top:700px;text-align:center;${a('pop', .6, cu(s, 'url', null, .7))}"><span class="pill" style="font-size:54px;font-family:'MB'"><span style="display:inline-block;animation:type 1.1s steps(18) ${cu(s, 'url', null, .7) + .5}s both">${esc(cut(s.url || '', 34))}</span></span></div>
+    <div class="abs" style="left:0;right:0;top:960px;text-align:center;${a('pop', .5, cu(s, 'url', null, .7) + 1.0)}"><span style="display:inline-block;background:#14171f;color:#fff;font-family:'MI';font-size:60px;padding:26px 56px;border-radius:26px;box-shadow:0 14px 0 #000,0 26px 40px var(--sh);animation:press 1.4s ease-in-out ${cu(s, 'url', null, .7) + 1.4}s infinite">Ctrl  C</span></div>`;
   },
   stat(s, o, D) {
     const raw = String(s.value || '0'), m = raw.match(/^(\D*)([\d,.]+)(.*)$/), pre = m ? m[1] : '', num = m ? parseFloat(m[2].replace(/,/g, '')) : 0, suf = m ? m[3] : '', hasC = m && m[2].includes(','), dec = m && m[2].includes('.') ? (m[2].split('.')[1] || '').length : 0;
     const dots = Array.from({ length: 14 }, (_, i) => { const an = i * 2 * Math.PI / 14, d = 420 + (i % 3) * 70; return `<div class="abs" style="left:540px;top:600px;width:26px;height:26px;border-radius:50%;background:${['var(--ac)', 'var(--ac2)', '#ff5d8f'][i % 3]};--x:${Math.cos(an) * d}px;--y:${Math.sin(an) * d}px;animation:burst .9s ease-out .6s both"></div>`; }).join('');
     return `${blobs()}<style>@keyframes burst{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--x),var(--y)) scale(.3)}}</style>${dots}
-    <div id="sv" class="abs c" style="top:430px;font-size:260px;line-height:1;letter-spacing:-6px;${a('pop', .6, .2)}" dir="ltr">${esc(raw)}</div>
-    <div class="abs c sub" style="top:790px;font-size:62px;${a('up', .6, .9)}" dir="auto">${esc(cut(s.label, 40))}</div>
+    <div id="sv" class="abs c" style="top:430px;font-size:260px;line-height:1;letter-spacing:-6px;${a('pop', .6, cu(s, 'value', null, .2))}" dir="ltr">${esc(raw)}</div>
+    <div class="abs c sub" style="top:790px;font-size:62px;${a('up', .6, cu(s, 'label', null, .9))}" dir="auto">${esc(cut(s.label, 40))}</div>
     <div class="abs" style="left:340px;right:340px;top:900px;height:14px;border-radius:7px;background:var(--line);overflow:hidden"><div style="height:100%;background:var(--ac);animation:grow 1.6s ease-out .6s both"></div></div>
-    <script>window.__tick=function(t){var k=Math.min(1,Math.max(0,(t-.3)/1.4));k=1-Math.pow(1-k,3);var v=${num}*k,s=v.toFixed(${dec});${hasC ? "s=s.replace(/\\B(?=(\\d{3})+(?!\\d))/g,',');" : ''}document.getElementById('sv').textContent=${JSON.stringify(pre)}+s+${JSON.stringify(suf)};}</script>`;
+    <script>window.__tick=function(t){var k=Math.min(1,Math.max(0,(t-${cu(s, 'value', null, .2) + .1})/1.4));k=1-Math.pow(1-k,3);var v=${num}*k,s=v.toFixed(${dec});${hasC ? "s=s.replace(/\\B(?=(\\d{3})+(?!\\d))/g,',');" : ''}document.getElementById('sv').textContent=${JSON.stringify(pre)}+s+${JSON.stringify(suf)};}</script>`;
   },
   // ---- overlays on top of a recording / stock clip (transparent) ----
   callout(s, o, D) {
@@ -166,6 +171,7 @@ function normalize(sc, ctx) {
   if (t === 'flow' && (!o.center || !Array.isArray(o.nodes) || o.nodes.length < 2)) return null;
   if (t === 'checks' && (!Array.isArray(o.items) || !o.items.length)) return null;
   if (t === 'stat' && !String(o.value || '').trim()) return null;
+  if (t === 'stat' && !/\d/.test(String(o.value))) return normalize({ type: 'hero', title: o.label || o.value, hi: '', sub: '' }, ctx);   // "$$$" is not a number
   if (t === 'link' && !String(o.url || o.text || '').trim()) return null;
   if ((t === 'callout' || t === 'badge') && !String(o.text || '').trim()) return null;
   return o;

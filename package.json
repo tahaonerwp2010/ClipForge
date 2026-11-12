@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "8.2.7",
+  "version": "8.2.8",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -145,6 +145,7 @@
     "email": "clipforge@users.noreply.github.com"
   },
   "description": "ClipForge Studio - AI video clipper",
+  "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
     "url": "https://github.com/tahaonerwp2010/ClipForge.git"
