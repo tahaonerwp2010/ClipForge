@@ -486,6 +486,7 @@ export default function App() {
         sourceVideoUrl: selectedVideo?.url || '',
         sourceFilePath: selectedVideo?.filePath,
         shortsFiles: selectedVideo?.shorts,
+        gaming: !!selectedVideo?.gaming,
         thumbnail: selectedVideo?.thumbnail || '',
         diskSize: '',
         sourceDuration: selectedVideo?.duration || 0,

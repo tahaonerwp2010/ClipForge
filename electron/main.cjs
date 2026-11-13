@@ -555,12 +555,13 @@ ipcMain.handle('delete-project-files', async (e, { id, name, outputDir, files })
   for (const d of dirs) {
     if (!fs.existsSync(d)) continue;
     if (path.resolve(d) === path.resolve(Settings.clipsDir())) continue;       // never touch the main clips folder itself
-    if (!mine(d)) continue;                                                     // several projects can be made from one video: each has its own folder
+    const emptyShell = () => { try { return fs.readdirSync(d).every(f => /^\./.test(f) || /^(clipforge\.json|work|tmp)$/i.test(f)); } catch { return false; } };   // only ClipForge's own hidden files are left
+    if (!mine(d) && !emptyShell()) continue;                                    // several projects can be made from one video: each has its own folder (but a folder with nothing of anyone's left in it is just a leftover)
     for (const f of fs.readdirSync(d)) {
       if (/^clip_\d+[\w.\-]*\.(mp4|srt|jpg|png|txt|json|ass)$/i.test(f) || /^(track_\d+|words|transcript|segments|checkpoint[\w\-]*)\.json$/i.test(f) || /^clips_title_description\.xlsx$/i.test(f) || /^~\$clips_title_description\.xlsx$/i.test(f)) { try { fs.unlinkSync(path.join(d, f)); removed++; } catch {} }   // only files ClipForge created (clips + the title/description sheet)
     }
     try { fs.rmSync(path.join(d, '.edit'), { recursive: true, force: true }); } catch {}
-    for (const h of ['.clipforge-edit.json', '.clipforge.json', 'clipforge.json']) { try { fs.rmSync(path.join(d, h), { force: true }); } catch {} }   // the marker files go even if something else in the folder was busy
+    for (const h of ['.clipforge-edit.json', '.clipforge.json', '.clipforge-settings.json', 'clipforge.json']) { try { fs.rmSync(path.join(d, h), { force: true }); } catch {} }   // the marker files go even if something else in the folder was busy
     try { for (const f of ['work', 'tmp']) { const w = path.join(d, f); if (fs.existsSync(w) && fs.statSync(w).isDirectory() && fs.readdirSync(w).length === 0) fs.rmdirSync(w); } } catch {}
     try { fs.rmdirSync(d); } catch {}    // removes the folder only if it is now empty (anything of yours that is still inside is left alone)
   }

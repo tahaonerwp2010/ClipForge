@@ -143,6 +143,7 @@ export class PipelineRunner {
         filePath: project.sourceFilePath,
         settingsKnown: config.settingsKnown !== false,
         shorts: !!project.shortsFiles?.length,
+        gaming: !!project.gaming,
         files: project.shortsFiles?.map(f => ({ path: f.path, name: f.name })),
         name: project.name,
         outDir: project.outputDir,

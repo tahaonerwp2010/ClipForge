@@ -184,6 +184,7 @@ export interface VideoSource {
   previewPending?: boolean;   // a small preview copy is still being made in the background
   split?: SplitConfig;   // 'Split screen' mode
   shorts?: { path: string; name: string; duration: number }[]; // 'Upload short clips' mode: each file is one finished clip
+  gaming?: boolean;   // 'Gaming clips' mode: moments are found from sound and action, not from speech
 }
 
 export interface TranscriptWord {
@@ -252,6 +253,7 @@ export interface ProjectItem {
   sourceVideoUrl: string;
   sourceFilePath?: string; // real path on disk (Electron only)
   shortsFiles?: { path: string; name: string; duration: number }[];
+  gaming?: boolean;
   outputDir?: string;
   thumbnail: string;
   diskSize: string;

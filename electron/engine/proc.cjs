@@ -25,8 +25,10 @@ function run(cmd, args, { cwd, onStderr, onStdout } = {}) {
     });
   });
 }
+// a child process started elsewhere (reading ffmpeg's output directly) is stopped by Cancel too
+function track(child) { if (cancelled) { try { child.kill(); } catch {} return; } live.add(child); child.on('close', () => live.delete(child)); }
 function killAll() { cancelled = true; for (const c of live) { c.__cancelled = true; try { c.kill(); } catch {} } }
 const resetCancel = () => { cancelled = false; };
 const isCancelled = () => cancelled;
 const checkCancel = () => { if (cancelled) throw new Error('CANCELLED'); };
-module.exports = { run, killAll, resetCancel, isCancelled, checkCancel };
+module.exports = { run, track, killAll, resetCancel, isCancelled, checkCancel };

@@ -6,6 +6,7 @@ const P = require('./paths.cjs');
 const R = require('./render.cjs');
 const W = require('./whisper.cjs');
 const A = require('./analyze.cjs');
+const GM = require('./gaming.cjs');
 const ASS = require('./ass.cjs');
 const EMOJI = require('./emoji.cjs');
 const RF = require('./reframe.cjs');
@@ -31,7 +32,7 @@ function normalizeJob(job) {
 
 // A resumed run must never reuse results made with OTHER settings (e.g. clips already rendered with default framing/captions).
 // We keep a fingerprint of the settings next to the checkpoints; on resume, anything that depends on a changed setting is thrown away.
-const CFG_KEYS = ['language', 'modelId', 'clipLength', 'targetClipsCount', 'aiPrompt', 'shorts', 'ratio', 'quality', 'split', 'framing', 'captions', 'grading', 'branding'];
+const CFG_KEYS = ['language', 'modelId', 'clipLength', 'targetClipsCount', 'aiPrompt', 'shorts', 'ratio', 'quality', 'split', 'framing', 'captions', 'grading', 'branding', 'gaming'];
 // A fresh start clears the work folder, but never the saved settings of a project the screen knows nothing about (app restarted).
 function wipeWork(job, work) {
   let keep = null; if (job.settingsKnown === false) { try { keep = fs.readFileSync(path.join(work, 'cfg.json'), 'utf8'); } catch {} }
@@ -244,12 +245,13 @@ async function runInner(job, emit, deps = {}) {
   }
   end(0, `${info.width}×${info.height} @ ${info.fps}fps, ${info.duration.toFixed(1)}s, ${info.vcodec}/${info.acodec || 'no audio'}`);
   log('FFmpeg', `Probed ${path.basename(job.filePath)}`, 'success');
-  if (!info.hasAudio) throw new Error('This video has no audio track, nothing to transcribe.');
+  if (!info.hasAudio && !job.gaming) throw new Error('This video has no audio track, nothing to transcribe.');
   checkCancel();
 
   // 2 audio
   const wav = f('audio.wav');
-  if (meta.steps[1] && fs.existsSync(wav)) restore(1);
+  if (job.gaming && !info.hasAudio) { begin(1); end(1, 'no audio track (gameplay is judged by the picture)'); }
+  else if (meta.steps[1] && fs.existsSync(wav)) restore(1);
   else {
     startWork(); begin(1);
     await R.extractAudio(job.filePath, wav);
@@ -259,7 +261,8 @@ async function runInner(job, emit, deps = {}) {
 
   // 3 whisper (chunked, each chunk is a checkpoint)
   let words = readJson('words.json');
-  if (meta.steps[2] && words) restore(2);
+  if (job.gaming && !(job.captions && job.captions.enabled) && !words) { words = []; begin(2); end(2, 'not needed for gameplay (no captions)'); }
+  else if (meta.steps[2] && words) restore(2);
   else {
     startWork(); begin(2);
     log('Whisper', `Transcribing with model "${job.modelId}" on CPU. This is the slowest step.`);
@@ -301,10 +304,12 @@ async function runInner(job, emit, deps = {}) {
   else {
     startWork(); begin(5);
     const clipLen = { '15s': 15, '30s': 30, '45s': 45, '60s': 60, '90s': 90 }[job.clipLength] || 0;      // 0 = Auto: the AI decides the length of every moment
-    const r = await A.findClips(words, { hookLines: job.branding?.autoTitle?.lines, count: job.targetClipsCount || 4, clipLen, gemini: job.gemini, log, userPrompt: (job.aiPrompt || '').trim(), filePath: job.filePath, workDir: work });
+    const r = job.gaming
+      ? await GM.findGamingClips({ filePath: job.filePath, wav, duration: info.duration, words, count: job.targetClipsCount || 4, clipLen, gemini: job.gemini, log, workDir: work, hookLines: job.branding?.autoTitle?.lines, onProgress: p => setPct(5, p * 0.9) })
+      : await A.findClips(words, { hookLines: job.branding?.autoTitle?.lines, count: job.targetClipsCount || 4, clipLen, gemini: job.gemini, log, userPrompt: (job.aiPrompt || '').trim(), filePath: job.filePath, workDir: work });
     clips = r.clips;
     if (!clips.length) throw new Error('Could not find any suitable moments.');
-    try { clips = SYNC.cutFit(words, wav, clips); log('FFmpeg', 'Cut points placed in silence, accurate to 10 ms', 'info'); } catch {}
+    if (!job.gaming) try { clips = SYNC.cutFit(words, wav, clips); log('FFmpeg', 'Cut points placed in silence, accurate to 10 ms', 'info'); } catch {}
     writeJson('clips.json', clips);
     end(5, `${clips.length} clips · moments: ${r.engine === 'gemini' ? 'AI' : 'offline'} · titles: ${r.titleEngine === 'gemini' ? 'AI' : r.titleEngine === 'local' ? 'local' : 'AI + local'}`);
   }

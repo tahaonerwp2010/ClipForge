@@ -18,7 +18,8 @@ import {
   AlertCircle,
   Rows2,
   Crop,
-  Wand2
+  Wand2,
+  Gamepad2
 } from 'lucide-react';
 
 const MAX_SHORTS = 30;
@@ -75,7 +76,8 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
   onSelectVideo,
   onOpenStory
 }) => {
-  const [activeCard, setActiveCard] = useState<'long' | 'short' | 'split' | 'youtube'>('long');
+  const [activeCard, setActiveCard] = useState<'long' | 'gaming' | 'short' | 'split' | 'youtube'>('long');
+  const isLong = activeCard === 'long' || activeCard === 'gaming';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const shortsInputRef = useRef<HTMLInputElement>(null);
 
@@ -284,8 +286,8 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
   };
 
   const longSelected = selectedVideo && !selectedVideo.shorts && selectedVideo.type !== 'youtube' ? selectedVideo : null;
-  const nextVideo: VideoSource | null = activeCard === 'long' ? longSelected : activeCard === 'short' ? shortsSource() : activeCard === 'split' ? splitSource() : (ytState === 'done' ? ytVideo : null);
-  const nextHint = activeCard === 'long' ? 'Choose a video to continue.' : activeCard === 'short' ? 'Add at least one short clip to continue.' : activeCard === 'split' ? (spMode === 'single' ? 'Choose a video and select the facecam area to continue.' : 'Choose both videos to continue.') : (ytState === 'downloading' ? 'Downloading… Next unlocks when it finishes.' : 'Paste a link and download the video to continue.');
+  const nextVideo: VideoSource | null = isLong ? (longSelected ? { ...longSelected, gaming: activeCard === 'gaming' } : null) : activeCard === 'short' ? shortsSource() : activeCard === 'split' ? splitSource() : (ytState === 'done' ? ytVideo : null);
+  const nextHint = isLong ? 'Choose a video to continue.' : activeCard === 'short' ? 'Add at least one short clip to continue.' : activeCard === 'split' ? (spMode === 'single' ? 'Choose a video and select the facecam area to continue.' : 'Choose both videos to continue.') : (ytState === 'downloading' ? 'Downloading… Next unlocks when it finishes.' : 'Paste a link and download the video to continue.');
 
   return (
     <div className="flex flex-col items-stretch w-full select-none text-neutral-200">
@@ -341,22 +343,22 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mt-3">
         {([
           { id: 'long' as const, Icon: Clapperboard, title: 'Clips from a long video', text: 'Let AI find the best moments and cut them into short clips.', points: ['Automatic moment finding', 'Smart captions', 'Face-tracking reframe'], badge: 'Popular' },
+          { id: 'gaming' as const, Icon: Gamepad2, title: 'Gaming clips', text: 'For gameplay with little or no talking. Finds the big moments from sound and action.', points: ['Works with any game', 'Title, hook and description by AI', 'Same studio and options as long videos'], badge: 'New' },
           { id: 'short' as const, Icon: Scissors, title: 'Edit already cut clips', text: 'Add captions and styling to clips you have already made.', points: ['Your edit stays untouched', 'Captions and style only', 'Up to 30 clips at once'] },
           { id: 'split' as const, Icon: Rows2, title: 'Split screen', text: 'Facecam on top, game or footage below.', points: ['Finds the facecam for you', 'Two videos synced by sound', 'Adjustable layout'] },
           { id: 'youtube' as const, Icon: LinkIcon, title: 'Paste a YouTube link', text: 'For videos you own or have permission to use.', points: ['Imported up to 1080p', 'Live download progress', 'Then works like a long video'] },
-          ...(onOpenStory && !(window as any).electronAPI?.isMobile ? [{ id: 'story' as const, Icon: Wand2, title: 'Script to Short', text: 'Add a voice-over. The AI asks a few questions, then builds the whole short for you.', points: ['Visuals, arrows, captions and sound effects', 'Characters, stock footage and your recordings', 'Thumbnails and post texts for every platform'], badge: 'New' }] : []),
         ]).map(c => {
           const on = activeCard === c.id;
           return (
-            <button key={c.id} type="button" onClick={() => c.id === 'story' ? onOpenStory?.() : setActiveCard(c.id)}
-              className={`relative text-left p-4 rounded-2xl border transition-all cursor-pointer flex flex-col ${c.id === 'story' ? 'sm:col-span-2 ' : ''}${on ? 'bg-[#0f1f17] border-[#3f9a5a] shadow-[0_0_0_1px_rgba(63,154,90,0.35),0_8px_30px_-12px_rgba(190,242,100,0.25)]' : 'bg-[#0b1611] border-[#17291f] hover:border-[#2a4a38] hover:bg-[#0d1a14]'}`}>
+            <button key={c.id} type="button" onClick={() => setActiveCard(c.id)}
+              className={`relative text-left p-4 rounded-2xl border transition-all cursor-pointer flex flex-col ${on ? 'bg-[#0f1f17] border-[#3f9a5a] shadow-[0_0_0_1px_rgba(63,154,90,0.35),0_8px_30px_-12px_rgba(190,242,100,0.25)]' : 'bg-[#0b1611] border-[#17291f] hover:border-[#2a4a38] hover:bg-[#0d1a14]'}`}>
               {c.badge && <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#bef264] text-black">{c.badge}</span>}
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 border ${on ? 'bg-[#bef264] text-black border-transparent' : 'bg-[#13241b] text-[#8fd0a4] border-[#1d3228]'}`}>
                 <c.Icon className="w-[18px] h-[18px]" />
               </div>
               <h3 className="text-[13px] font-bold text-white leading-snug flex items-center gap-1.5 flex-wrap">{c.title}{c.id === 'split' && <ProTag />}</h3>
               <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">{c.text}</p>
-              <ul className={`mt-3 space-y-1 ${c.id === 'story' ? 'sm:grid sm:grid-cols-3 sm:gap-x-4 sm:space-y-0' : ''}`}>
+              <ul className={`mt-3 space-y-1 `}>
                 {c.points.map(pt => (
                   <li key={pt} className="flex items-center gap-1.5 text-[11px] text-neutral-300"><Check className="w-3 h-3 text-[#3f9a5a] shrink-0" />{pt}</li>
                 ))}
@@ -368,7 +370,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
 
       {/* 5. DYNAMIC INPUT AREA BELOW CARDS */}
       <div className="w-full mt-4">
-        {activeCard === 'long' && (
+        {isLong && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-[#0c1611] border border-[#182a22]">
             <div className="flex items-center gap-3">
               <button
@@ -571,7 +573,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       </div>
 
       {/* Selected video indicator (long video) */}
-      {activeCard === 'long' && longSelected && (
+      {isLong && longSelected && (
         <div className="w-full mt-2 p-2 px-4 rounded-xl bg-[#0e1914] border border-[#3f9a5a]/40 flex items-center justify-between text-xs text-neutral-200">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#bef264]" />

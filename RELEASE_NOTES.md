@@ -11,6 +11,9 @@
 - Script to Short: each part of a graphic (flow steps, checklist items, link, number) now appears when its words are spoken. The flow scene has a cleaner layout, no cut-off names, and a "$$$" stat becomes a headline.
 - Thumbnails adapt to the screen size and report the reason when they fail.
 - Script to Short: the AI now LISTENS to the voice-over (Gemini) to write the captions: accurate words, translated when asked, each word appearing while it is spoken. New thumbnails in a loud creator style (brush banners, stroked headline, emoji, laptop, checklist, call-to-action bar). Long scenes are cut into short emoji + keyword scenes, and recordings are sharpened.
+- Deleting a project now also removes a leftover folder that only holds ClipForge's own hidden marker file.
+- The "Script to Short" card is hidden from Home for now.
+- New "Gaming clips" on Home: finds the best moments of gameplay from sound and on-screen action (no speech needed), the AI checks frames and writes title, hook and description. Same studio, options and render as long videos.
 - Every short now saves a `log.txt` and a fuller `plan.json` next to the video, to make problems easy to report.
 
 - **Motion scenes are drawn more reliably on Windows.** The drawing window no longer needs see-through support: overlays are drawn on black and on white and the transparency is worked out from the difference. A first empty picture from the window is waited out, with a second drawing method as backup.
