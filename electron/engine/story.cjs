@@ -205,7 +205,7 @@ async function renderBeat(b, src, charPng, outFile, opt) {
     const crop = src.crop ? `crop=${src.crop.w}:${src.crop.h}:${src.crop.x}:${src.crop.y},` : '';
     g = `[0:v]setpts=PTS/${src.speed.toFixed(4)},fps=${FPS},${crop}split=2[a][c];` +
       `[a]scale=${W_}:${H_}:force_original_aspect_ratio=increase,crop=${W_}:${H_},boxblur=28:5,eq=brightness=-0.2:saturation=1.15[bg];` +
-      `[c]scale=w='trunc(${fw}*(1+0.045*t/${D})/2)*2':h='trunc(${fh}*(1+0.045*t/${D})/2)*2':eval=frame[fg];` +
+      `[c]eq=contrast=1.05:saturation=1.06,scale=w='trunc(${fw}*(1+0.045*t/${D})/2)*2':h='trunc(${fh}*(1+0.045*t/${D})/2)*2':eval=frame:flags=lanczos[fg];` +
       `[bg][fg]overlay=x='(W-w)/2':y='(H-h)/2-70':eval=frame,format=yuv420p[v0]`;
   } else if (b.visual === 'broll' && src) {
     args.push('-ss', String(src.ss.toFixed(3)), '-t', String((D * src.speed + 0.2).toFixed(3)), ...(src.loop ? ['-stream_loop', '-1'] : []), '-i', src.path);
@@ -296,11 +296,44 @@ function buildTwords(words, sentences) {
       if (ph.tt) {
         const toks = ph.tt.split(/\s+/).filter(Boolean), tot = toks.reduce((a, t) => a + t.length + 1, 0) || 1, dur = Math.max(0.25, ph.end - ph.start); let t = ph.start;
         toks.forEach(tk => { const d = dur * (tk.length + 1) / tot; out.push({ word: tk, start: +t.toFixed(3), end: +(t + d).toFixed(3), si: sn.i }); t += d; });
-      } else for (let k = ph.a; k <= ph.b; k++) out.push({ ...words[k], si: sn.i });
+      } else for (let k = ph.a; k <= ph.b; k++) {
+        const w = words[k];
+        if (w.alt === undefined) { out.push({ ...w, si: sn.i }); continue; }
+        // heard-and-checked text for this exact spoken word: it appears while that word is spoken (so captions stay in sync)
+        const toks = String(w.alt).split(/\s+/).filter(Boolean), tot = toks.reduce((a, t) => a + t.length + 1, 0) || 1, du = Math.max(0.2, w.end - w.start); let t = w.start;
+        toks.forEach(tk => { const d = du * (tk.length + 1) / tot; out.push({ word: tk, start: +t.toFixed(3), end: +(t + d).toFixed(3), si: sn.i }); t += d; });
+      }
     }
     sn.tt = sn.ph && sn.ph.some(p => p.tt) ? sn.ph.map(p => p.tt || sn.text).join(' ') : null;
+    if (words.slice(sn.a, sn.b + 1).some(w => w.alt !== undefined)) sn.tt = out.filter(x => x.si === sn.i).map(x => x.word).join(' ') || sn.text;
   });
   return out;
+}
+// ---- the AI LISTENS to the voice-over: every spoken word gets its checked / translated text, so captions are accurate and in sync ----
+async function alignWords(g, words, sentences, wav, lang, notes, cta, work, log) {
+  const mp3 = async (a, b, n) => { const f = path.join(work, `al_${n}.mp3`); await run(ffmpeg(), ['-y', '-ss', String(Math.max(0, words[a].start - 0.3)), '-t', String(words[b].end - words[a].start + 0.6), '-i', wav, '-ac', '1', '-ar', '16000', '-b:a', '40k', f]); return fs.readFileSync(f).toString('base64'); };
+  const chunks = []; let cur = null;
+  for (const sn of sentences) { if (!cur || cur.b - cur.a > 70) { cur = { a: sn.a, b: sn.b }; chunks.push(cur); } else cur.b = sn.b; }
+  let newCta = cta, fixed = 0, answered = 0;
+  for (let c = 0; c < chunks.length; c++) {
+    const { a, b } = chunks[c], list = words.slice(a, b + 1).map((w, i) => `${i}|${w.start.toFixed(2)}|${w.word}`).join('\n');
+    const prompt = `You are a subtitle editor. Listen to the audio (a voice-over; it can mix languages such as Hindi/Urdu and English). Below is a machine transcript, one line per spoken word: index|time in seconds|word. The machine often mis-hears words and may write English words in the wrong script.\n` +
+      (lang ? `Write the subtitles in ${lang}: translate what is REALLY said (trust your ears over the transcript), natural spoken style.` : `Write what is really said, with correct spelling, in the same language and script as spoken (trust your ears over the transcript). Fix only real mistakes.`) +
+      ` For EVERY index give the text that is spoken at that moment (one word, a few words, or "" when the meaning of that word is already carried by a neighbouring index). Keep the order, so that all texts read together form the whole sentence. Keep names and brands as spelled in the context.${notes && c === 0 ? '\nContext (names, links, facts):\n' + notes.slice(0, 1200) : ''}${c === 0 && lang ? '\nAlso translate this button text: ' + JSON.stringify(cta || '') : ''}\n${list}\nJSON only: {"w":[{"i":0,"t":"..."}],"cta":""}`;
+    const parts = [{ inlineData: { mimeType: 'audio/mp3', data: await mp3(a, b, c) } }, { text: prompt }];
+    const r = AI.parseJson((await AI.generate(g, { parts, json: true, timeoutMs: 120000 })).text);
+    const arr = listOf(r, 'w'), got = new Map();
+    arr.forEach((it, k) => { if (typeof it === 'string') { const m = /^\s*(\d+)\s*[.):|\-]\s*([\s\S]*)$/.exec(it); if (m) got.set(+m[1], m[2]); else got.set(k, it); } else if (it && it.i !== undefined) got.set(+it.i, it.t != null ? it.t : it.text); });
+    if (got.size < (b - a + 1) * 0.5) throw new Error('the AI answer did not cover the spoken words');
+    answered += got.size;
+    for (let i = 0; i <= b - a; i++) {
+      const w = words[a + i];
+      if (got.has(i)) { const t = String(got.get(i) == null ? '' : got.get(i)).trim().slice(0, 80); if (t !== w.word) fixed++; w.alt = t; }
+      else if (lang) w.alt = '';                   // translated: an unanswered word must not show the old language
+    }
+    if (c === 0 && lang && r && r.cta) newCta = String(r.cta).slice(0, 28);
+  }
+  return { cta: newCta, changed: fixed };
 }
 // lang set -> translate every phrase; lang empty -> only fix mis-heard words / names using the editor's notes
 async function rewritePhrases(g, phrases, words, lang, notes, cta) {
@@ -408,6 +441,15 @@ function autoScene(b, ws, i) {   // used when the AI gave no usable scene (or th
   if (i % 3 === 1 && kw) return { type: 'step', n: Math.floor(i / 2) + 1, label: short.slice(0, 28) };
   return { type: 'hero', title: short.slice(0, 48), hi: kw ? cl(kw) : '', sub: '' };
 }
+// long beats are cut into short scenes (a new picture every ~3-4 s): after the AI's scene, an emoji + keyword scene for what is being said then
+const EMOJI_BY = [[/money|dollar|earn|cash|paid|pay|rich|income|price|\$/i, '1f4b0'], [/video|clip|movie|film|short|reel|edit|post/i, '1f3ac'], [/youtube|play|watch/i, '25b6-fe0f'], [/game|gta|gaming/i, '1f3ae'], [/pc|laptop|computer|windows/i, '1f4bb'], [/phone|app|mobile|android/i, '1f4f1'], [/free|gift|win|giveaway|bonus/i, '1f381'], [/ai|robot|bot|auto|smart/i, '1f916'], [/link|website|site|download|comment/i, '1f517'], [/fast|speed|instant|viral|quick|easy/i, '1f680'], [/secret|hidden|shock|crazy|insane|wow/i, '1f92f'], [/time|wait|minute|hour|day/i, '23f0'], [/click|tap|press|button|start/i, '1f446'], [/idea|think|plan|learn|tip/i, '1f4a1'], [/people|user|friend|team|everyone|viewer/i, '1f465'], [/hot|fire|best|top|great/i, '1f525']];
+function iconScene(ws, n, emojiDir) {
+  const cl = w => String(w.word).replace(/[.,!?;:،۔؟"']+/g, ''), text = ws.map(cl).join(' ');
+  let code = null; for (const [re, c] of EMOJI_BY) if (re.test(text) && (!emojiDir || fs.existsSync(path.join(emojiDir, c + '.png')))) { code = c; break; }
+  if (!code) code = ['1f525', '2b50', '1f4a1', '1f680'][n % 4];
+  const kw = bestWord(ws), label = kw ? cl(kw) : cl(ws[Math.floor(ws.length / 2)] || { word: '' });
+  return label ? { type: 'icon', emoji: code, label: label.slice(0, 24) } : null;
+}
 function rectOf(src, visual) {   // where the recording sits inside the 1080x1920 frame (same maths as renderBeat)
   if (visual !== 'screen' || !src) return { x: 0, y: 0, w: 1080, h: 1920 };
   const cw = src.crop ? src.crop.w : src.w, ch = src.crop ? src.crop.h : src.h, fit = Math.min(1000 / cw, 1380 / ch), fw = Math.round(cw * fit / 2) * 2, fh = Math.round(ch * fit / 2) * 2;
@@ -472,11 +514,17 @@ async function runStory(job, emit, hooks = {}) {
     let tl = String(o.textLang || '').trim();
     if (tl && alreadyIn(tl, words)) { log('AI editor', 'The voice-over is already in ' + tl + ': the captions keep the spoken words exactly (only small spelling fixes)', 'info'); tl = ''; }
     const phrases = phrasesOf(words, sentences);
-    if (AI.ready(job.gemini) && (tl || o.notes)) {
+    let aligned = false;
+    if (AI.ready(job.gemini)) {
+      stage(tl ? 'Translating' : 'Understanding', 33, tl ? 'Listening again and writing the captions in ' + tl : 'Checking the captions against the audio');
+      try { const rr = await alignWords(job.gemini, words, sentences, wav, tl, o.notes, o.cta, work, log); o.cta = rr.cta; if (tl) o.thumbCta = o.cta; aligned = true; log('AI editor', tl ? 'Captions written in ' + tl + ' from the audio' : `Captions checked against the audio (${rr.changed} word(s) fixed)`, 'success'); }
+      catch (e) { if (String(e.message) === 'CANCELLED') throw e; words.forEach(w => { delete w.alt; }); log('AI editor', 'Could not check the captions against the audio (' + String(e.message).slice(0, 100) + '), trying the text-only way', 'warn'); }
+    }
+    if (!aligned && AI.ready(job.gemini) && (tl || o.notes)) {
       stage(tl ? 'Translating' : 'Understanding', 33, tl ? 'Translating captions and texts to ' + tl : 'Checking the spelling of the captions');
       try { const rr = await rewritePhrases(job.gemini, phrases, words, tl, o.notes, o.cta); o.cta = rr.cta; if (tl) o.thumbCta = o.cta; log('AI editor', tl ? 'Translated to ' + tl : `Fixed ${rr.changed} mis-heard caption phrase(s)`, 'success'); }
       catch (e) { if (String(e.message) === 'CANCELLED') throw e; phrases.forEach(p => { p.tt = null; }); log('AI editor', (tl ? 'Translation' : 'Caption check') + ' failed (' + String(e.message).slice(0, 100) + '), keeping the original words', 'warn'); }
-    } else if (tl) log('AI editor', 'Translating needs an AI key: keeping the voice-over language', 'warn');
+    } else if (!aligned && tl) log('AI editor', 'Translating needs an AI key: keeping the voice-over language', 'warn');
     const twords = buildTwords(words, sentences);
 
     // 2) plan
@@ -560,11 +608,17 @@ async function runStory(job, emit, hooks = {}) {
         if (sc.type === 'callout') { const r = rectOf(srcs[i], b.visual); sc.px = Math.round(r.x + Math.min(0.95, Math.max(0.05, +sc.x || 0.5)) * r.w); sc.py = Math.round(r.y + Math.min(0.95, Math.max(0.05, +sc.y || 0.45)) * r.h); }
         if (MO.FULL.includes(sc.type) && b.char && charPngs[i]) sc.ch = { src: charPngs[i], at: Math.max(0, b.char.at - b.t0), dur: b.char.dur, side: b.char.side, h: o.charH || 760 };
         try { const cue = cuesFor(sc, inRange(twords, b.s, b.e), b.t0, b.t1 - b.t0); if (cue) sc.cue = cue; } catch {}
-        items.push({ id: 'b' + i, scene: sc, t0: b.t0, t1: b.t1, dur: +(b.t1 - b.t0).toFixed(3) });
+        let end = b.t1;
+        if (MO.FULL.includes(sc.type) && b.visual === 'solid' && b.t1 - b.t0 > 5.4) {      // keep the AI's scene for the first ~4.6 s, then short icon scenes
+          const cut = b.t0 + 4.6, n = Math.ceil((b.t1 - cut) / 3.6), step = (b.t1 - cut) / n, extra = [];
+          for (let k = 0; k < n; k++) { const a = cut + k * step, z = a + step, ws = twords.filter(w => w.start >= a - 0.05 && w.start < z); const ic = ws.length ? iconScene(ws, i + k, P.emojiDir()) : null; if (ic) extra.push({ id: 'b' + i + 'x' + k, scene: ic, t0: +a.toFixed(3), t1: +z.toFixed(3), dur: +step.toFixed(3) }); }
+          if (extra.length) { end = cut; extra.forEach(e => items.push(e)); }
+        }
+        items.push({ id: 'b' + i, scene: sc, t0: b.t0, t1: end, dur: +(end - b.t0).toFixed(3) });
       });
       if (o.cta) { const t0 = Math.max(0, vdur - 2.4); items.push({ id: 'cta', scene: { type: 'cta', text: o.cta }, t0, t1: total, dur: +(total - t0).toFixed(3) }); }
       try {
-        motion = await MO.renderAll(items, { mode, accent: acc, accent2: MO.hex(th.accent2, acc), fontsDir: P.fontsDir(), fps: 24 }, hooks, work, log, (k, n, ty) => { stage('Graphics', 79 + 10 * k / n, `Drawing motion graphics ${k + 1} of ${n}`); checkCancel(); });
+        motion = await MO.renderAll(items, { mode, accent: acc, accent2: MO.hex(th.accent2, acc), fontsDir: P.fontsDir(), emojiDir: P.emojiDir(), fps: 24 }, hooks, work, log, (k, n, ty) => { stage('Graphics', 79 + 10 * k / n, `Drawing motion graphics ${k + 1} of ${n}`); checkCancel(); });
         if (motion.some(m => m.over && !m.alpha)) { log('Motion graphics', 'This PC could not draw see-through graphics, so overlays on recordings were skipped', 'warn'); motion = motion.filter(m => !(m.over && !m.alpha)); }
         log('Motion graphics', `${motion.length} animated scene(s) drawn`, 'success');
       } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('Motion graphics', 'Could not draw the animated scenes (' + String(e.message).slice(0, 100) + '), continuing without them', 'warn'); motion = []; }
@@ -637,7 +691,7 @@ async function runStory(job, emit, hooks = {}) {
       try {
         const titles = (result.platforms && result.platforms.thumbTitles && result.platforms.thumbTitles.length ? result.platforms.thumbTitles : (raw.title || [])).filter(Boolean).slice(0, 4);
         let charPng = null; if (o.character && o.characterStyle && o.characterStyle !== 'none') { try { charPng = await CH.compose(o.characterStyle, { pose: 'point', face: 'shock' }); } catch {} }
-        result.thumbs = await require('./thumbs.cjs').make({ outDir, titles, tool, screenshot: shot, character: charPng, accent: o.accent, fontsDir: P.fontsDir(), cta: o.thumbCta || 'LINK IN COMMENTS', checklist: checklist.map(c => c.text) }, hooks.shot);
+        result.thumbs = await require('./thumbs.cjs').make({ outDir, titles, tool, screenshot: shot, character: charPng, accent: o.accent, fontsDir: P.fontsDir(), emojiDir: P.emojiDir(), cta: o.thumbCta || 'LINK IN COMMENTS', checklist: checklist.map(c => c.text) }, hooks.shot);
       } catch (e) { log('Thumbnails', 'Skipped: ' + String(e.message).slice(0, 120), 'warn'); }
     }
     try { fs.writeFileSync(path.join(outDir, 'plan.json'), JSON.stringify({ beats: beats.map(({ i, t0, t1, visual, query, kin, char, arrow, scene, rec }) => ({ i, t0, t1, visual, query, kin, char, arrow, scene, rec })), tool, title: raw.title, checklist }, null, 1)); } catch {}

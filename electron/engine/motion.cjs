@@ -6,7 +6,7 @@ const { pathToFileURL } = require('url');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const cut = (s, n) => { s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).trim() + '…' : s; };
 const hex = (c, d) => /^#[0-9a-f]{6}$/i.test(String(c || '')) ? c : d;
-const FULL = ['hero', 'step', 'flow', 'compare', 'checks', 'link', 'stat'];
+const FULL = ['hero', 'step', 'flow', 'compare', 'checks', 'link', 'stat', 'icon'];
 const OVER = ['callout', 'badge'];
 const THEMES = {
   light: { bg: '#f3f3f6', ink: '#0f1115', sub: '#6b7280', card: '#ffffff', line: '#d9dbe1', shadow: 'rgba(20,24,40,.16)' },
@@ -45,6 +45,8 @@ body{font-family:'MH','MAr','MDe',sans-serif;color:var(--ink);position:relative}
 @keyframes out{from{opacity:1;transform:none}to{opacity:0;transform:scale(.94)}}
 @keyframes hl{from{background-size:0% 52%}to{background-size:100% 52%}}
 @keyframes draw{from{stroke-dashoffset:var(--l)}to{stroke-dashoffset:0}}
+@keyframes orb{to{transform:rotate(360deg)}}
+@keyframes wob{0%,100%{transform:rotate(-6deg) scale(1)}50%{transform:rotate(6deg) scale(1.06)}}
 @keyframes flo{0%,100%{transform:translateY(-10px)}50%{transform:translateY(10px)}}
 @keyframes drift{0%,100%{transform:translate(0,0)}50%{transform:translate(70px,-50px)}}
 @keyframes ring{0%{transform:translate(-50%,-50%) scale(.55);opacity:.95}100%{transform:translate(-50%,-50%) scale(1.5);opacity:0}}
@@ -104,6 +106,13 @@ const S = {
     <svg class="abs" style="left:0;top:0" width="1080" height="1500">${lines}</svg>
     <div class="abs" style="left:${cx}px;top:${cy}px;transform:translate(-50%,-50%)"><div style="${a('pop', .6, cu(s, 'center', null, .25))}"><div style="width:290px;height:290px;border-radius:50%;background:#14171f;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;font-size:50px;line-height:1.1;padding:30px;box-shadow:0 0 0 10px var(--bg),0 0 0 16px var(--ac),0 30px 60px var(--sh)" dir="auto">${esc(cut(s.center, 22))}</div></div></div>
     ${chips}`;
+  },
+  icon(s, o, D) {
+    const em = s.emoji && o.emojiDir ? pathToFileURL(path.join(o.emojiDir, s.emoji + '.png')).toString() : '';
+    const dots = Array.from({ length: 8 }, (_, i) => `<div class="abs" style="left:540px;top:700px;width:0;height:0;animation:orb ${9 + (i % 3) * 2}s linear ${-i}s infinite"><div style="position:absolute;left:${300 + (i % 3) * 46}px;top:-${9 + (i % 2) * 5}px;width:${18 + (i % 3) * 8}px;height:${18 + (i % 3) * 8}px;border-radius:50%;background:${i % 2 ? 'var(--ac)' : 'var(--ac2)'};opacity:.85"></div></div>`).join('');
+    return `${blobs()}${dots}
+    <div class="abs" style="left:540px;top:700px;transform:translate(-50%,-50%)"><div style="${a('pop', .55, .1)}"><div style="width:470px;height:470px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,var(--ac) 130%);box-shadow:0 0 0 14px var(--bg),0 0 0 22px var(--ac),0 40px 80px var(--sh);display:flex;align-items:center;justify-content:center"><div style="animation:wob 2.4s ease-in-out infinite">${em ? `<img src="${em}" style="width:290px;height:290px">` : `<div style="font-size:220px">★</div>`}</div></div></div></div>
+    <div class="abs c" style="top:1010px;font-size:112px;line-height:1.05;padding:0 60px;${a('up', .6, .45)}" dir="auto" data-fit="260">${esc(cut(String(s.label || '').toUpperCase(), 26))}</div>`;
   },
   compare(s, o, D) {
     const card = (side, label, anim, rot) => `<div class="abs" style="left:${side}px;top:360px;width:440px;${a(anim, .7, .25)}"><div style="text-align:center;margin-bottom:28px"><span style="display:inline-block;background:var(--ac2);color:#111;font-family:'MI','MAr','MDe';font-size:42px;padding:10px 34px;border-radius:14px;transform:rotate(${rot}deg)" dir="auto">${esc(cut(label, 16))}</span></div><div class="card" style="height:600px;background:linear-gradient(160deg,var(--card),var(--line));display:flex;align-items:center;justify-content:center;font-size:150px">${rot < 0 ? '◐' : '◉'}</div></div>`;
@@ -167,6 +176,7 @@ function normalize(sc, ctx) {
   if (![...FULL, ...OVER].includes(t)) return null;
   const o = { ...sc, type: t };
   if (t === 'hero' && !String(o.title || '').trim()) return null;
+  if (t === 'icon' && !String(o.label || '').trim()) return null;
   if (t === 'step' && !String(o.label || '').trim()) return null;
   if (t === 'flow' && (!o.center || !Array.isArray(o.nodes) || o.nodes.length < 2)) return null;
   if (t === 'checks' && (!Array.isArray(o.items) || !o.items.length)) return null;
@@ -183,7 +193,7 @@ async function renderAll(items, ctx, hooks, work, log, onProg) {
   for (const it of items) {
     k++;
     const hf = path.join(work, `mg_${it.id}.html`);
-    fs.writeFileSync(hf, html(it.scene, { mode: it.scene.mode || ctx.mode, accent: ctx.accent, accent2: ctx.accent2, fontsDir: ctx.fontsDir, dur: it.dur }));
+    fs.writeFileSync(hf, html(it.scene, { mode: it.scene.mode || ctx.mode, accent: ctx.accent, accent2: ctx.accent2, fontsDir: ctx.fontsDir, emojiDir: ctx.emojiDir, dur: it.dur }));
     onProg && onProg(k - 1, items.length, it.scene.type);
     const over = !!S[it.scene.type].over, mk = n => { const d = path.join(work, `mg_${it.id}${n}`); fs.mkdirSync(d, { recursive: true }); return d; };
     if (over) {

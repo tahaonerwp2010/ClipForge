@@ -10,6 +10,7 @@
 - Script to Short: captions no longer "translate" a voice-over that is already in the chosen language (this turned "campaign" into "company" and broke the timing). Spelling fixes can only change a word slightly.
 - Script to Short: each part of a graphic (flow steps, checklist items, link, number) now appears when its words are spoken. The flow scene has a cleaner layout, no cut-off names, and a "$$$" stat becomes a headline.
 - Thumbnails adapt to the screen size and report the reason when they fail.
+- Script to Short: the AI now LISTENS to the voice-over (Gemini) to write the captions: accurate words, translated when asked, each word appearing while it is spoken. New thumbnails in a loud creator style (brush banners, stroked headline, emoji, laptop, checklist, call-to-action bar). Long scenes are cut into short emoji + keyword scenes, and recordings are sharpened.
 - Every short now saves a `log.txt` and a fuller `plan.json` next to the video, to make problems easy to report.
 
 - **Motion scenes are drawn more reliably on Windows.** The drawing window no longer needs see-through support: overlays are drawn on black and on white and the transparency is worked out from the difference. A first empty picture from the window is waited out, with a second drawing method as backup.

@@ -97,12 +97,13 @@ async function callOne(provId, key, model, { prompt, parts, system, json, timeou
 async function generate(g, { prompt, parts, system, json = false, timeoutMs = 60000 } = {}) {
   const cfg = normalize(g);
   if (!cfg.enabled || !cfg.order.length) throw new AiError('invalid_key', 'No AI key added.');
-  const needVision = hasImages(parts);
+  const needVision = hasImages(parts), needAudio = (parts || []).some(x => x && x.inlineData && /^audio\//.test(String(x.inlineData.mimeType || '')));
   const started = Date.now(); let last = null;
   const outOfTime = () => Date.now() - started > 240000;
   for (const pid of cfg.order) {
     if (outOfTime()) break;
     const P = REG.providers[pid], pc = cfg.providers[pid];
+    if (needAudio && P.kind !== 'gemini') continue;      // only Gemini can listen to audio
     let models = (pc.auto ? [pc.model, ...(pc.extra || []), ...P.models.map(m => m.id)] : [pc.model || P.models[0].id]).filter(Boolean);
     models = [...new Set(models)];
     if (needVision) { const ok = new Set(P.models.filter(m => m.vision).map(m => m.id)); models = models.filter(m => ok.has(m)); }
