@@ -1,6 +1,6 @@
 // Everything the buyer sees in the "Buy Pro" window comes from this file.
 export const PRO_PLAN_NAME = 'Monthly';
-export const PRO_PRICE_USD = 5;                 // shown big in the Buy Pro window
+export const PRO_PRICE_USD = 10;                 // shown big in the Buy Pro window
 export const PRO_PERIOD = 'per month';
 export const PRO_DETAILS = [
   'AI Boost: AI-picked moments, titles, hooks, descriptions and translated captions',
@@ -14,14 +14,17 @@ export const PRO_DETAILS = [
   'Works on this device. 30 days of access.',
 ];
 
+// Card payments through Gumroad (the buyer gets a licence key and pastes it in the Buy Pro window).
+export const GUMROAD_URL = 'https://tahawave85.gumroad.com/l/hsxljg';
+
 export interface PayMethod { id: string; name: string; kind: 'easypaisa' | 'crypto'; lines: { label: string; value: string }[]; note?: string }
 export const PAY_METHODS: PayMethod[] = [
   { id: 'easypaisa', name: 'Easypaisa', kind: 'easypaisa',
     lines: [{ label: 'Account name', value: 'Rashida begum' }, { label: 'Easypaisa number', value: '03195094240' }],
-    note: 'Plan price: $5 per month. Send the equivalent amount in PKR.' },
+    note: 'Plan price: $10 per month. Send the equivalent amount in PKR.' },
   { id: 'crypto', name: 'Crypto (SOL)', kind: 'crypto',
     lines: [{ label: 'Coin', value: 'SOL (Solana)' }, { label: 'Wallet address', value: '8qSAHJsiy3A4MDFqqbz5XetW47NmQLmu4rk4JLPCfvPu' }],
-    note: 'Plan price: $5 per month. Send SOL on the Solana network only. Anything sent on another network is lost.' },
+    note: 'Plan price: $10 per month. Send SOL on the Solana network only. Anything sent on another network is lost.' },
 ];
 
 // Where the buyer sends the payment proof. Leave a link empty ('') to hide that button.

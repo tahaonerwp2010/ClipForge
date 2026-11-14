@@ -455,6 +455,8 @@ ipcMain.handle('edit-render', async (e, a) => { resetCancel(); try { const r = a
 const LIC = require('./engine/license.cjs');
 ipcMain.handle('license-status', async (e, o) => LIC.status(o));
 ipcMain.handle('license-register', async () => LIC.register());
+ipcMain.handle('license-gumroad-activate', async (e, key) => { try { return await LIC.gumroadActivate(key); } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 160) }; } });
+ipcMain.handle('license-gumroad-remove', async () => { try { return await LIC.gumroadRemove(); } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 160) }; } });
 ipcMain.handle('owner-check', async (e, pw) => LIC.owner.check(pw));
 ipcMain.handle('owner-lookup', async (e, a) => LIC.owner.lookup(a.pw, a.id));
 ipcMain.handle('owner-suggest', async (e, a) => LIC.owner.suggest(a.pw, a.q));

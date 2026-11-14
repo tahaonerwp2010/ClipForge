@@ -35,6 +35,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   projectsSave: (list) => ipcRenderer.invoke('projects-save', list),
   licenseStatus: (o) => ipcRenderer.invoke('license-status', o),
   licenseRegister: () => ipcRenderer.invoke('license-register'),
+  licenseGumroadActivate: (key) => ipcRenderer.invoke('license-gumroad-activate', key),
+  licenseGumroadRemove: () => ipcRenderer.invoke('license-gumroad-remove'),
   ownerCheck: (pw) => ipcRenderer.invoke('owner-check', pw),
   ownerLookup: (pw, id) => ipcRenderer.invoke('owner-lookup', { pw, id }),
   ownerSuggest: (pw, q) => ipcRenderer.invoke('owner-suggest', { pw, q }),

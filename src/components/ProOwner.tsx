@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Copy, Check, ArrowLeft, ArrowRight, Crown, ShieldCheck, Loader2, Lock, Smartphone, ExternalLink } from 'lucide-react';
 import solLogo from '../assets/pay/sol.png';
-import { PAY_METHODS, PRO_PLAN_NAME, PRO_PRICE_USD, PRO_PERIOD, PRO_DETAILS, CONTACTS } from '../config/proConfig';
+import { PAY_METHODS, PRO_PLAN_NAME, PRO_PRICE_USD, PRO_PERIOD, PRO_DETAILS, CONTACTS, GUMROAD_URL } from '../config/proConfig';
 import { LicenseService, useLicense } from '../services/licenseService';
 
 const Overlay: React.FC<{ onClose: () => void; children: React.ReactNode; wide?: boolean }> = ({ onClose, children, wide }) => (
@@ -33,6 +33,17 @@ export const BuyProModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [method, setMethod] = useState(PAY_METHODS[0]?.id);
   const [id, setId] = useState(lic.id);
   const m = PAY_METHODS.find(x => x.id === method) || PAY_METHODS[0];
+  const [key, setKey] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
+  const gr = (lic as any).gumroad as { has: boolean; active: boolean; reason: string; last4: string } | undefined;
+  const activate = async () => {
+    if (!key.trim() || busy) return; setBusy(true); setMsg(null);
+    try { const r = await (window.electronAPI as any)?.licenseGumroadActivate?.(key.trim()); if (r?.ok) { setMsg({ ok: true, t: 'Pro is on. Thank you!' }); setKey(''); await LicenseService.refresh(); } else setMsg({ ok: false, t: r?.error || 'Could not activate this key.' }); }
+    catch (e) { setMsg({ ok: false, t: 'Could not activate this key.' }); }
+    setBusy(false);
+  };
+  const removeKey = async () => { setBusy(true); try { await (window.electronAPI as any)?.licenseGumroadRemove?.(); await LicenseService.refresh(); setMsg({ ok: true, t: 'The key was removed from this computer.' }); } catch {} setBusy(false); };
   const open = (url: string) => { if (url) window.electronAPI?.openExternal?.(url); };
   useEffect(() => { (async () => { try { const r = await window.electronAPI?.licenseRegister?.(); if (r?.id) setId(r.id); } catch {} })(); }, []);
   return (
@@ -54,7 +65,25 @@ export const BuyProModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             {PRO_DETAILS.map(d => <li key={d} className="flex items-start gap-2 text-xs text-neutral-200"><Check className="w-3.5 h-3.5 text-[#bef264] shrink-0 mt-0.5" /><span>{d}</span></li>)}
           </ul>
         </div>
-        <div className="flex justify-between pt-1"><Btn onClick={onClose}>Close</Btn><Btn primary onClick={() => setStep(2)}>Payment details <ArrowRight className="w-3.5 h-3.5" /></Btn></div>
+        <div className="rounded-xl bg-[#09100d] border border-[#17291f] p-3 space-y-2">
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Already subscribed? Enter your key</h4>
+          {gr?.has && gr.active ? (
+            <div className="flex items-center justify-between gap-3 text-xs"><span className="text-[#bef264] flex items-center gap-1.5"><Check className="w-3.5 h-3.5" /> Pro is active with a card subscription (key ...{gr.last4})</span><Btn onClick={removeKey} disabled={busy} className="!py-1.5">Remove key</Btn></div>
+          ) : (<>
+            {gr?.has && !gr.active && <p className="text-[11px] text-amber-300">{gr.reason || 'This key is not active.'}</p>}
+            <div className="flex gap-2"><input value={key} onChange={e => setKey(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') activate(); }} placeholder="XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX" spellCheck={false}
+              className="flex-1 min-w-0 bg-[#0d1712] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-3 py-2 text-xs text-white font-mono outline-none" />
+              <Btn primary onClick={activate} disabled={busy || !key.trim()}>{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Activate'}</Btn></div>
+          </>)}
+          {msg && <p className={`text-[11px] ${msg.ok ? 'text-[#bef264]' : 'text-red-300'}`}>{msg.t}</p>}
+        </div>
+        <div className="flex justify-between gap-2 pt-1 flex-wrap"><Btn onClick={onClose}>Close</Btn>
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Btn onClick={() => setStep(2)}>Easypaisa / Crypto</Btn>
+            <Btn primary onClick={() => open(GUMROAD_URL)}>Pay by card <ExternalLink className="w-3.5 h-3.5" /></Btn>
+          </div>
+        </div>
+        <p className="text-[11px] text-neutral-500">Card payments: pay on Gumroad, then copy the licence key from your receipt email and paste it above. Your subscription renews every month; cancel any time on Gumroad.</p>
       </>)}
 
       {step === 2 && (<>

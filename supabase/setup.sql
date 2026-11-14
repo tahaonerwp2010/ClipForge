@@ -146,3 +146,4 @@ grant execute on function public.cf_get_pro(text), public.cf_register(text), pub
 -- >>> set YOUR owner password here (only a hash is stored). When you run this script again later, the password already saved is kept. <<<
 insert into public.owner_secret(id, pw_hash) values (1, crypt('YOUR_OWNER_PASSWORD', gen_salt('bf')))
   on conflict (id) do nothing;
+

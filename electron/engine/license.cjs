@@ -5,6 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const P = require('./paths.cjs');
+const GR = require('./gumroad.cjs');
 
 let cfg = {};
 try { cfg = require('./license-config.json'); } catch {}
@@ -66,6 +67,10 @@ function shape(id, raw, online, wantTrial) {
     trial: trialActive, trialDaysLeft: trialActive ? left(raw.trialEnd) : 0, configured: configured(), online };
 }
 async function status(opt) {
+  const s = await statusBase(opt);
+  return withGumroad(s);
+}
+async function statusBase(opt) {
   const id = deviceId(), c = readCache(), wantTrial = !!(opt && opt.trial);
   if (!configured()) {
     const t0 = c.localTrialStart || Date.now(); if (wantTrial && !c.localTrialStart) writeCache({ localTrialStart: t0 });
@@ -85,6 +90,42 @@ async function status(opt) {
     return shape(id, { forever: false, proUntil: null, trialEnd: wantTrial ? t0 + TRIAL_DAYS * DAY : null }, false, wantTrial);
   }
 }
+
+// ---- Gumroad (card) subscription: the key is saved on this PC, re-checked with Gumroad at most every 6 hours; offline it is trusted for 7 days ----
+const GR_RECHECK = 6 * 3600e3, GR_OFFLINE = 7 * DAY;
+const keyHash = (k) => crypto.createHash('sha256').update('cf-gr|' + String(k).trim()).digest('hex');
+async function withGumroad(s) {
+  const c = readCache(), g = c.gumroad;
+  if (!g || !g.key) return s;
+  let active = !!g.active, checked = g.checkedAt || 0, reason = g.reason || '';
+  if (Date.now() - checked > GR_RECHECK) {
+    const v = await GR.verify(g.key);
+    if (v.ok) { active = v.active; reason = v.reason; checked = Date.now(); writeCache({ gumroad: { ...g, active, reason, checkedAt: checked } }); }
+    else if (v.error === 'invalid') { active = false; reason = 'This key is no longer valid.'; writeCache({ gumroad: { ...g, active: false, reason, checkedAt: Date.now() } }); }
+    else if (Date.now() - checked > GR_OFFLINE) active = false;       // could not reach Gumroad for a week
+  }
+  const out = { ...s, gumroad: { has: true, active, reason, last4: String(g.key).slice(-4) } };
+  if (active) { out.pro = true; out.trial = false; out.proDaysLeft = null; }
+  return out;
+}
+async function gumroadActivate(key) {
+  const k = String(key || '').trim(), id = deviceId();
+  const v = await GR.verify(k);
+  if (!v.ok) return { ok: false, error: v.error === 'network' ? 'Could not reach Gumroad. Check your internet and try again.' : 'This key was not found. Copy it again from your Gumroad receipt.' };
+  if (!v.active) return { ok: false, error: v.reason || 'This subscription is not active.' };
+  if (configured()) {                                                    // one key = one PC (a second PC is refused; the same PC can always re-activate)
+    try { const r = await rpc('cf_bind_key', { p_id: id, p_hash: keyHash(k) }); if (r === 'other') return { ok: false, error: 'This key is already used on another computer. Open ClipForge there and press "Remove key" first.' }; }
+    catch { /* the licence server is busy or not updated yet: the buyer has paid, so activation still works (the one-PC rule is best effort) */ }
+  }
+  writeCache({ gumroad: { key: k, active: true, reason: '', checkedAt: Date.now() } });
+  return { ok: true, status: await status({ trial: false }) };
+}
+async function gumroadRemove() {
+  const c = readCache(), g = c.gumroad;
+  if (g && g.key && configured()) { try { await rpc('cf_unbind_key', { p_id: deviceId(), p_hash: keyHash(g.key) }); } catch {} }
+  writeCache({ gumroad: null });
+  return { ok: true };
+}
 async function register() { const id = deviceId(); if (configured()) { try { await rpc('cf_register', { p_id: id }); } catch {} } return { id, configured: configured() }; }
 
 const owner = {
@@ -94,4 +135,4 @@ const owner = {
   grant: async (pw, id, plan) => { try { return { ok: true, ...(await rpc('cf_owner_grant', { p_pw: pw, p_id: id, p_plan: plan })) }; } catch (e) { return { ok: false, error: e.message }; } },
   remove: async (pw, id) => { try { return { ok: true, ...(await rpc('cf_owner_remove', { p_pw: pw, p_id: id })) }; } catch (e) { return { ok: false, error: e.message }; } },
 };
-module.exports = { deviceId, status, register, owner, configured };
+module.exports = { deviceId, status, register, owner, configured, gumroadActivate, gumroadRemove };

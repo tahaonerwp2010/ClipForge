@@ -42,6 +42,8 @@ declare global {
       projectsLoad?: () => Promise<any[]>;
       projectsSave?: (list: any[]) => Promise<boolean>;
       licenseStatus?: (o?: { trial?: boolean }) => Promise<{ id: string; pro: boolean; forever: boolean; proDaysLeft: number | null; trial: boolean; trialDaysLeft: number; configured: boolean; online: boolean }>;
+      licenseGumroadActivate?: (key: string) => Promise<{ ok: boolean; error?: string }>;
+      licenseGumroadRemove?: () => Promise<{ ok: boolean }>;
       licenseRegister?: () => Promise<{ id: string; configured: boolean }>;
       ownerCheck?: (pw: string) => Promise<{ ok: boolean; error?: string }>;
       ownerLookup?: (pw: string, id: string) => Promise<{ ok: boolean; exists?: boolean; pro?: boolean; forever?: boolean; proUntil?: string | null; proDaysLeft?: number | null; trialActive?: boolean; trialDaysLeft?: number; trialStart?: string | null; error?: string }>;

@@ -13,3 +13,7 @@ Run the NEW supabase/setup.sql once in Supabase SQL Editor. It is safe on an exi
 (migration-safe, your owner password and existing Pro users are kept; old pro=true = forever).
 To activate in the app: src/config/proConfig.ts -> PRO_ENFORCED=true and TRIAL_ENABLED=true.
 Fill the payment placeholders (PAY_METHODS, CONTACTS) there too.
+
+=== Gumroad card payments ===
+Run supabase/gumroad.sql once in the Supabase SQL Editor (it only adds a small table + 2 functions; it does not touch anything else).
+Without it, keys still work, only the "one key = one PC" rule is skipped.

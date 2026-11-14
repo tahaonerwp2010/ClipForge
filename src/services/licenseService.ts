@@ -3,7 +3,7 @@ import { PRO_ENFORCED, TRIAL_ENABLED, PRO_FEATURES } from '../config/proConfig';
 
 export interface LicenseState {
   id: string; pro: boolean; forever: boolean; proDaysLeft: number | null; trial: boolean; trialDaysLeft: number;
-  configured: boolean; online: boolean; loaded: boolean; ownerPw: string | null; buyOpen: boolean; blocked: string[] | null;
+  configured: boolean; online: boolean; gumroad?: { has: boolean; active: boolean; reason: string; last4: string }; loaded: boolean; ownerPw: string | null; buyOpen: boolean; blocked: string[] | null;
 }
 let state: LicenseState = { id: '', pro: false, forever: false, proDaysLeft: null, trial: false, trialDaysLeft: 0, configured: false, online: false, loaded: false, ownerPw: null, buyOpen: false, blocked: null };
 const subs = new Set<() => void>();
