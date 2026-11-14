@@ -33,6 +33,7 @@ interface FormatTabProps {
   split?: SplitConfig | null;
   onSplitChange?: (s: SplitConfig) => void;
   onAiPromptChange: (v: string) => void;
+  gaming?: boolean;
 }
 
 
@@ -124,6 +125,7 @@ const MultiSpeakerControl: React.FC<{ framing: InnerFramingConfig; onFramingChan
 };
 
 export const FormatTab: React.FC<FormatTabProps> = ({
+  gaming,
   canvasRatio,
   onCanvasRatioChange,
   framing,
@@ -378,8 +380,8 @@ export const FormatTab: React.FC<FormatTabProps> = ({
 
               {framing.mode === 'fill-crop' && (
                 <div className="mt-3 pt-2.5 border-t border-[#1d3228] space-y-3">
-                  <AutoReframeControls framing={framing} onFramingChange={onFramingChange} />
-                  <MultiSpeakerControl framing={framing} onFramingChange={onFramingChange} />
+                  {!gaming && <AutoReframeControls framing={framing} onFramingChange={onFramingChange} />}
+                  {!gaming && <MultiSpeakerControl framing={framing} onFramingChange={onFramingChange} />}
                   {!framing.autoReframing && (
                     <SliderRow label="Horizontal Pan" value={framing.panX} unit="%" min={-50} max={50}
                       onChange={(v) => onFramingChange({ ...framing, panX: v })} />
@@ -422,9 +424,11 @@ export const FormatTab: React.FC<FormatTabProps> = ({
                   <SliderRow label="Corner Radius" value={framing.innerBorderRadius} unit="px" min={0} max={24}
                     onChange={(v) => onFramingChange({ ...framing, innerBorderRadius: v })} />
                   <BackgroundPicker framing={framing} onFramingChange={onFramingChange} />
-                  <div className="pt-2 border-t border-[#1d3228]">
-                    <AutoReframeControls framing={framing} onFramingChange={onFramingChange} />
-                  </div>
+                  {!gaming && (
+                    <div className="pt-2 border-t border-[#1d3228]">
+                      <AutoReframeControls framing={framing} onFramingChange={onFramingChange} />
+                    </div>
+                  )}
                   <button type="button"
                     onClick={(e) => { e.stopPropagation(); onFramingChange({ ...framing, customScale: 100, offsetX: 0, offsetY: 0 }); }}
                     className="text-[10px] text-neutral-400 hover:text-white underline cursor-pointer">

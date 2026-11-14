@@ -76,7 +76,7 @@ const ANIMS = {
   glow:    '\\blur10\\fscx118\\fscy118\\t(0,230,\\blur0.6\\fscx100\\fscy100)',
 };
 
-function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', keywords, behindBox }) {
+function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', keywords, behindBox, videoRect = null }) {
   const k = W / 1080, base = Math.round(captions.fontSize * 3.4 * k * tpl.sizeMul * 1.15);
   const off = Math.max(-0.5, Math.min(0.5, Number(captions.syncOffset) || 0));
   const cw = words.filter(w => w.start >= clipStart && w.start < clipEnd).map(w => (off ? { ...w, start: w.start + off, end: w.end + off } : w));
@@ -100,7 +100,8 @@ function build({ words, clipStart, clipEnd, W, H, captions, tpl, part = 'all', k
     const emY = Math.round(behindBox && behindBox.bottom > behindBox.top ? Math.max(0.14 * H, Math.min(0.55 * H, H * behindBox.top)) : 0.35 * H);   // at the top of the head: the lower half of the word is covered by the person, the upper half stays visible
     const ecol = (() => { const pal = tpl.emph.colors; return pal[emphN++ % pal.length]; })();
     lines.forEach((ln, li) => {
-      const yc = isEm[li] ? Math.max(emY, Math.round(ln.size * 0.46 + 0.035 * H)) : Math.round(y0 + hs[li] / 2); y0 += hs[li];   // the big word never rises over the top edge of the clip
+      const noPerson = tpl.behind && !behindBox && videoRect && videoRect.h > 0;   // no person found: the big word sits just below the top edge of the VIDEO (not of the screen)
+      const yc = isEm[li] ? (noPerson ? Math.round(videoRect.y + videoRect.h * 0.04 + ln.size * 0.55) : Math.max(emY, Math.round(ln.size * 0.46 + 0.035 * H))) : Math.round(y0 + hs[li] / 2); y0 += hs[li];   // the big word never rises over the top edge of the clip
       if (part === 'behind' && !isEm[li]) return;
       if (part === 'front' && isEm[li]) return;
       const fsOf = it => Math.round(ln.bs * it.st.scale * ln.fit * ({ 'Noto Sans Arabic ExtraBold': 1.3, 'Noto Sans Devanagari ExtraBold': 1.7 }[FONTS.scriptFont(it.text || '')] || 1));   // Arabic / Hindi letters are smaller than Latin capitals

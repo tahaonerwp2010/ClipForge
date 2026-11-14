@@ -107,7 +107,7 @@ function build({ words, clipStart, clipEnd, W, H, captions, branding, title, hoo
   if (branding.showWatermark && branding.watermarkType !== 'image' && branding.creatorHandle && part !== 'behind')
     L.push(`Dialogue: 2,${ts(0)},${ts(dur)},Mark,,0,0,0,,${pos(branding.watermarkPositionX ?? 20, branding.watermarkPositionY ?? 92)}${esc(branding.creatorHandle)}`);
   if (captions.enabled && dynTpl) {
-    DYN.build({ words, clipStart, clipEnd, W, H, captions, tpl: dynTpl, part, keywords, behindBox }).forEach(l => L.push(l));
+    DYN.build({ words, clipStart, clipEnd, W, H, captions, tpl: dynTpl, part, keywords, behindBox, videoRect: rect }).forEach(l => L.push(l));
   } else if (captions.enabled && part !== 'behind') {
     const off = Math.max(-0.5, Math.min(0.5, Number(captions.syncOffset) || 0));
     const cw = words.filter(w => w.start >= clipStart && w.start < clipEnd).map(w => (off ? { ...w, start: w.start + off, end: w.end + off } : w));

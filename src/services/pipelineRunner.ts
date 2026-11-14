@@ -155,7 +155,7 @@ export class PipelineRunner {
         ratio: config.split ? '9:16' : (config.canvasRatio || '9:16'),
         quality: config.quality || 1080,
         split: config.split ? { ...config.split, frame: undefined, secondUrl: undefined } : undefined,
-        framing, captions, grading, branding,
+        framing: project.gaming ? { ...framing, autoReframing: false } : framing, captions, grading, branding,
         hardware: getHardware(),
         gemini: AiService.forJob(),
         stockKeys: StockService.keys()

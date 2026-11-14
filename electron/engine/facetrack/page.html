@@ -63,6 +63,6 @@ window.runSeg = async function (urls) {
     cx.putImageData(d, 0, 0); out.push(cv.toDataURL('image/png'));
   }
   const med = a => a.length ? a.sort((x, y) => x - y)[a.length >> 1] : null;
-  return { m: out, top: med(tops), bottom: med(bots) };
+  return { m: out, top: med(tops), bottom: med(bots), found: tops.length, n: urls.length };
 };
 </script>

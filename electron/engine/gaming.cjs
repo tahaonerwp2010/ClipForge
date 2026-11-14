@@ -95,7 +95,7 @@ async function lookAt(cands, { filePath, workDir, g, log, aud, hookLines }) {
     checkCancel();
     const part = cands.slice(o, o + 4), parts = [];
     parts.push({ text: `You are a short-video editor for GAMEPLAY videos (any game). Below are ${part.length} candidate moments. For each one you get frames spread over its length and a loudness note. Decide how good a highlight it is: kills, close fights, clutch plays, big explosions or crashes, funny fails, lucky escapes, victory or other clear peaks score high; menus, loading, walking or waiting score low.
-For each candidate answer: "score" 0-10, "what" (one plain sentence about what happens), "peakAt" (seconds from the START of the candidate where the best moment happens), "title" (catchy, max 70 chars, no clickbait lies), "hookText" (max 9 words, a curiosity line that is shown on the video, e.g. "Nobody expected this ending"), "description" (2 sentences for YouTube/Instagram), "hashtags" (5 without #), "keywords" (up to 6 plain words). Also "game": the game name if you can recognise it, else "".
+For each candidate answer: "score" 0-10, "what" (one plain sentence about what happens), "peakAt" (seconds from the START of the candidate where the best moment happens), "title" (catchy, max 70 chars, no clickbait lies), "hookText" (max 9 words, a curiosity line about what is VISIBLE in these frames; never claim an outcome you cannot see), "description" (2 sentences for YouTube/Instagram), "hashtags" (5 without #), "keywords" (up to 6 plain words). Also "game": the game name if you can recognise it, else "".
 Return ONLY JSON: {"game":"","c":[{"i":0,"score":0,"what":"","peakAt":0,"title":"","hookText":"","description":"","hashtags":[],"keywords":[]}]}` });
     for (let k = 0; k < part.length; k++) {
       const c = part[k], len = c.end - c.start, dir = path.join(workDir, `gm${o + k}`);
@@ -118,6 +118,36 @@ Return ONLY JSON: {"game":"","c":[{"i":0,"score":0,"what":"","peakAt":0,"title":
     arr.forEach((x, k) => { const i = x && x.i != null ? +x.i : k; if (i >= 0 && i < part.length) out.set(o + i, x); });
   }
   return { out, game };
+}
+
+
+// ---------- 4) the final text is written from the FINAL clip (the cut can move away from the first candidate window) ----------
+async function writeText(clips, { filePath, workDir, g, log, game }) {
+  const parts = [{ text: `You write the on-screen text for short GAMEPLAY clips${game ? ' (game: ' + game + ')' : ''}. For each clip you get frames in time order with their time in seconds. Look at the frames carefully, then write ONLY what you can actually SEE.
+Rules:
+- "what": 1-2 plain sentences describing the visible action (who/what does what, objects, places, results). No guessing about things not visible.
+- "title": max 70 chars, specific to this clip (name the visible action or object), no clickbait lies.
+- "hookText": max 9 words, a curiosity line about THIS clip's visible action. It must make sense for these exact frames. Never claim an outcome (won, lost, busted, caught, heist ended) unless the frames clearly show it. No generic lines like "You won't believe this".
+- "description": 2 sentences for YouTube/Instagram that describe the visible action. "hashtags": 5 without #. "keywords": up to 6 plain words about what is visible.
+Return ONLY JSON: {"c":[{"i":0,"what":"","title":"","hookText":"","description":"","hashtags":[],"keywords":[]}]}` }];
+  for (let k = 0; k < clips.length; k++) {
+    const c = clips[k], len = c.end - c.start, dir = path.join(workDir, `gt${k}`);
+    try {
+      const frames = await R.extractFrames(filePath, c.start, len, dir, Math.min(2, 8 / len));
+      const step = Math.max(1, Math.round(frames.length / 8)), pick = frames.filter((_, j) => j % step === 0).slice(0, 8);
+      parts.push({ text: `Clip ${k} (${len.toFixed(0)} s). Frames at: ${pick.map((_, j) => (j * step * (len / Math.max(1, frames.length))).toFixed(0) + 's').join(', ')}` });
+      for (const f of pick) parts.push({ inlineData: { mimeType: 'image/jpeg', data: fs.readFileSync(f).toString('base64') } });
+    } catch (e) { if (String(e.message) === 'CANCELLED') throw e; } finally { try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} }
+  }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const r = G.parseJson((await G.generate(g, { parts, json: true, timeoutMs: 180000 })).text);
+      const arr = Array.isArray(r) ? r : (Array.isArray(r.c) ? r.c : (Object.values(r).find(Array.isArray) || []));
+      const out = new Map(); arr.forEach((x, k) => { const i = x && x.i != null ? +x.i : k; if (x && x.title && i >= 0 && i < clips.length) out.set(i, x); });
+      return out;
+    } catch (e) { if (String(e.message) === 'CANCELLED') throw e; if (attempt) log('Could not re-check the final clips (' + String(e.message).slice(0, 90) + '), keeping the first texts', 'warn'); else await new Promise(s => setTimeout(s, 1500)); }
+  }
+  return new Map();
 }
 
 // ---------- local fallback (no AI key) ----------
@@ -152,9 +182,15 @@ async function findGamingClips({ filePath, wav, duration, words = [], count = 4,
   let ranked = cands.slice().sort((a, b) => b.rank - a.rank);
   if (engine === 'gemini') { const good = ranked.filter(c => c.ai && +c.ai.score >= 5); if (good.length >= Math.min(2, count)) ranked = good; }
   const picked = []; for (const c of ranked) { if (picked.length >= count) break; if (!picked.some(p => Math.abs(p.peak - c.peak) < len * 0.7)) picked.push(c); }
-  const clips = picked.map((c, n) => {
+  const windows = picked.map(c => {
     let { start, end } = c; const v = c.ai;
     if (v && Number.isFinite(+v.peakAt) && +v.peakAt > 0) { const t = c.start + Math.min(len, +v.peakAt), s = Math.max(0, t - len * 0.5); start = s; end = Math.min(duration, s + len); start = Math.max(0, end - len); }
+    return { start, end };
+  });
+  let fin = new Map();
+  if (engine === 'gemini') { log('AI', 'Writing title and hook from the final clips…'); fin = await writeText(windows.map(w => ({ start: w.start, end: w.end })), { filePath, workDir, g, log: (m, k) => log('AI', m, k), game }); }
+  const clips = picked.map((c, n) => {
+    let { start, end } = windows[n]; const v = fin.get(n) ? { ...(c.ai || {}), ...fin.get(n) } : c.ai;
     const x = v && v.title ? { title: String(v.title).slice(0, 70), hookText: String(v.hookText || v.title), description: String(v.description || '').slice(0, 400) || localText(c, n).description, hashtags: Array.isArray(v.hashtags) ? v.hashtags : localText(c, n).hashtags, keywords: Array.isArray(v.keywords) ? v.keywords.map(String).slice(0, 12) : [] } : localText(c, n);
     const tags = [...new Set([...(x.hashtags || []).map(h => '#' + String(h).replace(/^#/, '').replace(/\s+/g, '')), '#gaming'])].slice(0, 8);
     let hook = x.hookText; try { const he = EM.splitTitle(String(hook || '')).emojis; hook = HK.hookLines(hook, x.title, HN); if (he && he.length) hook += ' ' + he.slice(0, 2).join(''); } catch {}

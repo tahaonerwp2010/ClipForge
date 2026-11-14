@@ -343,7 +343,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mt-3">
         {([
           { id: 'long' as const, Icon: Clapperboard, title: 'Clips from a long video', text: 'Let AI find the best moments and cut them into short clips.', points: ['Automatic moment finding', 'Smart captions', 'Face-tracking reframe'], badge: 'Popular' },
-          { id: 'gaming' as const, Icon: Gamepad2, title: 'Gaming clips', text: 'For gameplay with little or no talking. Finds the big moments from sound and action.', points: ['Works with any game', 'Title, hook and description by AI', 'Same studio and options as long videos'], badge: 'New' },
+          { id: 'gaming' as const, Icon: Gamepad2, title: 'Gaming clips', text: 'For gameplay with little or no talking. Finds the big moments from sound and action.', points: ['Works with any game', 'Title, hook and description by AI', 'Needs a Gemini key: it checks the video frames'], badge: 'New' },
           { id: 'short' as const, Icon: Scissors, title: 'Edit already cut clips', text: 'Add captions and styling to clips you have already made.', points: ['Your edit stays untouched', 'Captions and style only', 'Up to 30 clips at once'] },
           { id: 'split' as const, Icon: Rows2, title: 'Split screen', text: 'Facecam on top, game or footage below.', points: ['Finds the facecam for you', 'Two videos synced by sound', 'Adjustable layout'] },
           { id: 'youtube' as const, Icon: LinkIcon, title: 'Paste a YouTube link', text: 'For videos you own or have permission to use.', points: ['Imported up to 1080p', 'Live download progress', 'Then works like a long video'] },

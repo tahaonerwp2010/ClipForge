@@ -727,6 +727,15 @@ export default function App() {
               onSelectTab={setActiveStudioTab}
             />
 
+            {selectedVideo.gaming && (() => {
+              let hasKey = false;
+              try { const c = AiService.getConfig(); hasKey = !!c.enabled && Object.entries(c.providers).some(([id, p]: [string, any]) => /gemini/i.test(id) && (p.keys || []).some((k: any) => k.status !== 'invalid')); } catch {}
+              return (
+                <div className={`mx-3 md:mx-8 mt-2 px-4 py-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2 ${hasKey ? 'bg-[#0e1b15] border-[#2c4439] text-[#bef264]' : 'bg-[#2a1a0c] border-[#a8611f] text-[#ffb866]'}`}>
+                  <span>{hasKey ? 'Gaming clips use your Gemini key to look at the video frames and pick the best moments.' : 'Gaming clips need a Gemini key. Add one in Settings, otherwise the moments and titles will be basic.'}</span>
+                </div>
+              );
+            })()}
             {/* SINGLE UNIFIED SCROLL CONTAINER (Both settings & mobile preview scroll together!) */}
             <div className="flex-1 overflow-y-auto px-3 md:px-8 py-4">
               <div className="flex flex-col lg:flex-row items-start justify-between gap-8 max-w-6xl mx-auto pb-16">
@@ -736,6 +745,7 @@ export default function App() {
                   {activeStudioTab === 'format' && (
                     <FormatTab
                       shortsMode={!!selectedVideo.shorts}
+                      gaming={!!selectedVideo.gaming}
                       split={split}
                       onSplitChange={setSplit}
                       canvasRatio={canvasRatio}

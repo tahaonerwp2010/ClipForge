@@ -10,14 +10,15 @@ const wants = (captions) => !!(captions && captions.enabled && (DYN.get(captions
 
 
 async function segmentAll(segment, frames) {
-  const out = [], tops = [], bots = [];
+  const out = [], tops = [], bots = []; let found = 0, seen = 0;
   for (let i = 0; i < frames.length; i += 60) {
     const r = await segment(frames.slice(i, i + 60)); const part = Array.isArray(r) ? r : r && r.m;
     if (!Array.isArray(part)) throw new Error('segmentation returned nothing');
     out.push(...part); if (r && r.top != null) { tops.push(r.top); bots.push(r.bottom); }
+    if (r && r.n != null) { found += r.found || 0; seen += r.n; }
   }
   const med = a => a.length ? a.sort((x, y) => x - y)[a.length >> 1] : null;
-  return { out, box: tops.length ? { top: med(tops), bottom: med(bots) } : null };
+  return { out, box: tops.length ? { top: med(tops), bottom: med(bots) } : null, share: seen ? found / seen : null };
 }
 // ---- fallback: head + shoulders shape built from the face detector (no AI model needed) ----
 const zlib = require('zlib');
@@ -77,6 +78,7 @@ async function masks({ R, segment, detectFaces, cacheDir, workDir, input, start,
       const r = await segmentAll(segment, frames);
       out = r.out; box = r.box;
       if (out.filter(Boolean).length < out.length * 0.5) throw new Error('no person found in most frames');
+      if (r.share != null && (r.share < 0.3 || !r.box)) throw new Error('no person found in most frames');   // a game scene: no real person -> the caller draws the big word in front, near the top of the video
     } catch (e) {
       if (!detectFaces) throw e;
       log(`Person cut-out (AI) failed: ${String(e.message).slice(0, 80)}. Using the face-based cut-out instead`);

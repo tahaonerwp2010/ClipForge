@@ -36,7 +36,9 @@ async function whatsNew(repo, rel) {
   if (!t.trim()) t = String(rel.body || '').replace(/\*\*Full Changelog\*\*:.*$/im, '').replace(/^#+\s*What's Changed\s*$/im, '');
   const h = [...t.matchAll(/^#{1,3}\s/gm)].map(m => m.index);      // only the first section = this version; older sections are never shown
   if (h.length > 1 && h[0] === 0) t = t.slice(0, h[1]);
-  return t.trim().slice(0, 2500);
+  // short and simple: only this version, at most 8 points, each trimmed to one or two lines
+  const lines = t.trim().split(/\r?\n/).filter(l => l.trim()), head = lines.filter(l => /^#/.test(l)).slice(0, 1), items = lines.filter(l => !/^#/.test(l) && !/^\s{2,}[-*]/.test(l)).slice(0, 8).map(l => l.length > 170 ? l.slice(0, 167).replace(/\s+\S*$/, '') + '…' : l);
+  return [...head, '', ...items].join('\n').trim().slice(0, 1400);
 }
 
 async function check(repoIn, current) {
