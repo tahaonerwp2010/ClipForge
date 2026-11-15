@@ -19,7 +19,11 @@ import {
   Rows2,
   Crop,
   Wand2,
-  Gamepad2
+  Gamepad2,
+  Zap,
+  Rocket,
+  ArrowRight,
+  UploadCloud
 } from 'lucide-react';
 
 const MAX_SHORTS = 30;
@@ -67,6 +71,8 @@ interface LandingStartPageProps {
   onVideoSelectedAndContinue: (source: VideoSource) => void;
   selectedVideo: VideoSource | null;
   onSelectVideo: (source: VideoSource) => void;
+  aiBoostKeys?: number;
+  onOpenSettings?: () => void;
   onOpenStory?: () => void;
 }
 
@@ -74,8 +80,11 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
   onVideoSelectedAndContinue,
   selectedVideo,
   onSelectVideo,
-  onOpenStory
+  onOpenStory,
+  aiBoostKeys = 0,
+  onOpenSettings
 }) => {
+  const [drag, setDrag] = useState(false);
   const [activeCard, setActiveCard] = useState<'long' | 'gaming' | 'short' | 'split' | 'youtube'>('long');
   const isLong = activeCard === 'long' || activeCard === 'gaming';
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -254,6 +263,9 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
+    await processFile(file);
+  };
+  const processFile = async (file: File) => {
     const realPath = window.electronAPI?.getPathForFile?.(file) || undefined;
     setPrepBusy(true);
     const orig = URL.createObjectURL(file);
@@ -297,7 +309,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       <input 
         ref={fileInputRef}
         type="file"
-        accept="video/mp4,video/webm,video/quicktime,video/mkv"
+        accept="video/mp4,video/webm,video/quicktime,video/mkv,video/x-matroska,video/x-msvideo,.mkv,.mov,.m4v,.avi"
         className="hidden"
         onChange={handleFileUpload}
       />
@@ -311,66 +323,61 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       />
 
       {/* HERO */}
-      <section className="relative w-full overflow-hidden rounded-2xl border border-[#1d3228] bg-gradient-to-br from-[#0f2018] via-[#0b1812] to-[#08110d] px-7 py-6">
-        <svg className="absolute right-0 bottom-0 h-full w-[48%] opacity-60 pointer-events-none" viewBox="0 0 400 200" preserveAspectRatio="xMaxYMax slice" aria-hidden>
-          <defs>
-            <linearGradient id="hz" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#2f6b47" stopOpacity="0.55" /><stop offset="1" stopColor="#0b1812" stopOpacity="0" /></linearGradient>
-            <linearGradient id="hf" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#0b1812" stopOpacity="1" /><stop offset="0.55" stopColor="#0b1812" stopOpacity="0" /></linearGradient>
-          </defs>
-          <path d="M0 150 L70 70 L110 110 L170 30 L240 120 L290 80 L400 150 L400 200 L0 200Z" fill="url(#hz)" />
-          {[40, 95, 150, 215, 270, 330, 375].map((x, i) => (
-            <path key={i} d={`M${x} 200 L${x - 16 - (i % 3) * 3} 200 L${x} ${118 - (i % 4) * 16} L${x + 16 + (i % 3) * 3} 200Z`} fill="#06100b" opacity={0.85} />
-          ))}
-          <rect width="400" height="200" fill="url(#hf)" />
-        </svg>
-        <div className="relative max-w-md">
-          <div className="text-[10px] font-bold tracking-[0.22em] text-[#8fd0a4]">WELCOME TO CLIPFORGE</div>
-          <h1 className="mt-2 text-[28px] leading-[1.15] font-bold tracking-tight text-white">
-            Turn long videos into<br /><span className="text-[#bef264]">short, engaging clips</span>
-          </h1>
-          <p className="mt-3 text-xs leading-relaxed text-neutral-300/90">
-            Transcribed, cut, reframed and captioned on this {(window as any).electronAPI?.isMobile ? 'phone' : 'computer'}. Nothing is uploaded unless you turn Cloud Boost on.
-          </p>
-        </div>
+      <section className="relative w-full overflow-hidden rounded-2xl border border-[#1f3d2b] bg-[#040a07] aspect-[2061/542]">
+        <img src="./hero-banner.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+        <h1 className="sr-only">Turn long videos into short, engaging clips</h1>
       </section>
 
       {/* START A NEW PROJECT */}
-      <div className="w-full mt-6">
-        <h2 className="text-base font-bold text-white tracking-tight">Start a new project</h2>
-        <p className="text-xs text-neutral-400 mt-0.5">Choose how you want to begin. Captions, styling and preview come next.</p>
+      <div className="w-full mt-4 flex items-center gap-3 px-1">
+        <Rocket className="w-[22px] h-[22px] text-[#8fd13a]" strokeWidth={1.8} />
+        <h2 className="text-[19px] font-semibold text-white tracking-tight leading-tight">Choose a feature to get started</h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mt-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-2.5 w-full mt-3">
         {([
-          { id: 'long' as const, Icon: Clapperboard, title: 'Clips from a long video', text: 'Let AI find the best moments and cut them into short clips.', points: ['Automatic moment finding', 'Smart captions', 'Face-tracking reframe'], badge: 'Popular' },
-          { id: 'gaming' as const, Icon: Gamepad2, title: 'Gaming clips', text: 'For gameplay with little or no talking. Finds the big moments from sound and action.', points: ['Works with any game', 'Title, hook and description by AI', 'Needs a Gemini key: it checks the video frames'], badge: 'New' },
-          { id: 'short' as const, Icon: Scissors, title: 'Edit already cut clips', text: 'Add captions and styling to clips you have already made.', points: ['Your edit stays untouched', 'Captions and style only', 'Up to 30 clips at once'] },
-          { id: 'split' as const, Icon: Rows2, title: 'Split screen', text: 'Facecam on top, game or footage below.', points: ['Finds the facecam for you', 'Two videos synced by sound', 'Adjustable layout'] },
-          { id: 'youtube' as const, Icon: LinkIcon, title: 'Paste a YouTube link', text: 'For videos you own or have permission to use.', points: ['Imported up to 1080p', 'Live download progress', 'Then works like a long video'] },
+          { id: 'long' as const, Icon: Clapperboard, img: 'video', title: 'Clips from a Long Video', text: 'Find the best moments and cut them into short clips.', points: ['Auto moment finding', 'Smart captions', 'Face-tracking reframe'], badge: 'Popular' },
+          { id: 'gaming' as const, Icon: Gamepad2, img: 'gaming', title: 'Gaming Clips', text: 'For gameplay with little or no talking.', points: ['Works with any game', 'Title, hook and description', 'Needs a Gemini key'], badge: 'New' },
+          { id: 'short' as const, Icon: Scissors, img: 'scissors', title: 'Edit Already Cut Clips', text: 'Add captions and styling to clips you have already made.', points: ['Your edit stays untouched', 'Captions and style only', 'Up to 30 clips'] },
+          { id: 'split' as const, Icon: Rows2, img: 'split', title: 'Split Screen', text: 'Facecam on top, game or footage below.', points: ['Finds the facecam', 'Two videos synced', 'Adjustable layout'] },
+          { id: 'youtube' as const, Icon: LinkIcon, img: 'link', title: 'Paste a YouTube Link', text: 'For videos you own or have permission to use.', points: ['Imported up to 1080p', 'Live download progress', 'Works like a long video'] },
         ]).map(c => {
           const on = activeCard === c.id;
           return (
             <button key={c.id} type="button" onClick={() => setActiveCard(c.id)}
-              className={`relative text-left p-4 rounded-2xl border transition-all cursor-pointer flex flex-col ${on ? 'bg-[#0f1f17] border-[#3f9a5a] shadow-[0_0_0_1px_rgba(63,154,90,0.35),0_8px_30px_-12px_rgba(190,242,100,0.25)]' : 'bg-[#0b1611] border-[#17291f] hover:border-[#2a4a38] hover:bg-[#0d1a14]'}`}>
-              {c.badge && <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#bef264] text-black">{c.badge}</span>}
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 border ${on ? 'bg-[#bef264] text-black border-transparent' : 'bg-[#13241b] text-[#8fd0a4] border-[#1d3228]'}`}>
-                <c.Icon className="w-[18px] h-[18px]" />
-              </div>
-              <h3 className="text-[13px] font-bold text-white leading-snug flex items-center gap-1.5 flex-wrap">{c.title}{c.id === 'split' && <ProTag />}</h3>
-              <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">{c.text}</p>
-              <ul className={`mt-3 space-y-1 `}>
+              className={`group relative text-left px-3.5 pt-3.5 pb-12 h-[240px] rounded-xl border transition-colors cursor-pointer flex flex-col overflow-hidden ${on ? 'bg-gradient-to-b from-[#0e2515] to-[#08140d] border-[#6fd44a] shadow-[0_0_0_1px_rgba(111,212,74,0.75),0_0_28px_-2px_rgba(111,212,74,0.55),inset_0_0_22px_-8px_rgba(111,212,74,0.4)]' : 'bg-[#09130d]/90 border-[#1d3326] hover:border-[#3f7a4a]'}`}>
+              {c.badge && <span className="absolute top-0 right-3.5 text-[12px] font-semibold px-3 py-[3px] rounded-b-lg bg-[#7ddc4a] text-[#06210a] leading-tight">{c.badge}</span>}
+              {c.id === 'split' && <span className="absolute top-2 right-3"><ProTag /></span>}
+              <img src={`./feature-${c.img}.png`} alt="" className="w-[46px] h-[46px] shrink-0 object-contain mt-0.5 mb-3" draggable={false} />
+              <h3 className="text-[15px] font-medium text-white leading-snug tracking-tight">{c.title}</h3>
+              <p className="text-[12px] text-neutral-300 mt-1.5 leading-[1.4]">{c.text}</p>
+              <ul className="mt-2.5 space-y-[3px]">
                 {c.points.map(pt => (
-                  <li key={pt} className="flex items-center gap-1.5 text-[11px] text-neutral-300"><Check className="w-3 h-3 text-[#3f9a5a] shrink-0" />{pt}</li>
+                  <li key={pt} className="flex items-center gap-2 text-[11.5px] text-neutral-200 leading-tight whitespace-nowrap"><Check className="w-3.5 h-3.5 text-[#7ddc4a] shrink-0" strokeWidth={3} />{pt}</li>
                 ))}
               </ul>
+              <span className={`absolute bottom-3 right-3 w-[26px] h-[26px] rounded-full flex items-center justify-center transition ${on ? 'border-2 border-white/90 text-white' : 'bg-[#2f9a3f] text-white group-hover:bg-[#3bb04c]'}`}><ArrowRight className="w-3.5 h-3.5" strokeWidth={2.5} /></span>
             </button>
           );
         })}
       </div>
 
+      {/* DROP ZONE */}
+      <div role="button" tabIndex={0}
+        onClick={() => { if (!isLong) setActiveCard('long'); fileInputRef.current?.click(); }}
+        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f && (/^video\//.test(f.type) || /\.(mp4|mov|mkv|webm|avi|m4v)$/i.test(f.name))) { if (!isLong) setActiveCard('long'); processFile(f); } }}
+        className={`relative mt-2.5 w-full h-[86px] overflow-hidden rounded-xl border-2 border-dashed px-6 flex items-center justify-center gap-4 cursor-pointer transition-colors bg-gradient-to-b from-[#0a160f] to-[#07110b] ${drag ? 'border-[#a6f04a] shadow-[0_0_26px_-2px_rgba(111,212,74,0.7),inset_0_0_20px_-8px_rgba(111,212,74,0.5)]' : 'border-[#6fd44a] shadow-[0_0_22px_-2px_rgba(111,212,74,0.6),inset_0_0_20px_-8px_rgba(111,212,74,0.5)] hover:border-[#a6f04a]'}`}>
+        <svg className="absolute inset-x-0 bottom-0 w-full h-8 pointer-events-none" viewBox="0 0 1000 40" preserveAspectRatio="none" aria-hidden><path d="M0 40 C150 10 300 34 500 24 C700 14 850 36 1000 12 L1000 40Z" fill="#2f9a3f" opacity="0.28" /></svg>
+        <UploadCloud className="relative w-11 h-11 text-[#7ddc4a] shrink-0" strokeWidth={1.5} />
+        <div className="relative"><div className="text-[17px] font-medium text-white leading-tight">Drag and drop a video here</div><div className="text-[13px] text-neutral-300 mt-1">or click to browse{!longSelected && isLong && <> · <button type="button" onClick={(e) => { e.stopPropagation(); onSelectVideo(SAMPLE_VIDEOS[0]); }} className="underline decoration-dotted hover:text-white cursor-pointer">try the Podcast Sample</button></>}</div></div>
+        <div className="hidden sm:flex gap-1.5 absolute right-6 top-1/2 -translate-y-1/2">{['MP4', 'MOV', 'AVI', 'MKV'].map(x => <span key={x} className="px-2 py-[2px] rounded-md border border-[#3a7a4e] bg-[#0b1a12] text-[11px] font-medium text-neutral-200">{x}</span>)}</div>
+      </div>
+
       {/* 5. DYNAMIC INPUT AREA BELOW CARDS */}
-      <div className="w-full mt-4">
-        {isLong && (
+      <div className="w-full mt-2.5">
+        {isLong && longSelected && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-[#0c1611] border border-[#182a22]">
             <div className="flex items-center gap-3">
               <button
@@ -590,7 +597,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       )}
 
       {/* 6. NEXT BUTTON ROW */}
-      <div className="w-full mt-5 flex items-center gap-3">
+      <div className={`w-full mt-4 items-center gap-3 ${isLong && !longSelected ? 'hidden' : 'flex'}`}>
         <button
           disabled={!nextVideo}
           onClick={() => nextVideo && onVideoSelectedAndContinue(nextVideo)}

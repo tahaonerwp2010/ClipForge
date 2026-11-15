@@ -2,6 +2,7 @@
 export const PRO_PLAN_NAME = 'Monthly';
 export const PRO_PRICE_USD = 10;                 // shown big in the Buy Pro window
 export const PRO_PERIOD = 'per month';
+export const PRO_HIGHLIGHTS = ['AI Boost: moments, titles, hooks', '40+ dynamic caption styles', 'AI Auto Hook on every clip', 'Auto sound and visual effects', 'Custom framing and zoom', 'AI Auto-Reframing', 'Split / dual screen', '1440p and 4K export'];
 export const PRO_DETAILS = [
   'AI Boost: AI-picked moments, titles, hooks, descriptions and translated captions',
   'Dynamic captions: 40+ animated styles, including the word behind the speaker',

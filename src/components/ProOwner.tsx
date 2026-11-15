@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Copy, Check, ArrowLeft, ArrowRight, Crown, ShieldCheck, Loader2, Lock, Smartphone, ExternalLink } from 'lucide-react';
+import { X, Copy, Check, ArrowLeft, ArrowRight, Gem, ShieldCheck, Loader2, Lock, Smartphone, ExternalLink, KeyRound, CreditCard, Wallet } from 'lucide-react';
 import solLogo from '../assets/pay/sol.png';
-import { PAY_METHODS, PRO_PLAN_NAME, PRO_PRICE_USD, PRO_PERIOD, PRO_DETAILS, CONTACTS, GUMROAD_URL } from '../config/proConfig';
+import { PAY_METHODS, PRO_PLAN_NAME, PRO_PRICE_USD, PRO_PERIOD, PRO_HIGHLIGHTS, CONTACTS, GUMROAD_URL } from '../config/proConfig';
 import { LicenseService, useLicense } from '../services/licenseService';
 
 const Overlay: React.FC<{ onClose: () => void; children: React.ReactNode; wide?: boolean }> = ({ onClose, children, wide }) => (
   <div className="fixed inset-0 z-[400] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-    <div className={`w-full ${wide ? 'max-w-lg' : 'max-w-md'} bg-[#0b1410] border border-[#1d3228] rounded-2xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto`}>{children}</div>
+    <div className={`w-full ${wide ? 'max-w-lg' : 'max-w-md'} relative bg-[#0b1410] border border-[#1d3228] rounded-2xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto`}>{children}</div>
   </div>
 );
 const Btn: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { primary?: boolean }> = ({ primary, className = '', ...p }) => (
@@ -33,6 +33,7 @@ export const BuyProModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [method, setMethod] = useState(PAY_METHODS[0]?.id);
   const [id, setId] = useState(lic.id);
   const m = PAY_METHODS.find(x => x.id === method) || PAY_METHODS[0];
+  const [keyOpen, setKeyOpen] = useState(false);
   const [key, setKey] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
@@ -49,41 +50,41 @@ export const BuyProModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   return (
     <Overlay onClose={onClose} wide>
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2.5"><div className="w-9 h-9 rounded-xl bg-[#bef264]/15 text-[#bef264] flex items-center justify-center"><Crown className="w-4 h-4" /></div>
-          <h3 className="text-base font-bold text-white">{step === 1 ? 'ClipForge Pro' : 'Payment details'}</h3></div>
-        <button type="button" onClick={onClose} className="text-neutral-400 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
+        {step === 2 ? <div className="flex items-center gap-2.5"><div className="w-9 h-9 rounded-xl bg-[#bef264]/15 text-[#bef264] flex items-center justify-center"><Gem className="w-4 h-4" /></div><h3 className="text-base font-bold text-white">Pay with Easypaisa or crypto</h3></div> : <span />}
+        <button type="button" onClick={onClose} className="text-neutral-400 hover:text-white cursor-pointer absolute right-4 top-4" title="Close"><X className="w-4 h-4" /></button>
       </div>
 
       {step === 1 && (<>
-        <div className="rounded-2xl border border-[#2a4a35] bg-gradient-to-b from-[#12201a] to-[#0b1410] p-5 text-center space-y-1">
-          <div className="inline-block px-3 py-0.5 rounded-full bg-[#bef264] text-black text-[10px] font-extrabold uppercase tracking-widest">{PRO_PLAN_NAME}</div>
-          <div className="flex items-end justify-center gap-1.5 pt-2"><span className="text-5xl font-black text-white leading-none">${PRO_PRICE_USD}</span><span className="text-xs text-neutral-400 pb-1">{PRO_PERIOD}</span></div>
+        <div className="text-center space-y-1 pt-1">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-[#d9f99d] to-[#65a30d] text-black flex items-center justify-center shadow-lg shadow-[#bef264]/20"><Gem className="w-7 h-7" /></div>
+          <h3 className="text-xl font-extrabold text-white pt-2">ClipForge Pro</h3>
+          <p className="text-xs text-neutral-400">Everything unlocked. Cancel any time.</p>
         </div>
-        <div>
-          <h4 className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-2">What you get</h4>
-          <ul className="space-y-2">
-            {PRO_DETAILS.map(d => <li key={d} className="flex items-start gap-2 text-xs text-neutral-200"><Check className="w-3.5 h-3.5 text-[#bef264] shrink-0 mt-0.5" /><span>{d}</span></li>)}
-          </ul>
+        <div className="flex items-end justify-center gap-1.5"><span className="text-5xl font-black text-white leading-none">${PRO_PRICE_USD}</span><span className="text-sm text-neutral-400 pb-1">/ month</span></div>
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 rounded-2xl bg-[#09100d] border border-[#17291f] p-4">
+          {PRO_HIGHLIGHTS.map(d => <li key={d} className="flex items-center gap-2 text-xs text-neutral-200"><Check className="w-3.5 h-3.5 text-[#bef264] shrink-0" /><span>{d}</span></li>)}
+        </ul>
+        <div className="space-y-2">
+          <Btn primary onClick={() => open(GUMROAD_URL)} className="w-full !py-3 !text-sm"><CreditCard className="w-4 h-4" /> Subscribe with card</Btn>
+          <p className="text-[11px] text-neutral-500 text-center">Secure checkout by Gumroad. After paying you get a licence key by email.</p>
         </div>
-        <div className="rounded-xl bg-[#09100d] border border-[#17291f] p-3 space-y-2">
-          <h4 className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Already subscribed? Enter your key</h4>
-          {gr?.has && gr.active ? (
-            <div className="flex items-center justify-between gap-3 text-xs"><span className="text-[#bef264] flex items-center gap-1.5"><Check className="w-3.5 h-3.5" /> Pro is active with a card subscription (key ...{gr.last4})</span><Btn onClick={removeKey} disabled={busy} className="!py-1.5">Remove key</Btn></div>
-          ) : (<>
-            {gr?.has && !gr.active && <p className="text-[11px] text-amber-300">{gr.reason || 'This key is not active.'}</p>}
-            <div className="flex gap-2"><input value={key} onChange={e => setKey(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') activate(); }} placeholder="XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX" spellCheck={false}
-              className="flex-1 min-w-0 bg-[#0d1712] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-3 py-2 text-xs text-white font-mono outline-none" />
-              <Btn primary onClick={activate} disabled={busy || !key.trim()}>{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Activate'}</Btn></div>
-          </>)}
-          {msg && <p className={`text-[11px] ${msg.ok ? 'text-[#bef264]' : 'text-red-300'}`}>{msg.t}</p>}
+        <div className="grid grid-cols-2 gap-2">
+          <Btn onClick={() => setStep(2)}><Wallet className="w-3.5 h-3.5" /> Easypaisa / Crypto</Btn>
+          <Btn onClick={() => setKeyOpen(v => !v)} className={keyOpen || gr?.has ? '!border-[#3f9a5a] !text-[#bef264]' : ''}><KeyRound className="w-3.5 h-3.5" /> I have a key</Btn>
         </div>
-        <div className="flex justify-between gap-2 pt-1 flex-wrap"><Btn onClick={onClose}>Close</Btn>
-          <div className="flex gap-2 flex-wrap justify-end">
-            <Btn onClick={() => setStep(2)}>Easypaisa / Crypto</Btn>
-            <Btn primary onClick={() => open(GUMROAD_URL)}>Pay by card <ExternalLink className="w-3.5 h-3.5" /></Btn>
+        {(keyOpen || gr?.has) && (
+          <div className="rounded-xl bg-[#09100d] border border-[#17291f] p-3 space-y-2">
+            {gr?.has && gr.active ? (
+              <div className="flex items-center justify-between gap-3 text-xs"><span className="text-[#bef264] flex items-center gap-1.5"><Check className="w-3.5 h-3.5" /> Pro is active (key ...{gr.last4})</span><Btn onClick={removeKey} disabled={busy} className="!py-1.5">Remove key</Btn></div>
+            ) : (<>
+              {gr?.has && !gr.active && <p className="text-[11px] text-amber-300">{gr.reason || 'This key is not active.'}</p>}
+              <div className="flex gap-2"><input autoFocus value={key} onChange={e => setKey(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') activate(); }} placeholder="Paste your licence key" spellCheck={false}
+                className="flex-1 min-w-0 bg-[#0d1712] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-3 py-2 text-xs text-white font-mono outline-none" />
+                <Btn primary onClick={activate} disabled={busy || !key.trim()}>{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Activate'}</Btn></div>
+            </>)}
+            {msg && <p className={`text-[11px] ${msg.ok ? 'text-[#bef264]' : 'text-red-300'}`}>{msg.t}</p>}
           </div>
-        </div>
-        <p className="text-[11px] text-neutral-500">Card payments: pay on Gumroad, then copy the licence key from your receipt email and paste it above. Your subscription renews every month; cancel any time on Gumroad.</p>
+        )}
       </>)}
 
       {step === 2 && (<>
@@ -136,10 +137,10 @@ export const ProBlockedModal: React.FC<{ features: string[]; onClose: () => void
     <div className="flex items-center gap-2.5"><div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-300 flex items-center justify-center"><Lock className="w-4 h-4" /></div><h3 className="text-base font-bold text-white">Pro features in use</h3></div>
     <p className="text-xs text-neutral-300">Some of the things you picked are Pro features, so these clips cannot be generated:</p>
     <ul className="space-y-1.5 rounded-xl bg-[#09100d] border border-[#17291f] p-3">
-      {features.map(f => <li key={f} className="flex items-center gap-2 text-xs text-neutral-100"><Crown className="w-3.5 h-3.5 text-[#bef264] shrink-0" />{f}</li>)}
+      {features.map(f => <li key={f} className="flex items-center gap-2 text-xs text-neutral-100"><Gem className="w-3.5 h-3.5 text-[#bef264] shrink-0" />{f}</li>)}
     </ul>
     <p className="text-[11px] text-neutral-400">Turn these off, or get Pro to use them. You can still preview them in the studio.</p>
-    <div className="flex justify-between gap-2 pt-1"><Btn onClick={() => { onClose(); LicenseService.openBuy(); }}><Crown className="w-3.5 h-3.5" /> Get Pro</Btn><Btn primary onClick={onClose}>Cancel</Btn></div>
+    <div className="flex justify-between gap-2 pt-1"><Btn onClick={() => { onClose(); LicenseService.openBuy(); }}><Gem className="w-3.5 h-3.5" /> Get Pro</Btn><Btn primary onClick={onClose}>Cancel</Btn></div>
   </Overlay>
 );
 

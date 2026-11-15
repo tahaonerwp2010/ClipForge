@@ -47,7 +47,7 @@ import { Check } from 'lucide-react';
 import { ConfirmDialog, ModelRequiredDialog } from './components/Dialogs';
 import { BuyProModal, OwnerLogin, OwnerPanel, ProBlockedModal } from './components/ProOwner';
 import { LicenseService, useLicense } from './services/licenseService';
-import { X, Crown } from 'lucide-react';
+import { X, Gem, Zap } from 'lucide-react';
 import { PRO_ENFORCED, TRIAL_ENABLED } from './config/proConfig';
 import { isDynStyle } from './utils/dynCaptions';
 import { SoftwareManager } from './services/softwareManager';
@@ -535,8 +535,8 @@ export default function App() {
         />
         {PRO_ENFORCED && TRIAL_ENABLED && lic.loaded && !lic.pro && !lic.ownerPw && (
           <button type="button" onClick={() => LicenseService.openBuy()} title="Get Pro"
-            className={`fixed top-1.5 right-5 max-md:right-2 max-md:top-2 z-[70] flex items-center gap-1.5 px-2.5 py-0.5 max-md:p-1.5 rounded-md border text-[10px] font-bold cursor-pointer ${lic.trial ? 'bg-[#bef264]/15 hover:bg-[#bef264]/25 border-[#bef264]/50 text-[#bef264]' : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-amber-200'}`}>
-            <Crown className="w-3 h-3" /><span className="max-md:hidden">{lic.trial ? `${lic.trialDaysLeft} day${lic.trialDaysLeft === 1 ? '' : 's'} left` : 'Trial ended · Get Pro'}</span>
+            className={`fixed top-[19px] right-[26px] max-md:right-2 max-md:top-2 z-[70] flex items-center gap-1.5 px-3 h-[34px] max-md:p-1.5 rounded-full border text-[11px] font-bold cursor-pointer ${lic.trial ? 'bg-[#bef264]/15 hover:bg-[#bef264]/25 border-[#bef264]/50 text-[#bef264]' : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-amber-200'}`}>
+            <Gem className="w-3 h-3" /><span className="max-md:hidden">{lic.trial ? `${lic.trialDaysLeft} day${lic.trialDaysLeft === 1 ? '' : 's'} left` : 'Trial ended · Get Pro'}</span>
           </button>
         )}
         {lic.ownerPw && (
@@ -548,10 +548,12 @@ export default function App() {
 
         {/* VIEW 1: HOME LANDING PAGE */}
         {activeView === 'home' && (
-          <main className="flex-1 overflow-y-auto">
-            <div className="flex flex-col xl:flex-row gap-5 px-3 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto">
+          <main className="flex-1 overflow-y-auto bg-[#030806] bg-[radial-gradient(900px_500px_at_85%_-5%,rgba(40,120,70,0.14),transparent_60%)]">
+            <div className="flex flex-col xl:flex-row gap-5 px-3 md:px-5 py-3 md:py-3.5 max-w-[1700px] mx-auto">
               <div className="flex-1 min-w-0">
                 <LandingStartPage
+                  aiBoostKeys={(() => { try { const c = AiService.getConfig(); return c.enabled ? Object.values(c.providers || {}).reduce((t: number, p: any) => t + (p.keys || []).filter((k: any) => k.status !== 'invalid').length, 0) : 0; } catch { return 0; } })()}
+                  onOpenSettings={() => setActiveView('settings')}
                   selectedVideo={selectedVideo}
                   onSelectVideo={(video) => setSelectedVideo(video)}
                   onVideoSelectedAndContinue={handleProceedToStudio}
@@ -564,7 +566,7 @@ export default function App() {
                 />
                 <TipCard />
               </div>
-              <HomeAside projects={projects} onNew={() => document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' })} onSettings={() => setActiveView('settings')} />
+              <HomeAside aiBoostKeys={(() => { try { const c = AiService.getConfig(); return c.enabled ? Object.values(c.providers || {}).reduce((t: number, p: any) => t + (p.keys || []).filter((k: any) => k.status !== 'invalid').length, 0) : 0; } catch { return 0; } })()} showPro={PRO_ENFORCED && !lic.pro} onBuyPro={() => LicenseService.openBuy()} projects={projects} onNew={() => document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' })} onSettings={() => setActiveView('settings')} />
             </div>
           </main>
         )}
