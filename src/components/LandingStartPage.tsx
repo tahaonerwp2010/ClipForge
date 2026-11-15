@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 
 const MAX_SHORTS = 50;
-const MAX_SHORT_SEC = 180;
+const MAX_SHORT_SEC = 300;
 interface ShortItem { id: string; name: string; path: string; url: string; duration: number; thumbnail: string }
 const FALLBACK_THUMB = 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=600&auto=format&fit=crop&q=80';
 const fmtBytes = (b = 0) => b >= 1e9 ? `${(b / 1e9).toFixed(2)} GB` : b >= 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.max(0, Math.round(b / 1e3))} KB`;
@@ -127,7 +127,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       let meta: Awaited<ReturnType<typeof readVideoMeta>>;
       try { meta = await readVideoMeta(url); } catch { URL.revokeObjectURL(url); warns.push(`“${file.name}” could not be read.`); continue; }
       if (meta.duration > MAX_SHORT_SEC + 0.5) {
-        tooLong++; warns.push(`“${file.name}” is ${fmtClock(meta.duration)} long. Only clips of 3 minutes or less are allowed.`);
+        tooLong++; warns.push(`“${file.name}” is ${fmtClock(meta.duration)} long. Only clips of 5 minutes or less are allowed.`);
         URL.revokeObjectURL(url); continue;
       }
       added.push({ id: `${Date.now()}-${added.length}-${Math.random().toString(36).slice(2, 6)}`, name: file.name.replace(/\.[^/.]+$/, ''), path: realPath, url, duration: Math.max(1, Math.round(meta.duration)), thumbnail: meta.thumb });

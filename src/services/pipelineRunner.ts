@@ -106,8 +106,10 @@ export class PipelineRunner {
     // show what we already know straight away (no flash of 0%)
     if (config.resume) each(c => c.onStepChange?.(Math.max(0, steps.findIndex(x => x.status === 'running')), steps.map(x => ({ ...x }))));
 
-    const off = api.onPipelineEvent?.((ev: any) => {
+    let lastSeq = 0;
+    const handle = (ev: any) => {
       if (this.runs.get(project.id) !== run) return;
+      if (typeof ev.seq === 'number') { if (ev.type === 'step' || ev.type === 'log') { if (ev.seq <= lastSeq) return; lastSeq = ev.seq; } }
       if (ev.type === 'step') {
         const s = steps[ev.index];
         s.status = ev.status;
@@ -132,7 +134,19 @@ export class PipelineRunner {
         run.logs = [...run.logs.slice(-120), l];
         each(c => c.onLog?.(l));
       }
-    });
+    };
+    const off0 = api.onPipelineEvent?.(handle);
+    // Safety net: the engine also keeps a journal of its steps and log lines. If a live event was ever missed, the next poll brings it in (duplicates are ignored by their number).
+    const timer = (api as any).pipelineEventsSince ? setInterval(async () => {
+      try {
+        const r = await (api as any).pipelineEventsSince(lastSeq);
+        if (!r || String(r.id) !== String(project.id) || this.runs.get(project.id) !== run) return;
+        (r.events || []).forEach((e: any) => handle(e));
+        (r.stepProgress || []).forEach((e: any) => handle(e));
+        if (r.progress) handle(r.progress);
+      } catch { /* ignore */ }
+    }, 1500) : undefined;
+    const off = () => { try { off0 && off0(); } catch { /* ignore */ } if (timer) clearInterval(timer); };
     run.off = off;
 
     run.promise = (async () => {

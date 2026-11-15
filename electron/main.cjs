@@ -533,11 +533,21 @@ ipcMain.handle('show-in-folder', async (e, p) => { shell.showItemInFolder(p); re
 
 // ---- Real pipeline ----
 let currentRun = null;
+let evJ = { id: '', seq: 0, events: [], sp: {}, progress: null };   // journal of the running job's steps/logs (the screen polls it as a safety net)
+ipcMain.handle('pipeline-events-since', (e, since) => ({ id: evJ.id, events: evJ.events.filter(x => x.seq > (+since || 0)), stepProgress: Object.values(evJ.sp), progress: evJ.progress }));
 ipcMain.handle('start-pipeline', async (event, job) => {
   if (currentRun) { try { await currentRun; } catch {} }          // a cancelled run may still be shutting down
   resetCancel();
   job = { ...job, clipsBase: Settings.clipsDir() };
-  const p = runPipeline(job, (ev) => send('pipeline-event', ev), {
+  evJ = { id: String(job.id), seq: 0, events: [], sp: {}, progress: null };
+  const J = evJ;
+  const p = runPipeline(job, (ev) => {
+    ev = { ...ev, seq: ++J.seq };
+    if (ev.type === 'step' || ev.type === 'log') { J.events.push(ev); if (J.events.length > 500) J.events.splice(0, J.events.length - 500); }
+    else if (ev.type === 'stepProgress') J.sp[ev.index] = ev;
+    else if (ev.type === 'progress') J.progress = ev;
+    send('pipeline-event', ev);
+  }, {
     detectFaces: (frames) => require('./engine/facetrack.cjs').detectFaces(frames, { BrowserWindow }),
     segment: (frames) => require('./engine/facetrack.cjs').segmentFrames(frames, { BrowserWindow })
   });

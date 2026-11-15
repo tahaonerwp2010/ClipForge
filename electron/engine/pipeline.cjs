@@ -486,7 +486,7 @@ async function runShortsInner(job, emit, deps = {}) {
   const infos = [];
   for (const x of files) {
     const info = await R.probe(x.path); infos.push(info);
-    if (info.duration > 181) throw new Error(`"${x.name || path.basename(x.path)}" is longer than 3 minutes.`);
+    if (info.duration > 301) throw new Error(`"${x.name || path.basename(x.path)}" is longer than 5 minutes.`);
   }
   const isCustom = job.framing?.mode === 'custom-scale';
   const vfs = infos.map(info => isCustom ? Math.min(1, 100 / Math.max(30, job.framing.customScale || 100)) : (Wd / Ht) / (info.width / info.height));

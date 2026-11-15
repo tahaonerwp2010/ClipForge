@@ -1,11 +1,12 @@
 ## What's new
 
+- **Progress screen fix:** step statuses (Reading metadata, Extracting audio) and the Terminal Logs now always fill in, even if a live update is missed. The screen also re-checks the engine every moment.
 - **New Home page:** forest banner, glossy feature icons, a sidebar with a misty forest, a drag-and-drop box, Recent Projects, Quick Actions, Project Stats and a Go Pro card with a gold crown. AI Boost status now sits at the top right.
 - **Projects page:** same new look, with a thumbnail on each project and a New Project button.
 - F11 now turns full screen on and off. The drop box text no longer overlaps on smaller windows, and the Podcast Sample button is gone.
 - Edit clip: a Hook on/off switch, and a new Layout tab (Fit, Full Crop & Pan, Custom) for each clip.
 - Home: the drop box is only for Long and Gaming clips; the other cards keep their own pickers.
-- Edit Already Cut Clips: now up to 50 clips at once, each up to 3 minutes.
+- Edit Already Cut Clips: now up to 50 clips at once, each up to 5 minutes.
 - The app now adapts to smaller laptop screens: slimmer sidebar, five feature cards in one row, and the side panels move below.
 - **Pay for Pro by card:** subscribe on Gumroad ($10 per month), then paste the licence key in the Buy Pro window. Pro turns off by itself when the subscription ends. Easypaisa and crypto still work.
 - **Gaming clips:** a new Home card for gameplay with little or no talking. It finds the big moments from sound and action, and Gemini checks the video frames to pick the best ones.

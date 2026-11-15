@@ -78,6 +78,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onStoryEvent: (cb) => { const h = (e, d) => cb(d); ipcRenderer.on('story-event', h); return () => ipcRenderer.removeListener('story-event', h); },
   discardCheckpoint: (job) => ipcRenderer.invoke('discard-checkpoint', job),
   onPipelineEvent: (cb) => { const h = (e, d) => cb(d); ipcRenderer.on('pipeline-event', h); return () => ipcRenderer.removeListener('pipeline-event', h); },
+  pipelineEventsSince: (since) => ipcRenderer.invoke('pipeline-events-since', since),
   runFfmpeg: (args) => ipcRenderer.invoke('run-ffmpeg', args),
   getSystemSpecs: () => ipcRenderer.invoke('get-system-specs'),
   engineCheck: () => ipcRenderer.invoke('engine-check'),
