@@ -658,6 +658,8 @@ export default function App() {
               targetClipsCount={targetClipsCount}
               language={language}
               aiPrompt={aiPrompt}
+              settingsKnown={!!(settingsRef.current[activeProject.id] || activeProject.settings)}
+              {...(settingsRef.current[activeProject.id] || activeProject.settings || {})}
             />
           </main>
         )}

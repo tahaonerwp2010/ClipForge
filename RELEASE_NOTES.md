@@ -1,5 +1,6 @@
 ## What's new
 
+- **Pause & continue fix:** a paused project that is continued after closing and reopening the app now keeps the settings it was started with (it no longer falls back to the defaults or overwrites the saved settings file).
 - **Progress screen fix:** step statuses (Reading metadata, Extracting audio) and the Terminal Logs now always fill in, even if a live update is missed. The screen also re-checks the engine every moment.
 - **New Home page:** forest banner, glossy feature icons, a sidebar with a misty forest, a drag-and-drop box, Recent Projects, Quick Actions, Project Stats and a Go Pro card with a gold crown. AI Boost status now sits at the top right.
 - **Projects page:** same new look, with a thumbnail on each project and a New Project button.
