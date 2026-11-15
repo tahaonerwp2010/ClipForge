@@ -512,12 +512,13 @@ export const FormatTab: React.FC<FormatTabProps> = ({
         </div>
         <textarea
           value={aiPrompt}
-          onChange={(e) => onAiPromptChange(e.target.value.slice(0, 600))}
-          rows={3}
+          onChange={(e) => onAiPromptChange(e.target.value.slice(0, 4000))}
+          rows={6}
           placeholder="Tell the AI the scenario or scene you want, e.g. “funny moments about money” or “the podcast host (curly hair) must appear in the first 5 seconds”"
-          className="w-full bg-[#0f1c16] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none resize-none transition-colors"
+          className="w-full bg-[#0f1c16] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none resize-y min-h-[96px] max-h-[360px] transition-colors"
         />
-        <p className="text-[10px] text-neutral-500 leading-relaxed">Leave it empty and ClipForge picks the best moments by itself. With a prompt, AI Boost (Gemini) finds, cuts and reframes clips to match it. Without a Gemini key only the topic words are used.</p>
+        <div className="text-[10px] text-neutral-500 text-right -mt-1">{aiPrompt.length} / 4000</div>
+        <p className="text-[10px] text-neutral-500 leading-relaxed">Write anything you want, for example the kind of moments, the style of the hook, or what the title should say: the AI follows it first. Leave it empty and ClipForge picks the best moments by itself. With a prompt, AI Boost (Gemini) finds, cuts and reframes clips to match it. Without a Gemini key only the topic words are used.</p>
       </section>
 
       </>)}

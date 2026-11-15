@@ -566,7 +566,7 @@ async function runShortsInner(job, emit, deps = {}) {
     clips = files.map((x, i) => ({ start: 0, end: infos[i].duration, title: names[i], hookText: names[i], viralityScore: 0, reason: '', category: 'Storytelling', _o: offs[i] }));
     const tl = clips.map((c, i) => ({ ...c, start: c._o, end: c._o + infos[i].duration }));
     let eng = 'local';
-    try { eng = await A.writeTitles(tl, merged, job.gemini, (m, k) => log('Titles', m, k), job.branding?.autoTitle?.lines); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('Titles', `Title writing failed: ${String(e.message).slice(0, 100)}`, 'warn'); }
+    try { eng = await A.writeTitles(tl, merged, job.gemini, (m, k) => log('Titles', m, k), job.branding?.autoTitle?.lines, (job.aiPrompt || '').trim()); } catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('Titles', `Title writing failed: ${String(e.message).slice(0, 100)}`, 'warn'); }
     clips.forEach((c, i) => { const t = tl[i]; c.title = t.title; c.hookText = t.hookText || t.title; c.description = t.description || ''; c.hashtags = t.hashtags || []; c.category = t.category || c.category; c.sourceName = names[i]; delete c._o; });
     // a clip with no speech keeps its file name as the title
     clips.forEach((c, i) => { if (!words[i].length) { c.title = names[i]; c.hookText = names[i]; } });

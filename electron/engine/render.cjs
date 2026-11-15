@@ -15,7 +15,20 @@ async function probe(file) {
   const j = JSON.parse(stdout);
   const v = j.streams.find(s => s.codec_type === 'video'), a = j.streams.find(s => s.codec_type === 'audio');
   const [n, d] = (v?.r_frame_rate || '0/1').split('/').map(Number);
-  return { duration: +j.format.duration, width: v?.width, height: v?.height, fps: d ? +(n / d).toFixed(2) : 0, pixfmt: v?.pix_fmt, vcodec: v?.codec_name, acodec: a?.codec_name, hasAudio: !!a, format: String(j.format.format_name || '') };
+  // Phone videos are often stored sideways with a "rotate" note; FFmpeg turns them upright while reading, so every size here must be the upright one
+  let rot = 0;
+  try {
+    const sd = (v?.side_data_list || []).find(x => x && x.rotation !== undefined);
+    rot = sd ? Number(sd.rotation) : Number(v?.tags?.rotate || 0);
+  } catch {}
+  rot = ((Math.round(rot / 90) * 90) % 360 + 360) % 360;
+  let vw = v?.width, vh = v?.height;
+  if (vw && vh) {
+    const [sn, sd2] = String(v.sample_aspect_ratio || '1:1').split(':').map(Number);
+    if (sn > 0 && sd2 > 0 && Math.abs(sn / sd2 - 1) > 0.01) vw = Math.round(vw * sn / sd2 / 2) * 2;      // non-square pixels: the picture is shown wider/narrower
+    if (rot === 90 || rot === 270) { const t = vw; vw = vh; vh = t; }
+  }
+  return { rotation: rot, duration: +j.format.duration, width: vw, height: vh, fps: d ? +(n / d).toFixed(2) : 0, pixfmt: v?.pix_fmt, vcodec: v?.codec_name, acodec: a?.codec_name, hasAudio: !!a, format: String(j.format.format_name || '') };
 }
 const extractAudio = (video, wav) => run(ffmpeg(), ['-y', '-i', video, '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', wav]);
 const sliceAudio = (wav, start, dur, out) => run(ffmpeg(), ['-y', '-ss', String(start), '-t', String(dur), '-i', wav, '-c:a', 'pcm_s16le', out]);
@@ -368,7 +381,7 @@ async function renderClip({ quality = 1080, input, start, end, out, assText, rat
     const HWm = require('./hardware.cjs'), plan = await HWm.gpuPlan();
     if (plan.enc) {
       let okCodec = false;
-      try { const pi = await probe(input); okCodec = /^(h264|hevc|vp9)$/.test(pi.vcodec || '') && /^yuvj?420p(10le)?$/.test(pi.pixfmt || ''); } catch {}
+      try { const pi = await probe(input); okCodec = /^(h264|hevc|vp9)$/.test(pi.vcodec || '') && /^yuvj?420p(10le)?$/.test(pi.pixfmt || '') && !pi.rotation; } catch {}   // sideways phone videos are turned upright on the processor, where it is reliable
       const g1 = plan.filters && okCodec && !split ? mkGraph(true, true) : null;
       if (g1 && g1.gpuUsed) atts.push({ pre: ['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda'], g: g1, enc: 'gpu' });
       if (plan.decArgs.length) atts.push({ pre: plan.decArgs, g: mkGraph(false, true), enc: 'gpu' });

@@ -77,7 +77,7 @@ function chunkWords(words, maxCalls = 8) {
 async function gemini(words, count, clipLen, g, log = () => {}, userPrompt = '') {
   const chunks = chunkWords(words);
   const per = chunks.length === 1 ? Math.min(count * 2, count + 4) : Math.max(2, Math.min(4, Math.ceil(count / chunks.length) + 1));
-  const req = userPrompt ? `\nTOP PRIORITY — THE EDITOR'S REQUEST (may be written in ANY language; first understand its exact meaning, the transcript may be in a different language): "${userPrompt}"\nFollow this request STRICTLY. It overrides every other rule below (virality, hooks, variety). Return ONLY moments that clearly satisfy what the request asks for (topic, person, emotion, type of moment, keywords, anything it names). NEVER add a moment just to reach the requested number, and never return an off-topic one because it is exciting. If only 2 match, return 2; if none match, return []. Give every moment a "fit" score 0-10: 10 = exactly what was asked, 7-9 = clearly matches, 5-6 = partly, 0-4 = does not match (do not return those). Judge only what is SAID / the topic here (anything about how people look or what is on screen is checked separately).\n` : '';
+  const req = userPrompt ? `\nTOP PRIORITY — THE EDITOR'S REQUEST (may be written in ANY language; first understand its exact meaning, the transcript may be in a different language): "${userPrompt}"\nFollow this request STRICTLY. It overrides every other rule below (virality, hooks, variety). Return ONLY moments that clearly satisfy what the request asks for (topic, person, emotion, type of moment, keywords, anything it names). NEVER add a moment just to reach the requested number, and never return an off-topic one because it is exciting. If only 2 match, return 2; if none match, return []. Give every moment a "fit" score 0-10: 10 = exactly what was asked, 7-9 = clearly matches, 5-6 = partly, 0-4 = does not match (do not return those). If the request also says how the hook, title or description must be written, follow that in "title" and "hookText" too. Judge only what is SAID / the topic here (anything about how people look or what is on screen is checked separately).\n` : '';
   const all = []; let used = '';
   for (let ci = 0; ci < chunks.length; ci++) {
     const ch = chunks[ci];
@@ -234,7 +234,10 @@ Use the VIDEO CONTEXT only to understand who is speaking and what the story is, 
 const hookRules = (n) => `
 HOOK (field "hookText") is the text shown on screen in the first seconds. Its only job is to make a scrolling viewer stop and keep watching. Length: ${HOOK_LEN[n] || HOOK_LEN[2]}. Write it as EITHER (a) a curiosity question that this exact clip answers, or (b) a bold, specific statement that creates an open loop (a surprising claim, a number, a warning, a contradiction, "nobody tells you…" style). Never a plain summary or a topic label. It must be true to what is said in the clip and make the viewer need the payoff. Use the clip's own strongest words/numbers. Make the very first word count (a number, \"Stop\", \"Nobody\", \"Why\", \"He\"/\"She\" + a shock) and pick the single most surprising or emotional thing said in this clip. Good examples: "Why do 90% of startups die in year one?", "This one habit made him a millionaire", "Stop doing this before it costs you everything", "She lost everything. Then this happened.", "Nobody warned him about this". Bad examples: "A talk about startups", "Interesting thoughts on money", "Watch this video". Add one fitting emoji at the end. Do not use hashtags in the hook.
 NEVER copy a sentence or a stretch of words from the clip as the hook, and never write the hook as something the speaker says in first person ("I ...", "We ...", "My ..."). The hook is a TEASER written ABOUT the clip by an editor, in the third person or as a question to the viewer, that the clip then pays off. It must be a complete thought (never ending in "and", "so", "but", "that", "to", "the"). Bad (copied speech): "I always take shots at myself first so they can't." Good: "Why does he insult himself before anyone else can?". Bad: "We had 150 cases a week and it was crazy." Good: "How one small firm juggles 150 court cases a week".`;
-const metaSystem = (n) => META_BASE + hookRules(n) + `
+const editorRules = (up) => up ? `
+EDITOR'S INSTRUCTIONS (HIGHEST PRIORITY. They override every default rule above about style, tone, wording, hook type, length, emojis, language, hashtags, title and description. Follow them literally for EVERY clip. If the editor names a specific kind of hook, a phrase, a format or something that must be included or avoided, do exactly that. They may be written in any language; understand them first. Only the JSON output format must stay as described): "${String(up).slice(0, 4000)}"
+` : '';
+const metaSystem = (n, up = '') => META_BASE + hookRules(n) + editorRules(up) + `
 Output format: a JSON array with one object per clip, in the same order, each with "n" = the clip number given as #n in the input: {"n":0,"title":"...","hookText":"...","description":"...","hashtags":["#a","#b","#c"],"keywords":["..."]}.` + (n === 1 ? '' : ` Separate the hook lines with a \\n character.`);
 
 // A short digest of the WHOLE video (start + evenly spread pieces), so the writer knows the story without reading a full transcript (keeps the request small).
@@ -247,11 +250,11 @@ function videoContext(words, max = 3200) {
     return out.join(' … ');
   } catch { return ''; }
 }
-async function geminiTitles(clips, words, g, log, n = 2) {
+async function geminiTitles(clips, words, g, log, n = 2, up = '') {
   const items = clips.map((c, i) => `#${i} (${Math.round(c.end - c.start)}s): ${clipText(c, words).slice(0, 1800)}`).join('\n\n');
   const ctx = videoContext(words);
   const prompt = `${ctx ? `VIDEO CONTEXT (the whole video, shortened; only to understand the story):\n${ctx}\n\n` : ''}Clip transcripts (write metadata for EACH one, same order):\n\n${items}`;
-  const r = await G.generate(g, { system: metaSystem(n), prompt, json: true });
+  const r = await G.generate(g, { system: metaSystem(n, up), prompt, json: true });
   const out = G.parseJson(r.text);
   const arr = Array.isArray(out) ? out : (out.titles || out.clips || []);
   if (arr.length < clips.length) throw new Error('Gemini returned too few titles');
@@ -359,7 +362,7 @@ Output ONLY a JSON array: [{"n":0,"hookText":"..."}]` + (n === 1 ? '' : ' Separa
   }
   if (fixed) log(`Hooks: ${fixed} weak hook${fixed === 1 ? '' : 's'} rewritten`, 'info');
 }
-async function writeTitles(clips, words, g, log, hookLines = 2) {
+async function writeTitles(clips, words, g, log, hookLines = 2, userPrompt = '') {
   const HN = hookLines === 1 || hookLines === 3 ? hookLines : 2;
   let engine = 'local';
   if (G.ready(g)) {
@@ -370,7 +373,7 @@ async function writeTitles(clips, words, g, log, hookLines = 2) {
       const part = clips.slice(o, o + CH);
       let arr = null;
       for (let attempt = 0; attempt < 2 && !arr; attempt++) {
-        try { arr = alignAnswers(part, await geminiTitles(part, words, g, log, HN), words, log); }
+        try { arr = alignAnswers(part, await geminiTitles(part, words, g, log, HN, userPrompt), words, log); }
         catch (e) { lastErr = String(e.message).slice(0, 100); if (attempt === 0) await new Promise(r => setTimeout(r, 1500)); }
       }
       part.forEach((c, i) => {
@@ -446,7 +449,7 @@ async function findClips(words, { hookLines = 2, count = 4, clipLen = 30, gemini
       if (picked.length) {
         if (subject) picked.forEach(c => { c.subject = subject; });
         picked.sort((a, b) => a.start - b.start);
-        const te = await writeTitles(picked, words, g, log, hookLines);
+        const te = await writeTitles(picked, words, g, log, hookLines, userPrompt);
         return { clips: picked, engine: 'gemini', titleEngine: te };
       }
       log('Gemini returned no usable clips, using offline analysis', 'warn');
@@ -454,7 +457,7 @@ async function findClips(words, { hookLines = 2, count = 4, clipLen = 30, gemini
   }
   if (userPrompt) log('Offline mode: only the topic words of your prompt are used (on-screen conditions need AI Boost)', 'warn');
   const local = sanitize(offline(words, count, clipLen, kws), words);
-  const te = await writeTitles(local, words, g, log, hookLines);
+  const te = await writeTitles(local, words, g, log, hookLines, userPrompt);
   return { clips: local, engine: 'offline', titleEngine: te };
 }
 module.exports = { findClips, offline, writeTitles, __t: { snapSentences, setBoundaryMode, setLim: (l) => { LIM = l; } } };

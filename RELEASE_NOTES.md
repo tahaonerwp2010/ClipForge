@@ -1,5 +1,8 @@
 ## What's new
 
+- **Sideways phone videos fixed:** clips filmed on a phone (stored with a rotate note) were squashed vertically in Already Cut Clips. Their real size is now read correctly, so they are no longer squeezed.
+- **AI prompt is now the boss:** besides choosing the moments, your prompt also guides the title, hook and description the AI writes (hook type, tone, what to include).
+- **Bigger prompt box:** the prompt can be up to 4000 characters (it was cut at 600), the box is taller and can be resized, with a counter.
 - **Pause & continue fix:** a paused project that is continued after closing and reopening the app now keeps the settings it was started with (it no longer falls back to the defaults or overwrites the saved settings file).
 - **Progress screen fix:** step statuses (Reading metadata, Extracting audio) and the Terminal Logs now always fill in, even if a live update is missed. The screen also re-checks the engine every moment.
 - **New Home page:** forest banner, glossy feature icons, a sidebar with a misty forest, a drag-and-drop box, Recent Projects, Quick Actions, Project Stats and a Go Pro card with a gold crown. AI Boost status now sits at the top right.
