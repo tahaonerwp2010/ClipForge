@@ -14,7 +14,7 @@ export const RecentProjects: React.FC<{ projects: ProjectItem[]; onOpen: (p: Pro
         <div className="flex items-center gap-2.5"><Clock className="w-[22px] h-[22px] text-[#8fd13a]" strokeWidth={1.8} /><h2 className="text-[19px] font-semibold text-white tracking-tight">Recent Projects</h2></div>
         <button type="button" onClick={onViewAll} className="text-[13px] font-medium text-neutral-200 hover:text-white flex items-center gap-2 cursor-pointer">View all <ArrowRight className="w-4 h-4" /></button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:max-[1249px]:grid-cols-2 min-[1250px]:grid-cols-3 gap-3">
         {projects.slice(0, 3).map(p => {
           const [Ic, col, label] = tone(p);
           return (
@@ -64,8 +64,8 @@ export const HomeAside: React.FC<{ projects: ProjectItem[]; onNew: () => void; o
   );
   const card = 'rounded-2xl bg-gradient-to-b from-[#0b1a11] to-[#07110b] border border-[#2a5a3a]/80 shadow-[0_0_16px_-6px_rgba(111,212,74,0.4)]';
   return (
-    <aside className="w-full xl:w-[282px] shrink-0 space-y-3.5">
-      <div className="flex items-center h-[34px] mb-1">
+    <aside className="w-full min-[1500px]:w-[282px] shrink-0 grid md:grid-cols-2 gap-3.5 min-[1500px]:block min-[1500px]:space-y-3.5 items-start">
+      <div className="max-[1499px]:hidden flex items-center h-[34px] mb-1">
         <button type="button" onClick={onSettings} title="AI Boost settings"
           className={`h-[34px] flex items-center gap-2 px-3.5 rounded-full border text-[12px] font-medium cursor-pointer transition-colors ${aiBoostKeys ? 'border-[#2f7a45] bg-[#0b1d13] text-white hover:bg-[#10281a]' : 'border-[#22382b] bg-[#0a140f] text-neutral-400 hover:text-white'}`}>
           <Zap className={`w-4 h-4 ${aiBoostKeys ? 'text-[#b6f24a] fill-[#b6f24a]' : ''}`} /> AI Boost {aiBoostKeys ? `\u2022 ${aiBoostKeys} key${aiBoostKeys === 1 ? '' : 's'}` : '\u2022 off'}

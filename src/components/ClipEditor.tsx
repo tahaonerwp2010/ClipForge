@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Loader2, Save, Pause, Play, Check, Square, Type, Sparkles, PanelTop, Stamp, Music, ListChecks, Zap } from 'lucide-react';
+import { X, Loader2, Save, Pause, Play, Check, Square, Type, Sparkles, PanelTop, Stamp, Music, ListChecks, Zap, Layers, Crop, SlidersHorizontal } from 'lucide-react';
 import { PhonePreview } from './PhonePreview';
 import { CaptionsTab } from './tabs/CaptionsTab';
 import { BrandingTab } from './tabs/BrandingTab';
@@ -24,11 +24,12 @@ interface Props {
   fallback: { captions: CaptionConfig; branding: BrandingConfig; grading: VideoGradingConfig; framing: InnerFramingConfig };
 }
 
-type Cat = 'captions' | 'effects' | 'hook' | 'banner' | 'watermark' | 'music';
+type Cat = 'captions' | 'effects' | 'hook' | 'layout' | 'banner' | 'watermark' | 'music';
 const CATS: { id: Cat; label: string; Icon: React.ElementType }[] = [
   { id: 'captions', label: 'Captions', Icon: Type },
   { id: 'effects', label: 'Effects', Icon: Zap },
   { id: 'hook', label: 'Hook', Icon: Sparkles },
+  { id: 'layout', label: 'Layout', Icon: Layers },
   { id: 'banner', label: 'Banner', Icon: PanelTop },
   { id: 'watermark', label: 'Watermark', Icon: Stamp },
   { id: 'music', label: 'Music', Icon: Music },
@@ -46,6 +47,9 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
   const [branding, setBranding] = useState<BrandingConfig>(fallback.branding);
   const [fx, setFxState] = useState<FxState>({ ...DEFAULT_FX, ...((fallback.grading as any)?.fx || {}) });
   const [cat, setCat] = useState<Cat>('captions');
+  const [fr, setFr] = useState<any>({ ...(fallback.framing as any), mode: (fallback.framing as any)?.mode || 'fit-blur' });
+  const fr0 = useRef('');
+  const [isSplit, setIsSplit] = useState(false);
   const [showTx, setShowTx] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pct, setPct] = useState(0);
@@ -80,7 +84,8 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
         const b = { ...fallback.branding, ...(st.branding || {}) } as any;
         if (b.watermarkImage?.path && !b.watermarkImage.dataUrl) b.watermarkImage = { ...b.watermarkImage, dataUrl: fileUrl(b.watermarkImage.path) };
         const h = st.clips?.[index]?.hookText || clip.hookText;
-        setBranding({ ...b, autoTitle: { ...fallback.branding.autoTitle, ...(b.autoTitle || {}), enabled: true, title: h, wordColors: st.clips?.[index]?.hookColors || undefined } });
+        setBranding({ ...b, autoTitle: { ...fallback.branding.autoTitle, ...(b.autoTitle || {}), enabled: b.autoTitle ? b.autoTitle.enabled !== false : true, title: h, wordColors: st.clips?.[index]?.hookColors || undefined } });
+        const f0 = { ...(fallback.framing as any), ...(st.framing || {}), ...(st.clips?.[index]?.framing || {}) }; setFr(f0); fr0.current = JSON.stringify(f0); setIsSplit(!!st.split);
         const r = await api.editPrepare(outDir, index);
         if (!r?.ok) throw new Error(r?.error || 'Could not prepare the preview.');
         setUrl(r.url); setFootage(r.footage || null); setState('ready');
@@ -100,7 +105,9 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
       selIdx.forEach(i => { wc[i] = hex; }); setHook({ wordColors: wc });
     } else setHook({ color: hex, wordColors: undefined });             // nothing selected: the whole hook
   };
-  const setHook = (patch: any) => setBranding(b => ({ ...b, autoTitle: { ...b.autoTitle, enabled: true, ...patch } }));
+  const setHook = (patch: any) => setBranding(b => ({ ...b, autoTitle: { ...b.autoTitle, ...patch } }));
+  const hookOn = hook.enabled !== false;
+  const layoutChanged = () => !isSplit && JSON.stringify(fr) !== fr0.current;
   const brandingOut = () => {
     const b: any = { ...branding };
     if (b.watermarkImage) b.watermarkImage = { path: b.watermarkImage.path, name: b.watermarkImage.name };
@@ -114,7 +121,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
     const n: any = JSON.parse(JSON.stringify(snapOf(captions, branding, fx)));
     const lab: Record<string, string> = { cap: 'Captions', hook: 'Hook', ban: 'Banner', wm: 'Watermark', mu: 'Music', fx: 'Effects' };
     if (!o) return Object.values(lab);
-    return Object.keys(lab).filter(k => JSON.stringify(o[k]) !== JSON.stringify(n[k])).map(k => lab[k]);
+    return [...Object.keys(lab).filter(k => JSON.stringify(o[k]) !== JSON.stringify(n[k])).map(k => lab[k]), ...(layoutChanged() ? ['Layout'] : [])];
   };
   const waitResume = () => new Promise<void>(res => { ctl.current.wake = res; });
   const pauseNow = () => { ctl.current.paused = true; setPaused(true); try { api?.editCancel?.(); } catch {} };
@@ -127,7 +134,8 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
     setSaving(true); setPct(0); setErr('');
     const idx = all ? allIdx : [index];
     span.current = idx.length;
-    const at = { ...branding.autoTitle, enabled: true };
+    const at = { ...branding.autoTitle, enabled: branding.autoTitle?.enabled !== false };
+    const lay = layoutChanged() ? { framing: fr } : {};
     const bo = brandingOut();
     // colours the user gave to words of THIS hook -> a rule by line / word position, so every other clip gets the same lines / first words coloured
     const wcs = (at as any).wordColors as (string | null)[] | undefined;
@@ -143,7 +151,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
     }
     const items = idx.map(i => {
       const { title: _t, wordColors: _wc, ...atNoTitle } = at as any;
-      return { index: i, overrides: i === index ? { captions, hookText, autoTitle: at, branding: bo, fx } : { captions, autoTitle: atNoTitle, branding: bo, fx, hookRule } };
+      return { index: i, overrides: i === index ? { captions, hookText, autoTitle: at, branding: bo, fx, ...lay } : { captions, autoTitle: atNoTitle, branding: bo, fx, hookRule, ...lay } };
     });
     const labels = changedParts();
     setSaving(false); onStart(items, labels); onClose(); return;
@@ -201,7 +209,7 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
             </div>
             <div className="flex-1 flex flex-col md:overflow-hidden min-w-0">
               <div className="flex gap-1 px-3 pt-3 border-b border-[#13211a] overflow-x-auto shrink-0">
-                {CATS.map(({ id, label, Icon }) => (
+                {CATS.filter(c => !(c.id === 'layout' && isSplit)).map(({ id, label, Icon }) => (
                   <button key={id} type="button" onClick={() => setCat(id)}
                     className={`px-3.5 py-2 text-xs font-bold flex items-center gap-2 border-b-2 cursor-pointer whitespace-nowrap transition-colors ${cat === id ? 'border-[#bef264] text-[#bef264]' : 'border-transparent text-neutral-400 hover:text-white'}`}>
                     <Icon className="w-4 h-4" />{label}
@@ -221,6 +229,11 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
                 </>)}
                 {cat === 'hook' && (
                   <section className="p-4 rounded-xl bg-[#0b1410] border border-[#172820] space-y-3 text-xs">
+                    <div className="flex items-center justify-between gap-3">
+                      <div><div className="text-[12px] font-bold text-white">Show the hook</div><div className="text-[10px] text-neutral-500">Turn it off to remove the hook text from this clip.</div></div>
+                      <button type="button" role="switch" aria-checked={hookOn} onClick={() => setHook({ enabled: !hookOn })} className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${hookOn ? 'bg-[#8fd13a]' : 'bg-[#1d3228]'}`}><span className={`block w-5 h-5 rounded-full bg-white transition-transform ${hookOn ? 'translate-x-5' : ''}`} /></button>
+                    </div>
+                    {hookOn && (<>
                     <div>
                       <label className="text-[11px] font-semibold text-neutral-300">Hook text (this clip)</label>
                       <textarea value={hookText} rows={2} onChange={e => { const nt = e.target.value; setHook({ title: nt, wordColors: remapHookColors(hookText, nt, hook.wordColors) }); setSel({ s: e.target.selectionStart, e: e.target.selectionEnd }); }} onSelect={e => setSel({ s: e.currentTarget.selectionStart, e: e.currentTarget.selectionEnd })} className="mt-1 w-full bg-[#09100d] border border-[#20322a] rounded-lg px-3 py-2 text-xs text-white outline-none resize-none" />
@@ -238,6 +251,33 @@ export const ClipEditor: React.FC<Props> = ({ clip, index, outDir, total, allIdx
                       {hook.size ? <><input type="range" min={30} max={fitMax} value={Math.min(hook.size, fitMax)} onChange={e => setHook({ size: parseInt(e.target.value) })} className="w-40 h-1.5 bg-[#1d3228] rounded-lg appearance-none accent-[#bef264] cursor-pointer" /><span className="text-[#8fd0a4] font-mono text-[11px]">{Math.min(hook.size, fitMax)}</span></> : null}</div>
                     <Slider label="Position X (%)" v={hook.positionX ?? 50} min={0} max={100} on={n => setHook({ positionX: n })} />
                     <Slider label="Position Y (%)" v={hook.positionY ?? 10} min={0} max={100} on={n => setHook({ positionY: n })} />
+                    </>)}
+                  </section>
+                )}
+                {cat === 'layout' && (
+                  <section className="space-y-2">
+                    {([
+                      { id: 'fit-blur', title: 'Fit', Ic: Layers, text: 'Shows the full widescreen video inside the frame. Great for podcasts and interviews.' },
+                      { id: 'fill-crop', title: 'Full Crop & Pan', Ic: Crop, text: 'Fills the full frame. Pan left or right to frame the speaker.' },
+                      { id: 'custom-scale', title: 'Custom', Ic: SlidersHorizontal, text: 'Set the zoom and position yourself.' },
+                    ] as const).map(m => {
+                      const on = fr.mode === m.id; const bg = fr.fitBackground || 'blur';
+                      const Bg = (<div className="flex items-center gap-2 flex-wrap"><span className="text-[11px] text-neutral-300">Background</span><Chip on={bg === 'blur'} onClick={() => setFr((f: any) => ({ ...f, fitBackground: 'blur' }))}>Blurred</Chip><Chip on={bg === 'black'} onClick={() => setFr((f: any) => ({ ...f, fitBackground: 'black' }))}>Black</Chip></div>);
+                      return (
+                        <div key={m.id} onClick={() => setFr((f: any) => ({ ...f, mode: m.id }))} className={`p-3.5 rounded-xl border cursor-pointer transition-colors ${on ? 'bg-[#0e1b15] border-[#3f9a5a] ring-1 ring-[#3f9a5a]/40' : 'bg-[#0b1410] border-[#172820] hover:border-[#263c32]'}`}>
+                          <div className="flex items-center gap-2 text-[13px] font-bold text-white"><m.Ic className="w-4 h-4 text-[#8fd0a4]" />{m.title}</div>
+                          <p className="text-[11px] text-neutral-400 mt-1">{m.text}</p>
+                          {on && (
+                            <div className="mt-3 pt-3 border-t border-[#1d3228] space-y-3" onClick={e => e.stopPropagation()}>
+                              {m.id === 'fit-blur' && (<>{Bg}{bg === 'blur' && <Slider label="Backdrop blur (px)" v={fr.blurIntensity ?? 18} min={6} max={32} on={n => setFr((f: any) => ({ ...f, blurIntensity: n }))} />}<Slider label="Corner radius (px)" v={fr.innerBorderRadius ?? 12} min={0} max={24} on={n => setFr((f: any) => ({ ...f, innerBorderRadius: n }))} /></>)}
+                              {m.id === 'fill-crop' && <Slider label="Horizontal pan (%)" v={fr.panX ?? 0} min={-50} max={50} on={n => setFr((f: any) => ({ ...f, panX: n, autoReframing: false }))} />}
+                              {m.id === 'custom-scale' && (<><Slider label="Zoom (%)" v={fr.customScale ?? 100} min={50} max={250} on={n => setFr((f: any) => ({ ...f, customScale: n }))} /><Slider label="Horizontal position (%)" v={fr.offsetX ?? 0} min={-50} max={50} on={n => setFr((f: any) => ({ ...f, offsetX: n }))} /><Slider label="Vertical position (%)" v={fr.offsetY ?? 0} min={-50} max={50} on={n => setFr((f: any) => ({ ...f, offsetY: n }))} /><Slider label="Corner radius (px)" v={fr.innerBorderRadius ?? 12} min={0} max={24} on={n => setFr((f: any) => ({ ...f, innerBorderRadius: n }))} />{Bg}</>)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <p className="text-[11px] text-neutral-400">The new layout is applied while the clip renders, so it shows in the saved clip, not in this preview. Press Apply to use it.</p>
                   </section>
                 )}
                 {cat === 'banner' && <BrandingTab branding={branding} onBrandingChange={setBranding} clipTitle={hookText} only="banner" />}

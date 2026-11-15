@@ -3,7 +3,6 @@ import { fileUrl as toFileUrl, playableUrl } from '../utils/fileUrl';
 import React, { useState, useRef, useEffect } from 'react';
 import { VideoSource, SplitConfig, Rect01 } from '../types/clipper';
 import { FacecamEditor } from './FacecamEditor';
-import { SAMPLE_VIDEOS } from '../data/sampleVideos';
 import { 
   Clapperboard, 
   Scissors, 
@@ -12,7 +11,6 @@ import {
   Check, 
   Youtube,
   Play,
-  Sparkles,
   X,
   Download,
   AlertCircle,
@@ -26,8 +24,8 @@ import {
   UploadCloud
 } from 'lucide-react';
 
-const MAX_SHORTS = 30;
-const MAX_SHORT_SEC = 60;
+const MAX_SHORTS = 50;
+const MAX_SHORT_SEC = 180;
 interface ShortItem { id: string; name: string; path: string; url: string; duration: number; thumbnail: string }
 const FALLBACK_THUMB = 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=600&auto=format&fit=crop&q=80';
 const fmtBytes = (b = 0) => b >= 1e9 ? `${(b / 1e9).toFixed(2)} GB` : b >= 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.max(0, Math.round(b / 1e3))} KB`;
@@ -129,7 +127,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       let meta: Awaited<ReturnType<typeof readVideoMeta>>;
       try { meta = await readVideoMeta(url); } catch { URL.revokeObjectURL(url); warns.push(`“${file.name}” could not be read.`); continue; }
       if (meta.duration > MAX_SHORT_SEC + 0.5) {
-        tooLong++; warns.push(`“${file.name}” is ${fmtClock(meta.duration)} long. Only clips of 60 seconds or less are allowed.`);
+        tooLong++; warns.push(`“${file.name}” is ${fmtClock(meta.duration)} long. Only clips of 3 minutes or less are allowed.`);
         URL.revokeObjectURL(url); continue;
       }
       added.push({ id: `${Date.now()}-${added.length}-${Math.random().toString(36).slice(2, 6)}`, name: file.name.replace(/\.[^/.]+$/, ''), path: realPath, url, duration: Math.max(1, Math.round(meta.duration)), thumbnail: meta.thumb });
@@ -323,7 +321,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
       />
 
       {/* HERO */}
-      <section className="relative w-full overflow-hidden rounded-2xl border border-[#1f3d2b] bg-[#040a07] aspect-[2061/542]">
+      <section className="relative w-full overflow-hidden rounded-2xl border border-[#1f3d2b] bg-[#040a07] aspect-[2061/542] max-h-[290px]">
         <img src="./hero-banner.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
         <h1 className="sr-only">Turn long videos into short, engaging clips</h1>
       </section>
@@ -334,11 +332,11 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
         <h2 className="text-[19px] font-semibold text-white tracking-tight leading-tight">Choose a feature to get started</h2>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-2.5 w-full mt-3">
+      <div className="grid grid-cols-2 min-[900px]:max-[1249px]:grid-cols-3 min-[1250px]:grid-cols-5 gap-2.5 w-full mt-3">
         {([
           { id: 'long' as const, Icon: Clapperboard, img: 'video', title: 'Clips from a Long Video', text: 'Find the best moments and cut them into short clips.', points: ['Auto moment finding', 'Smart captions', 'Face-tracking reframe'], badge: 'Popular' },
           { id: 'gaming' as const, Icon: Gamepad2, img: 'gaming', title: 'Gaming Clips', text: 'For gameplay with little or no talking.', points: ['Works with any game', 'Title, hook and description', 'Needs a Gemini key'], badge: 'New' },
-          { id: 'short' as const, Icon: Scissors, img: 'scissors', title: 'Edit Already Cut Clips', text: 'Add captions and styling to clips you have already made.', points: ['Your edit stays untouched', 'Captions and style only', 'Up to 30 clips'] },
+          { id: 'short' as const, Icon: Scissors, img: 'scissors', title: 'Edit Already Cut Clips', text: 'Add captions and styling to clips you have already made.', points: ['Your edit stays untouched', 'Captions and style only', 'Up to 50 clips'] },
           { id: 'split' as const, Icon: Rows2, img: 'split', title: 'Split Screen', text: 'Facecam on top, game or footage below.', points: ['Finds the facecam', 'Two videos synced', 'Adjustable layout'] },
           { id: 'youtube' as const, Icon: LinkIcon, img: 'link', title: 'Paste a YouTube Link', text: 'For videos you own or have permission to use.', points: ['Imported up to 1080p', 'Live download progress', 'Works like a long video'] },
         ]).map(c => {
@@ -353,55 +351,30 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
               <p className="text-[12px] text-neutral-300 mt-1.5 leading-[1.4]">{c.text}</p>
               <ul className="mt-2.5 space-y-[3px]">
                 {c.points.map(pt => (
-                  <li key={pt} className="flex items-center gap-2 text-[11.5px] text-neutral-200 leading-tight whitespace-nowrap"><Check className="w-3.5 h-3.5 text-[#7ddc4a] shrink-0" strokeWidth={3} />{pt}</li>
+                  <li key={pt} className="flex items-center gap-2 text-[11.5px] max-[1499px]:text-[11px] max-[1499px]:gap-1.5 text-neutral-200 leading-tight whitespace-nowrap"><Check className="w-3.5 h-3.5 text-[#7ddc4a] shrink-0" strokeWidth={3} />{pt}</li>
                 ))}
               </ul>
-              <span className={`absolute bottom-3 right-3 w-[26px] h-[26px] rounded-full flex items-center justify-center transition ${on ? 'border-2 border-white/90 text-white' : 'bg-[#2f9a3f] text-white group-hover:bg-[#3bb04c]'}`}><ArrowRight className="w-3.5 h-3.5" strokeWidth={2.5} /></span>
+              <span className={`absolute bottom-2.5 right-2.5 w-[24px] h-[24px] rounded-full flex items-center justify-center transition ${on ? 'border-2 border-white/90 text-white' : 'bg-[#2f9a3f] text-white group-hover:bg-[#3bb04c]'}`}><ArrowRight className="w-3.5 h-3.5" strokeWidth={2.5} /></span>
             </button>
           );
         })}
       </div>
 
-      {/* DROP ZONE */}
-      <div role="button" tabIndex={0}
+      {/* DROP ZONE (long video and gaming only; the other cards have their own picker) */}
+      {isLong && <div role="button" tabIndex={0}
         onClick={() => { if (!isLong) setActiveCard('long'); fileInputRef.current?.click(); }}
         onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
         onDragLeave={() => setDrag(false)}
         onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f && (/^video\//.test(f.type) || /\.(mp4|mov|mkv|webm|avi|m4v)$/i.test(f.name))) { if (!isLong) setActiveCard('long'); processFile(f); } }}
-        className={`relative mt-2.5 w-full h-[86px] overflow-hidden rounded-xl border-2 border-dashed px-6 flex items-center justify-center gap-4 cursor-pointer transition-colors bg-gradient-to-b from-[#0a160f] to-[#07110b] ${drag ? 'border-[#a6f04a] shadow-[0_0_26px_-2px_rgba(111,212,74,0.7),inset_0_0_20px_-8px_rgba(111,212,74,0.5)]' : 'border-[#6fd44a] shadow-[0_0_22px_-2px_rgba(111,212,74,0.6),inset_0_0_20px_-8px_rgba(111,212,74,0.5)] hover:border-[#a6f04a]'}`}>
+        className={`relative mt-2.5 w-full min-h-[86px] overflow-hidden rounded-xl border-2 border-dashed px-6 py-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 cursor-pointer transition-colors bg-gradient-to-b from-[#0a160f] to-[#07110b] ${drag ? 'border-[#a6f04a] shadow-[0_0_26px_-2px_rgba(111,212,74,0.7),inset_0_0_20px_-8px_rgba(111,212,74,0.5)]' : 'border-[#6fd44a] shadow-[0_0_22px_-2px_rgba(111,212,74,0.6),inset_0_0_20px_-8px_rgba(111,212,74,0.5)] hover:border-[#a6f04a]'}`}>
         <svg className="absolute inset-x-0 bottom-0 w-full h-8 pointer-events-none" viewBox="0 0 1000 40" preserveAspectRatio="none" aria-hidden><path d="M0 40 C150 10 300 34 500 24 C700 14 850 36 1000 12 L1000 40Z" fill="#2f9a3f" opacity="0.28" /></svg>
         <UploadCloud className="relative w-11 h-11 text-[#7ddc4a] shrink-0" strokeWidth={1.5} />
-        <div className="relative"><div className="text-[17px] font-medium text-white leading-tight">Drag and drop a video here</div><div className="text-[13px] text-neutral-300 mt-1">or click to browse{!longSelected && isLong && <> · <button type="button" onClick={(e) => { e.stopPropagation(); onSelectVideo(SAMPLE_VIDEOS[0]); }} className="underline decoration-dotted hover:text-white cursor-pointer">try the Podcast Sample</button></>}</div></div>
-        <div className="hidden sm:flex gap-1.5 absolute right-6 top-1/2 -translate-y-1/2">{['MP4', 'MOV', 'AVI', 'MKV'].map(x => <span key={x} className="px-2 py-[2px] rounded-md border border-[#3a7a4e] bg-[#0b1a12] text-[11px] font-medium text-neutral-200">{x}</span>)}</div>
-      </div>
+        <div className="relative"><div className="text-[17px] font-medium text-white leading-tight">Drag and drop a video here</div><div className="text-[13px] text-neutral-300 mt-1">or click to browse</div></div>
+        <div className="relative hidden sm:flex gap-1.5 2xl:absolute 2xl:right-6 2xl:top-1/2 2xl:-translate-y-1/2">{['MP4', 'MOV', 'AVI', 'MKV'].map(x => <span key={x} className="px-2 py-[2px] rounded-md border border-[#3a7a4e] bg-[#0b1a12] text-[11px] font-medium text-neutral-200">{x}</span>)}</div>
+      </div>}
 
       {/* 5. DYNAMIC INPUT AREA BELOW CARDS */}
       <div className="w-full mt-2.5">
-        {isLong && longSelected && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-[#0c1611] border border-[#182a22]">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="px-5 py-2.5 rounded-xl bg-[#bef264] hover:bg-[#a3e635] text-black font-extrabold text-xs shadow-md shadow-[#3f9a5a]/20 transition-all active:scale-95 flex items-center gap-2"
-              >
-                <Upload className="w-4 h-4 stroke-[2.5]" />
-                <span>Choose a video...</span>
-              </button>
-              <span className="text-xs text-neutral-400">or drop one anywhere on this window</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-neutral-500">Instant test:</span>
-              <button
-                onClick={() => onSelectVideo(SAMPLE_VIDEOS[0])}
-                className="px-2.5 py-1 rounded bg-[#14231c] hover:bg-[#21332a] text-[11px] text-[#8fd0a4] font-medium border border-[#263c32] transition-colors flex items-center gap-1"
-              >
-                <Sparkles className="w-3 h-3" />
-                <span>Podcast Sample</span>
-              </button>
-            </div>
-          </div>
-        )}
-
         {activeCard === 'short' && (
           <div className="rounded-xl bg-[#0c1611] border border-[#182a22] p-3 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">

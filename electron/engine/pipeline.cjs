@@ -430,7 +430,7 @@ async function runShortsInner(job, emit, deps = {}) {
   AI.forget(); AI.setLogger((m, k) => log('AI', m, k));
   const files = (job.files || []).filter(x => x && x.path);
   if (!files.length) throw new Error('No clips were selected.');
-  if (files.length > 30) throw new Error('You can process at most 30 clips at once.');
+  if (files.length > 50) throw new Error('You can process at most 50 clips at once.');
   for (const x of files) if (!fs.existsSync(x.path)) throw new Error(`Source file not found: ${x.path}`);
   const outDir = job.outDir || uniqueDir(path.join(job.clipsBase || path.join(os.homedir(), 'Videos', 'ClipForge'), slug(job.name)), String(job.id || job.name));
   fs.mkdirSync(outDir, { recursive: true });
@@ -486,7 +486,7 @@ async function runShortsInner(job, emit, deps = {}) {
   const infos = [];
   for (const x of files) {
     const info = await R.probe(x.path); infos.push(info);
-    if (info.duration > 61) throw new Error(`"${x.name || path.basename(x.path)}" is longer than 60 seconds.`);
+    if (info.duration > 181) throw new Error(`"${x.name || path.basename(x.path)}" is longer than 3 minutes.`);
   }
   const isCustom = job.framing?.mode === 'custom-scale';
   const vfs = infos.map(info => isCustom ? Math.min(1, 100 / Math.max(30, job.framing.customScale || 100)) : (Wd / Ht) / (info.width / info.height));

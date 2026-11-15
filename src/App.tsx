@@ -549,7 +549,7 @@ export default function App() {
         {/* VIEW 1: HOME LANDING PAGE */}
         {activeView === 'home' && (
           <main className="flex-1 overflow-y-auto bg-[#030806] bg-[radial-gradient(900px_500px_at_85%_-5%,rgba(40,120,70,0.14),transparent_60%)]">
-            <div className="flex flex-col xl:flex-row gap-5 px-3 md:px-5 py-3 md:py-3.5 max-w-[1700px] mx-auto">
+            <div className="flex flex-col min-[1500px]:flex-row gap-5 px-3 md:px-5 pt-12 min-[1500px]:pt-3.5 pb-3.5 max-w-[1700px] mx-auto">
               <div className="flex-1 min-w-0">
                 <LandingStartPage
                   aiBoostKeys={(() => { try { const c = AiService.getConfig(); return c.enabled ? Object.values(c.providers || {}).reduce((t: number, p: any) => t + (p.keys || []).filter((k: any) => k.status !== 'invalid').length, 0) : 0; } catch { return 0; } })()}
@@ -712,7 +712,7 @@ export default function App() {
 
         {/* VIEW 3: SETTINGS */}
         {activeView === 'settings' && (
-          <main className="flex-1 flex flex-col overflow-y-auto">
+          <main className="flex-1 flex flex-col overflow-y-auto bg-[#030806] bg-[radial-gradient(900px_500px_at_85%_-5%,rgba(40,120,70,0.14),transparent_60%)]">
             <SettingsView />
           </main>
         )}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ProjectItem } from '../types/clipper';
-import { Plus, Film } from 'lucide-react';
+import { Plus, Film, FolderOpen, Play } from 'lucide-react';
 
 interface MyProjectsViewProps {
   projects: ProjectItem[];
@@ -18,15 +18,13 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
   onNewProject
 }) => {
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#050b08] text-neutral-100 overflow-y-auto font-sans select-none p-8 md:p-12">
+    <div className="flex-1 flex flex-col h-full bg-[#030806] bg-[radial-gradient(900px_500px_at_85%_-5%,rgba(40,120,70,0.14),transparent_60%)] text-neutral-100 overflow-y-auto font-sans select-none p-5 md:p-7">
       {/* Header (Exact match to screenshot 3: "My clips  2 projects") */}
-      <div className="flex items-baseline gap-4 mb-8">
-        <h1 className="text-3xl font-bold text-white tracking-tight">
-          My clips
-        </h1>
-        <span className="text-xs text-neutral-400 font-mono-num">
-          {projects.length} {projects.length === 1 ? 'project' : 'projects'}
-        </span>
+      <div className="flex items-center gap-3 mb-5 pr-44">
+        <FolderOpen className="w-[26px] h-[26px] text-[#8fd13a]" strokeWidth={1.8} />
+        <h1 className="text-[26px] font-semibold text-white tracking-tight">My clips</h1>
+        <span className="text-[13px] text-neutral-400">{projects.length} {projects.length === 1 ? 'project' : 'projects'}</span>
+        <button type="button" onClick={onNewProject} className="ml-auto inline-flex items-center gap-2 px-4 h-10 rounded-full bg-gradient-to-b from-[#a6f04a] to-[#78d62f] text-black text-[13.5px] font-semibold hover:brightness-110 transition cursor-pointer"><Plus className="w-4 h-4" strokeWidth={2.5} />New Project</button>
       </div>
 
       {/* Projects Grid (Exact match to screenshot 3) */}
@@ -48,7 +46,7 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3.5">
           {projects.map((project) => {
             const isFinished = project.status === 'Finished';
             const statusLabel = isFinished
@@ -62,12 +60,17 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
             return (
               <div
                 key={project.id}
-                className="bg-[#09110e] border border-[#15251e] hover:border-[#23362d] rounded-2xl p-6 flex flex-col justify-between transition-all space-y-4 shadow-xl"
+                className="bg-[#0a1510]/90 border border-[#1c3326] hover:border-[#4fae3a]/70 hover:shadow-[0_0_20px_-6px_rgba(111,212,74,0.5)] rounded-xl p-3.5 flex gap-4 transition-all"
               >
+                <div className="w-[120px] h-[110px] rounded-lg overflow-hidden shrink-0 bg-[#10201a] relative">
+                  {project.thumbnail ? <img src={project.thumbnail} alt="" className="w-full h-full object-cover" draggable={false} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /> : null}
+                  <Play className="w-6 h-6 text-[#3f9a5a] absolute inset-0 m-auto -z-0" />
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col justify-between gap-2">
                 {/* Title & Metadata */}
                 <div className="space-y-1.5">
                   <h2 
-                    className="text-base font-bold text-white tracking-tight leading-snug break-all line-clamp-2"
+                    className="text-[15px] font-semibold text-white tracking-tight leading-snug break-all line-clamp-2"
                     title={project.name}
                   >
                     {project.name.endsWith('.mp4') ? project.name : `${project.name}.mp4`}
@@ -89,14 +92,14 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
                 </div>
 
                 {/* 3 Action Buttons (Exact match to screenshot 3: [ Clips ] [ Progress ] [ Delete ]) */}
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex items-center gap-2">
                   {/* 1. CLIPS (Voltage Lime Button) */}
                   <button
                     type="button"
                     onClick={() => isFinished && onOpenClips(project)}
                     disabled={!isFinished}
                     title={isFinished ? '' : 'Clips open when processing is finished'}
-                    className={`px-5 py-2 rounded-xl font-extrabold text-xs transition-all ${isFinished ? 'bg-[#bef264] hover:bg-[#a3e635] text-black shadow-md shadow-[#3f9a5a]/15 active:scale-95 cursor-pointer' : 'bg-[#1a2a22] text-neutral-500 cursor-not-allowed opacity-60'}`}
+                    className={`px-4 py-1.5 rounded-full font-semibold text-xs transition-all ${isFinished ? 'bg-gradient-to-b from-[#a6f04a] to-[#78d62f] hover:brightness-110 text-black active:scale-95 cursor-pointer' : 'bg-[#1a2a22] text-neutral-500 cursor-not-allowed opacity-60'}`}
                   >
                     {project.story ? 'Result' : 'Clips'}
                   </button>
@@ -105,7 +108,7 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onOpenProgress(project)}
-                    className="px-4 py-2 rounded-xl bg-[#111e18] hover:bg-[#192c23] text-neutral-200 hover:text-white font-bold text-xs border border-[#1d3228] transition-colors active:scale-95 cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-full bg-[#111e18] hover:bg-[#192c23] text-neutral-200 hover:text-white font-bold text-xs border border-[#1d3228] transition-colors active:scale-95 cursor-pointer"
                   >
                     Progress
                   </button>
@@ -114,10 +117,11 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onDeleteProject(project.id)}
-                    className="px-4 py-2 rounded-xl bg-[#111e18] hover:bg-rose-950/60 hover:border-rose-800 text-neutral-300 hover:text-rose-300 font-bold text-xs border border-[#1d3228] transition-colors active:scale-95 cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-full bg-[#111e18] hover:bg-rose-950/60 hover:border-rose-800 text-neutral-300 hover:text-rose-300 font-bold text-xs border border-[#1d3228] transition-colors active:scale-95 cursor-pointer"
                   >
                     Delete
                   </button>
+                </div>
                 </div>
               </div>
             );

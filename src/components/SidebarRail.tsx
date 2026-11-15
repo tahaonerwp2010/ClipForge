@@ -27,27 +27,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, proj
     { id: 'settings', label: 'Settings', Icon: Settings, active: activeView === 'settings' },
   ];
   return (
-    <><aside className="hidden md:flex w-[290px] shrink-0 h-full p-2.5 pr-0 bg-[#030806] select-none">
+    <><aside className="hidden md:flex w-[240px] min-[1500px]:w-[290px] shrink-0 h-full p-2.5 pr-0 bg-[#030806] select-none">
     <div className="relative flex-1 min-w-0 flex flex-col overflow-hidden rounded-2xl border border-[#1b3a28] bg-[#050d09]">
       <div className="absolute inset-0 bg-cover bg-bottom opacity-95 pointer-events-none" style={{ backgroundImage: 'url(./side-forest.jpg)' }} />
-      <div className="relative flex items-center gap-3 px-5 pt-7 pb-8">
+      <div className="relative flex items-center gap-3 px-4 min-[1500px]:px-5 pt-5 min-[1500px]:pt-7 pb-5 min-[1500px]:pb-8 [@media(max-height:760px)]:pt-4 [@media(max-height:760px)]:pb-3">
         {logoOk
-          ? <img src="./logo.png" alt="ClipForge" className="w-[68px] h-[68px] rounded-2xl shrink-0 drop-shadow-[0_0_14px_rgba(111,212,74,0.7)]" onError={() => setLogoOk(false)} draggable={false} />
+          ? <img src="./logo.png" alt="ClipForge" className="w-[54px] h-[54px] min-[1500px]:w-[68px] min-[1500px]:h-[68px] rounded-2xl shrink-0 drop-shadow-[0_0_14px_rgba(111,212,74,0.7)]" onError={() => setLogoOk(false)} draggable={false} />
           : <div className="w-[68px] h-[68px] rounded-2xl bg-[#bef264] text-black font-black flex items-center justify-center text-xl shrink-0">C</div>}
         <div className="min-w-0">
           <div className="flex items-baseline gap-1 whitespace-nowrap leading-none">
-            <span className="text-[29px] font-bold text-white tracking-tight">ClipForge</span>
+            <span className="text-[23px] min-[1500px]:text-[29px] font-bold text-white tracking-tight">ClipForge</span>
             </div>
-          <div className="text-[14px] text-neutral-200 mt-1.5 whitespace-nowrap">by taha.ai</div>
-          <div className="text-[12px] text-neutral-400 mt-0.5 whitespace-nowrap">AI clips. Real impact.</div>
+          <div className="text-[12.5px] min-[1500px]:text-[14px] text-neutral-200 mt-1 whitespace-nowrap">by taha.ai</div>
+          <div className="text-[11px] min-[1500px]:text-[12px] text-neutral-400 mt-0.5 whitespace-nowrap">AI clips. Real impact.</div>
         </div>
       </div>
 
-      <nav className="relative px-3 space-y-2.5">
+      <nav className="relative px-3 space-y-1.5 min-[1500px]:space-y-2.5">
         {items.map(({ id, label, Icon, active, count }) => (
           <button key={id} type="button" onClick={() => onSelectView(id)}
-            className={`w-full flex items-center gap-4 px-4 h-[58px] rounded-xl text-[17px] font-medium transition-colors cursor-pointer border ${active ? 'bg-gradient-to-r from-[#245f31] to-[#143a22] border-[#6fd44a]/80 text-white shadow-[0_0_20px_-2px_rgba(111,212,74,0.55),inset_0_0_16px_-6px_rgba(111,212,74,0.5),inset_3px_0_0_#a3e635]' : 'border-transparent text-neutral-200 hover:text-white hover:bg-[#0c1a13]'}`}>
-            <Icon className={`w-[26px] h-[26px] ${active ? 'text-[#b6f24a]' : 'text-neutral-300'}`} strokeWidth={1.7} />
+            className={`w-full flex items-center gap-3.5 px-3.5 h-[46px] min-[1500px]:gap-4 min-[1500px]:px-4 min-[1500px]:h-[58px] [@media(max-height:760px)]:h-[42px] rounded-xl text-[15px] min-[1500px]:text-[17px] font-medium transition-colors cursor-pointer border ${active ? 'bg-gradient-to-r from-[#245f31] to-[#143a22] border-[#6fd44a]/80 text-white shadow-[0_0_20px_-2px_rgba(111,212,74,0.55),inset_0_0_16px_-6px_rgba(111,212,74,0.5),inset_3px_0_0_#a3e635]' : 'border-transparent text-neutral-200 hover:text-white hover:bg-[#0c1a13]'}`}>
+            <Icon className={`w-[22px] h-[22px] min-[1500px]:w-[26px] min-[1500px]:h-[26px] ${active ? 'text-[#b6f24a]' : 'text-neutral-300'}`} strokeWidth={1.7} />
             <span className="flex-1 text-left">{label}</span>
             {count ? <span className={`text-[14px] font-semibold min-w-[30px] text-center px-2 py-0.5 rounded-lg ${active ? 'bg-[#1f4a31] text-[#bef264]' : 'bg-[#14281d] text-neutral-100'}`}>{count}</span> : null}
           </button>
@@ -56,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, proj
 
       <div className="flex-1" />
 
-      <div className="relative px-4 pb-4 space-y-2.5">
+      <div className="relative px-3 min-[1500px]:px-4 pb-3 min-[1500px]:pb-4 space-y-2 min-[1500px]:space-y-2.5">
         {!showBuy ? null : pro ? (
           <div className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-[#bef264] bg-gradient-to-b from-[#143a22] to-[#0c2418] border border-[#2f6b45]"><Gem className="w-5 h-5" /><span>{proLabel}</span></div>
         ) : (
@@ -68,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onSelectView, proj
         <UpdateChecker>
           {(open, checking) => (
             <button type="button" onClick={open} disabled={checking}
-              className="w-full flex items-center gap-3.5 px-4 h-[52px] rounded-xl text-[15px] font-medium text-neutral-100 hover:text-white bg-[#0a1610]/90 hover:bg-[#10201a] border border-[#1d3a29] transition-colors cursor-pointer disabled:opacity-60">
+              className="w-full flex items-center gap-3 px-3.5 h-[44px] min-[1500px]:gap-3.5 min-[1500px]:px-4 min-[1500px]:h-[52px] rounded-xl text-[14px] min-[1500px]:text-[15px] font-medium text-neutral-100 hover:text-white bg-[#0a1610]/90 hover:bg-[#10201a] border border-[#1d3a29] transition-colors cursor-pointer disabled:opacity-60">
               {checking ? <RotateCw className="w-6 h-6 text-[#7ddc4a] animate-spin" /> : <ArrowUpCircle className="w-6 h-6 text-[#7ddc4a]" strokeWidth={1.7} />}
               <span>{checking ? 'Checking…' : 'Check for updates'}</span>
             </button>

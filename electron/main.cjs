@@ -55,6 +55,7 @@ function createWindow() {
       .catch(() => { askedClose = false; });
   });
   mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && input.key === 'F11' && !input.alt && !input.control) { event.preventDefault(); try { mainWindow.setFullScreen(!mainWindow.isFullScreen()); } catch {} return; }   // F11: full screen on / off
     const isDev = input.key === 'F12' || (input.control && input.shift && String(input.key).toLowerCase() === 'i');
     if (!isDev) return;
     if (allowDev) mainWindow.webContents.toggleDevTools(); else event.preventDefault();
@@ -416,7 +417,7 @@ ipcMain.handle('projects-load', async () => { try { return JSON.parse(fs.readFil
 ipcMain.handle('projects-save', async (e, list) => { try { const f = projectsFile(); fs.writeFileSync(f + '.tmp', JSON.stringify(list)); fs.renameSync(f + '.tmp', f); return true; } catch { return false; } });
 // ---- Edit a finished clip (captions + hook only) ----
 const EDIT = require('./engine/edit.cjs');
-ipcMain.handle('edit-load', async (e, outDir) => { const st = EDIT.loadState(outDir); return st ? { ok: true, captions: st.captions, branding: st.branding, framing: st.framing, grading: st.grading, ratio: st.ratio, clips: st.clips.map(c => ({ hookText: c.hookText, title: c.title })) } : { ok: false }; });
+ipcMain.handle('edit-load', async (e, outDir) => { const st = EDIT.loadState(outDir); return st ? { ok: true, captions: st.captions, branding: st.branding, framing: st.framing, grading: st.grading, ratio: st.ratio, split: !!st.split, clips: st.clips.map(c => ({ hookText: c.hookText, title: c.title, framing: c.framing })) } : { ok: false }; });
 ipcMain.handle('make-still', async (e, srcPath) => {
   try { if (!editJob && !currentRun) resetCancel(); return { ok: true, path: await R.stillOf(String(srcPath), path.join(app.getPath('userData'), 'previews')) }; }
   catch (err) { return { ok: false, path: null, error: String(err.message || err).slice(0, 200) }; }

@@ -22,6 +22,8 @@ function saveState(outDir, st) {
 }
 function loadState(outDir) { try { return JSON.parse(fs.readFileSync(stateFile(outDir), 'utf8')); } catch { return null; } }
 const nn = i => String(i + 1).padStart(2, '0');
+// layout of clip i: the project's layout, then this clip's own saved layout, then what the editor sends now
+const frOf = (st, i, ov) => ({ ...(st.framing || {}), ...(((st.clips || [])[i] || {}).framing || {}), ...((ov && ov.framing) || {}) });
 const editDir = (outDir) => { const d = path.join(outDir, '.edit'); fs.mkdirSync(d, { recursive: true }); return d; };
 
 // Colour rule of the hook the user coloured in the editor -> word colours for ANOTHER clip's hook, by line and word position:
@@ -39,6 +41,7 @@ function ruleColors(text, nLines, rule) {
 // Everything renderClip needs for clip i (same rules as the main pipeline), with the user's caption/hook changes applied.
 async function ctxFor(st, i, ov = {}, work, extra = {}) {
   const shorts = st.kind === 'shorts';
+  const fr = frOf(st, i, ov);
   const captions = { ...(st.captions || {}), ...(ov.captions || {}) };
   const hookText0 = ov.hookText != null ? ov.hookText : (st.clips[i].hookText || st.clips[i].title);
   const ovb = ov.branding || {};
@@ -53,13 +56,13 @@ async function ctxFor(st, i, ov = {}, work, extra = {}) {
   const k = Wd / 1080, capPx = (captions.fontSize || 24) * 3.4 * k, below = ASS.emojiMode(captions.style) === 'below', eSize = Math.round(capPx * (below ? 1.1 : 1.5));
   const emojiBox = { size: eSize, x: Math.round((captions.positionX ?? 50) / 100 * Wd - eSize / 2), y: below ? Math.min(Ht - eSize, Math.round((captions.positionY ?? 72) / 100 * Ht + capPx * 1.05)) : Math.max(0, Math.round((captions.positionY ?? 72) / 100 * Ht - capPx * 0.65 - eSize)) };
   const useEmoji = captions.enabled && captions.showEmoji && !!ASS.emojiMode(captions.style);
-  const hkRect = st.split ? null : R.brollRect(st.framing, Wd, Ht, (shorts ? st.infos[i] : st.info).width / (shorts ? st.infos[i] : st.info).height);
+  const hkRect = st.split ? null : R.brollRect(fr, Wd, Ht, (shorts ? st.infos[i] : st.info).width / (shorts ? st.infos[i] : st.info).height);
   const assArgs = { rect: hkRect, words: cw, clipStart: start, clipEnd: end, W: Wd, H: Ht, captions, branding, title: hookText, hookText };
   let behind = null;
   if (extra.outDir && extra.deps && (extra.deps.segment || extra.deps.detectFaces) && BH.wants(captions)) {
     const info0 = shorts ? st.infos[i] : st.info;
     behind = await BH.masks({ R, segment: extra.deps.segment, detectFaces: extra.deps.detectFaces, cacheDir: path.join(editDir(extra.outDir), `mask_${nn(i)}`), workDir: path.join(os.tmpdir(), `cf_bh_${process.pid}_${i}`), input: shorts ? st.files[i] : st.input, start, end, ratio: st.ratio || '9:16',
-      framing: st.framing, grading: st.grading, track: (st.tracks || [])[i] || null, srcAspect: info0.width / info0.height, split: st.split || undefined, log: extra.log });
+      framing: fr, grading: st.grading, track: (st.tracks || [])[i] || null, srcAspect: info0.width / info0.height, split: st.split || undefined, log: extra.log });
   }
   assArgs.behindBox = behind && behind.box; assArgs.keywords = ((shorts ? st.clips : st.clips) || [])[i] && ((st.clips || [])[i].keywords);
   const ass = ASS.build({ ...assArgs, part: behind ? 'front' : 'all' }), assBehind = behind ? ASS.build({ ...assArgs, part: 'behind' }) : '';
@@ -76,7 +79,7 @@ async function ctxFor(st, i, ov = {}, work, extra = {}) {
     music = { file: bm.path, startSec: bm.startSec || 0, volumeDb: bm.volumeDb ?? -18, duration: d, fade: bm.fade !== false };
   }
   const info = shorts ? st.infos[i] : st.info;
-  return { captions, branding, quality, Wd, Ht, start, end, ass, assBehind, behind, emojis, emojiBox, watermark, music, info, cw, fontFamilies: ASS.fontsUsed({ captions, branding }), input: shorts ? st.files[i] : st.input };
+  return { fr, captions, branding, quality, Wd, Ht, start, end, ass, assBehind, behind, emojis, emojiBox, watermark, music, info, cw, fontFamilies: ASS.fontsUsed({ captions, branding }), input: shorts ? st.files[i] : st.input };
 }
 
 // A clean copy of the clip (framing, face tracking and grading applied, but NO captions / hook / emoji) at a small size. Used for the live preview.
@@ -85,7 +88,7 @@ function footageOf(st, i, dims) {
   try {
     if (st.split) return null;
     const inf = st.kind === 'shorts' ? (st.infos || [])[i] : st.info; if (!inf || !inf.width) return null;
-    const [Wd, H] = dims; const r = R.brollRect(st.framing, Wd, H, inf.width / inf.height);
+    const [Wd, H] = dims; const r = R.brollRect(frOf(st, i), Wd, H, inf.width / inf.height);
     return r.h >= H * 0.97 ? null : { y: r.y / H, h: r.h / H };
   } catch { return null; }
 }
@@ -96,7 +99,7 @@ async function prepare(outDir, i) {
   const x = await ctxFor(st, i, { captions: { enabled: false } }, null);
   const tmp = f + '.part.mp4';
   const w = path.join(os.tmpdir(), `cf_editprev_${process.pid}_${i}`);
-  await R.renderClip({ quality: 540, input: x.input, start: x.start, end: x.end, out: tmp, assText: '', ratio: st.ratio || '9:16', framing: st.framing, grading: { ...(st.grading || {}), fx: undefined },
+  await R.renderClip({ quality: 540, input: x.input, start: x.start, end: x.end, out: tmp, assText: '', ratio: st.ratio || '9:16', framing: frOf(st, i), grading: { ...(st.grading || {}), fx: undefined },
     workDir: w, track: (st.tracks || [])[i] || null, emojis: [], emojiBox: x.emojiBox, srcAspect: x.info.width / x.info.height, hasAudio: x.info.hasAudio !== false, fontFamilies: [], split: st.split || undefined, fps: Math.round(x.info.fps || 30) || 30 });
   fs.renameSync(tmp, f);
   try { fs.rmSync(w, { recursive: true, force: true }); } catch {}
@@ -118,7 +121,7 @@ async function rerender(outDir, i, ov, onProgress, deps, hw = 'cpu') {
     try { cuts = JSON.parse(fs.readFileSync(path.join(outDir, '.edit', `cuts_${nn(i)}.json`), 'utf8')); } catch { cuts = await CF.find(R, x.input, x.start, x.end - x.start); }
     fx = CF.apply(fx, cuts, broll, x.info.hasAudio !== false, x.end - x.start);
   } catch {}
-  await R.renderClip({ capSfx: CAPSFX.build({ words: x.cw, clipStart: x.start, clipEnd: x.end, captions: x.captions, branding: x.branding, seed: i + 1 }), broll, behind: x.behind, assBehind: x.assBehind, quality: x.quality, fx, input: x.input, start: x.start, end: x.end, out: tmp, assText: x.ass, ratio: st.ratio || '9:16', framing: st.framing, grading: st.grading,
+  await R.renderClip({ capSfx: CAPSFX.build({ words: x.cw, clipStart: x.start, clipEnd: x.end, captions: x.captions, branding: x.branding, seed: i + 1 }), broll, behind: x.behind, assBehind: x.assBehind, quality: x.quality, fx, input: x.input, start: x.start, end: x.end, out: tmp, assText: x.ass, ratio: st.ratio || '9:16', framing: x.fr, grading: st.grading,
     workDir: w, track: (st.tracks || [])[i] || null, emojis: x.emojis, emojiBox: x.emojiBox, srcAspect: x.info.width / x.info.height, hasAudio: x.info.hasAudio !== false, fontFamilies: x.fontFamilies,
     watermark: x.watermark, music: x.music, split: st.split || undefined, fps: Math.round(x.info.fps || 30) || 30, hw, onProgress });
   try { fs.unlinkSync(out); } catch {}
@@ -129,6 +132,7 @@ async function rerender(outDir, i, ov, onProgress, deps, hw = 'cpu') {
   st.captions = x.captions; st.branding = { ...x.branding, autoTitle: { ...x.branding.autoTitle, title: '', wordColors: undefined } };
   if (ov.hookText != null) { st.clips[i].hookText = ov.hookText; const wc = (ov.autoTitle || {}).wordColors; if (Array.isArray(wc) && wc.some(Boolean)) st.clips[i].hookColors = wc; else delete st.clips[i].hookColors; }
   if (ov.hookText == null && Array.isArray(ov.hookRule)) { const wc = ruleColors(st.clips[i].hookText || st.clips[i].title, (ov.autoTitle || {}).lines || ((x.branding || {}).autoTitle || {}).lines, ov.hookRule); if (wc) st.clips[i].hookColors = wc; else delete st.clips[i].hookColors; }
+  if (ov.framing) { st.clips[i].framing = { ...(st.clips[i].framing || {}), ...ov.framing }; try { fs.unlinkSync(path.join(editDir(outDir), `base_${nn(i)}.mp4`)); } catch {} }   // this clip's own layout; the preview copy is made again next time
   saveState(outDir, st);
   return { outputPath: out, thumbnailUrl: thumb };
 }
