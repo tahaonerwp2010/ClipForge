@@ -20,14 +20,21 @@ export const GUMROAD_URL = 'https://tahawave85.gumroad.com/l/hsxljg';
 // Second card option through Kelviq. Paste the Kelviq checkout link here; while it is empty the Kelviq button stays hidden.
 export const KELVIQ_URL = 'https://www.kelviq.com/buy/f52f206e-e369-4038-8a7e-7c2ac0ab87df/?enabled=clip-forge-pro&plan_identifier=clip-forge-pro&charge_period=MONTHLY';
 
+// Plans shown in the Buy Pro window. A yearly checkout link left empty ('') means "card checkout for this plan is not ready yet" (the buyer is told to use Easypaisa / crypto or the monthly plan).
+export interface ProPlan { id: 'month' | 'year'; label: string; price: number; per: string; note: string; badge?: string; gumroadUrl: string; kelviqUrl: string }
+export const PRO_PLANS: ProPlan[] = [
+  { id: 'month', label: 'Monthly', price: 10, per: 'per month', note: 'Billed every month', gumroadUrl: GUMROAD_URL, kelviqUrl: KELVIQ_URL },
+  { id: 'year', label: 'Yearly', price: 100, per: 'per year', note: 'Just $8.33 a month', badge: 'Save 17% ($20)', gumroadUrl: '', kelviqUrl: KELVIQ_URL.replace('charge_period=MONTHLY', 'charge_period=YEARLY') },
+];
+
 export interface PayMethod { id: string; name: string; kind: 'easypaisa' | 'crypto'; lines: { label: string; value: string }[]; note?: string }
 export const PAY_METHODS: PayMethod[] = [
   { id: 'easypaisa', name: 'Easypaisa', kind: 'easypaisa',
     lines: [{ label: 'Account name', value: 'Rashida begum' }, { label: 'Easypaisa number', value: '03195094240' }],
-    note: 'Plan price: $10 per month. Send the equivalent amount in PKR.' },
+    note: 'Send the equivalent amount in PKR.' },
   { id: 'crypto', name: 'Crypto (SOL)', kind: 'crypto',
     lines: [{ label: 'Coin', value: 'SOL (Solana)' }, { label: 'Wallet address', value: '8qSAHJsiy3A4MDFqqbz5XetW47NmQLmu4rk4JLPCfvPu' }],
-    note: 'Plan price: $10 per month. Send SOL on the Solana network only. Anything sent on another network is lost.' },
+    note: 'Send the equivalent amount in SOL on the Solana network only. Anything sent on another network is lost.' },
 ];
 
 // Where the buyer sends the payment proof. Leave a link empty ('') to hide that button.

@@ -1,5 +1,7 @@
 ## What's new
 
+- **New Buy Pro window (3 steps):** 1) choose a plan (Monthly $10 or Yearly $100, save 17% / $20), 2) choose how to pay (Easypaisa, Crypto, Kelviq or Gumroad), 3) pay. Easypaisa and Crypto show the amount for the chosen plan, your device ID and Send proof buttons. Kelviq and Gumroad (now with their logos; yearly card checkout works on Kelviq) show a pay button and a box to paste your licence key.
+- **Paste a Video Link:** now also downloads Twitch past broadcasts and clips (and many other video sites), not only YouTube. Live streams that are still running are refused with a clear message (live import is planned for later).
 - **Forest background:** a soft misty-forest picture now sits behind Projects, Settings and Studio.
 - **Kelviq payments (second card option):** Pro keys from Kelviq now work next to Gumroad keys. Paste either key in "I have a key". Pro lasts for the paid month and stops (after 3 days of grace) if the subscription is not renewed. One key works on one computer only.
 - **Sideways phone videos fixed:** clips filmed on a phone (stored with a rotate note) were squashed vertically in Already Cut Clips. Their real size is now read correctly, so they are no longer squeezed.

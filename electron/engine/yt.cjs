@@ -110,7 +110,8 @@ function friendly(err) {
   if (/Private video|members-only|Sign in to confirm your age|age-restricted/i.test(t)) return 'This video is private, age-restricted or members-only, so YouTube needs a sign-in for it.';
   if (/Requested format is not available|Only images are available|n challenge|challenge solving|JavaScript runtime|js.?runtime/i.test(t)) return 'YouTube did not give a downloadable stream (the downloader helper may be missing). ' + (jsRt ? '' : 'The helper could not be installed — check your internet and try again. ') + '[' + ((t.match(/ERROR:[^\n]*/g) || []).pop() || '').replace(/^ERROR:\s*(\[youtube\]\s*)?/, '').slice(0, 170) + '] Log: ytdlp-log.txt in the app data folder.';
   if (/ERROR:[^\n]*(Video unavailable|has been removed|no longer available|not made this video available)/i.test(t)) return 'This video is unavailable.';
-  if (/Unsupported URL/i.test(t)) return 'This link is not supported. Paste a YouTube video link.';
+  if (/subscriber|sub-only|requires? (a )?(log ?in|authentication)|Please log in|login required/i.test(t) && !/youtube/i.test(t)) return 'This video needs a login (subscriber-only or private), so it cannot be downloaded.';
+  if (/Unsupported URL/i.test(t)) return 'This link is not supported. Paste a YouTube or Twitch video link (a finished video, not a live stream).';
   if (/Unable to download|getaddrinfo|Temporary failure|timed out|Network/i.test(t)) return 'Network problem. Check your internet and try again.';
   if (/ZZZZ/.test(t)) return 'The downloader helper could not be prepared. Check your internet connection and try again. (' + (t.trim().split('\n').pop() || '').slice(0, 140) + ')';
   return 'Download failed. ' + (t.trim().split('\n').pop() || '').slice(0, 160);
@@ -122,7 +123,7 @@ const num = (x) => { const n = Number(x); return isFinite(n) && x !== '' && x !=
 function probeSize(bin, url, fmt, extra = []) {
   return new Promise((resolve) => {
     let out = '', err = '', done = false;
-    const p = spawn(bin, ['--no-playlist', ...jsArgs(), ...extra, '-f', fmt, '--print', 'CFSZ|%(requested_formats.0.filesize,requested_formats.0.filesize_approx)s|%(requested_formats.1.filesize,requested_formats.1.filesize_approx)s|%(filesize,filesize_approx)s', url], { windowsHide: true, env: jsEnv() }); procs.add(p);
+    const p = spawn(bin, ['--no-playlist', ...jsArgs(), ...extra, '-f', fmt, '--print', 'CFLIVE|%(is_live)s|%(live_status)s', '--print', 'CFSZ|%(requested_formats.0.filesize,requested_formats.0.filesize_approx)s|%(requested_formats.1.filesize,requested_formats.1.filesize_approx)s|%(filesize,filesize_approx)s', url], { windowsHide: true, env: jsEnv() }); procs.add(p);
     const fin = (v) => { if (!done) { done = true; clearTimeout(t); procs.delete(p); killTree(p); resolve(v); } };
     const t = setTimeout(() => fin({ ok: false, size: 0, err: 'timed out' }), 70000);
     p.stdout.on('data', (d) => { out += d; });
@@ -130,6 +131,7 @@ function probeSize(bin, url, fmt, extra = []) {
     p.on('error', (e) => fin({ ok: false, size: 0, err: e.message }));
     p.on('close', () => {
       const m = out.match(/CFSZ\|([^|\n]*)\|([^|\n]*)\|([^|\n\r]*)/);
+      if (/CFLIVE\|(True|true)\||CFLIVE\|[^|\n]*\|is_live/.test(out)) return fin({ ok: false, size: 0, err: 'CF_LIVE', live: true });
       if (!m) return fin({ ok: false, size: 0, err });
       const a = num(m[1].trim()), b = num(m[2].trim()), c = num(m[3].trim());
       fin({ ok: true, size: a != null && b != null ? a + b : (c || a || 0), err: '' });
@@ -150,12 +152,20 @@ const SLOW_BPS = 40 * 1024;                        // below this for ~15 s = rea
 const FAST_ARGS = ['-N', '4', '--http-chunk-size', '10M', '--retries', '15', '--fragment-retries', '15', '--retry-sleep', '2', '--socket-timeout', '60'];
 
 // A download that was interrupted (app closed, network lost) leaves partial files that yt-dlp cannot always continue. A new request starts clean.
+// The id yt-dlp puts in the file name ([id]); used to find only THIS video's half-finished files.
+function idOf(url) {
+  const u = String(url);
+  const y = u.match(/(?:v=|youtu\.be\/|shorts\/|live\/|embed\/)([\w-]{11})/); if (y) return [null, y[1]];
+  const t = u.match(/twitch\.tv\/(?:[\w]+\/)?videos?\/(\d+)/i); if (t) return [null, 'v' + t[1]];
+  return null;
+}
+const isYouTube = (u) => /(^|\/\/|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)/i.test(String(u));
 function hasPartials(dir, url) {
-  const m = String(url).match(/(?:v=|youtu\.be\/|shorts\/|live\/|embed\/)([\w-]{11})/);
+  const m = idOf(url);
   try { return fs.readdirSync(dir).some(n => /\.part$|\.f\d+[\w-]*\.\w+(\.part)?$/i.test(n) && (!m || n.includes('[' + m[1] + ']'))); } catch { return false; }
 }
 function cleanPartials(dir, url, soft) {
-  const m = String(url).match(/(?:v=|youtu\.be\/|shorts\/|live\/|embed\/)([\w-]{11})/);
+  const m = idOf(url);
   let names = []; try { names = fs.readdirSync(dir); } catch { return; }
   for (const n of names) {
     if (soft ? !/\.ytdl$/i.test(n) : !/(\.part|\.ytdl|\.temp)$|\.f\d+[\w-]*\.\w+(\.part)?$|\.part-Frag\d+$/i.test(n)) continue;
@@ -184,19 +194,25 @@ async function download(url, dir, onProgress) {
   // no switching because of speed, and a dropped connection simply continues on the same route until the video is complete.
   // Every combination is tried before giving up: YouTube answers "Sign in", "unavailable" or "403" per client / per network path, so one bad answer proves nothing.
   const combos = [];
+  if (!isYouTube(url)) {                                          // Twitch and other sites: no YouTube-specific routes, just IPv4 first and then the normal network
+    combos.push({ rt: { name: 'default', args: [] }, net: ['--force-ipv4'], ck: [], tag: 'default/ipv4' });
+    combos.push({ rt: { name: 'default', args: [] }, net: [], ck: [], tag: 'default/dual' });
+  } else {
   for (const rt of ROUTES) combos.push({ rt, net: ['--force-ipv4'], ck: [], tag: rt.name + '/ipv4' });
   for (const rt of ROUTES.slice(0, 4)) combos.push({ rt, net: [], ck: [], tag: rt.name + '/dual' });
   if (!global.__cfMobileSpawn) for (const br of ['firefox', 'edge', 'chrome', 'brave']) for (const rt of [ROUTES[0], ROUTES[3]]) combos.push({ rt, net: ['--force-ipv4'], ck: ['--cookies-from-browser', br], tag: rt.name + '/cookies-' + br });
+  }
   let ci = 0, allErr = '';
   const chooseRoute = async () => {
     while (ci < combos.length) {
       const c = combos[ci++];
       if (cancelled) throw new Error('Cancelled');
       netArgs = c.net; cookieArgs = c.ck;
-      onProgress({ phase: 'prepare', percent: 0, text: ci > 1 ? 'Trying another way to reach YouTube…' : 'Reading video info…' });
+      onProgress({ phase: 'prepare', percent: 0, text: ci > 1 ? 'Trying another way to reach the video…' : 'Reading video info…' });
       const pr = await probeSize(bin, url, fmt, c.rt.args);
       if (cancelled) throw new Error('Cancelled');
       if (pr.ok) return { rt: c.rt, grand: pr.size };
+      if (pr.live) throw new Error('This is a live stream that is still running. Wait until it ends and paste the link of the finished video (past broadcast).');
       lastErr = pr.err || lastErr;
       if (!/cookies|keyring|DPAPI|database is locked|Could not copy|browser/i.test(pr.err || '') || !c.ck.length) allErr += '\n[' + c.tag + '] ' + (pr.err || '');
       try { fs.appendFileSync(path.join(P.userDataDir(), 'ytdlp-log.txt'), `\n==== PROBE ${new Date().toISOString()} ${c.tag}\n${String(pr.err || '').slice(-1500)}\n`); } catch {}
@@ -246,7 +262,7 @@ function diagnose(bin, url) {
 }
 
 function attempt(bin, url, dir, fmt, ff, route, grand, onProgress, canSwitch) {
-  const args = ['--no-playlist', '--newline', '--no-colors', '--progress', '-f', fmt, '--merge-output-format', 'mp4', ...FAST_ARGS, ...jsArgs(), ...route.args,
+  const args = ['--no-playlist', '--match-filter', '!is_live', '--newline', '--no-colors', '--progress', '-f', fmt, '--merge-output-format', 'mp4', ...FAST_ARGS, ...jsArgs(), ...route.args,
     '--progress-template', 'download:CFP|%(progress.status)s|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s',
     '-o', path.join(dir, '%(title).80B [%(id)s].%(ext)s'), '--print', 'after_move:CFFILE:%(filepath)s', '--print', 'CFTITLE:%(title)s'];
   if (ff) args.push('--ffmpeg-location', path.dirname(ff));

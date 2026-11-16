@@ -171,8 +171,8 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
     try { const pr = await window.electronAPI.probeVideo?.(r.path); if (pr) { duration = pr.duration; w = pr.width; h = pr.height; } } catch { /* ignore */ }
     const meta = await readVideoMeta(fileUrl);
     setYtVideo({
-      id: `yt-${Date.now()}`, title: r.title || r.path.split(/[\\/]/).pop() || 'YouTube video', url: fileUrl,
-      duration: Math.round(duration || meta.duration || 0), thumbnail: meta.thumb, type: 'youtube', author: 'YouTube',
+      id: `yt-${Date.now()}`, title: r.title || r.path.split(/[\\/]/).pop() || 'Video', url: fileUrl,
+      duration: Math.round(duration || meta.duration || 0), thumbnail: meta.thumb, type: 'youtube', author: /twitch\.tv/i.test(ytUrl) ? 'Twitch' : /youtu/i.test(ytUrl) ? 'YouTube' : 'Link',
       originalAspect: w && h && w < h ? '9:16 vertical' : '16:9 widescreen', filePath: r.path
     });
     setYtState('done');
@@ -338,7 +338,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
           { id: 'gaming' as const, Icon: Gamepad2, img: 'gaming', title: 'Gaming Clips', text: 'For gameplay with little or no talking.', points: ['Works with any game', 'Title, hook and description', 'Needs a Gemini key'], badge: 'New' },
           { id: 'short' as const, Icon: Scissors, img: 'scissors', title: 'Edit Already Cut Clips', text: 'Add captions and styling to clips you have already made.', points: ['Your edit stays untouched', 'Captions and style only', 'Up to 50 clips'] },
           { id: 'split' as const, Icon: Rows2, img: 'split', title: 'Split Screen', text: 'Facecam on top, game or footage below.', points: ['Finds the facecam', 'Two videos synced', 'Adjustable layout'] },
-          { id: 'youtube' as const, Icon: LinkIcon, img: 'link', title: 'Paste a YouTube Link', text: 'For videos you own or have permission to use.', points: ['Imported up to 1080p', 'Live download progress', 'Works like a long video'] },
+          { id: 'youtube' as const, Icon: LinkIcon, img: 'link', title: 'Paste a Video Link', text: 'YouTube videos and Twitch past broadcasts. For videos you own or have permission to use.', points: ['YouTube & Twitch (finished videos)', 'Imported up to 1080p', 'Works like a long video'] },
         ]).map(c => {
           const on = activeCard === c.id;
           return (
@@ -499,9 +499,10 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
               value={ytUrl}
               disabled={ytState === 'downloading'}
               onChange={(e) => { setYtUrl(e.target.value); if (ytState !== 'idle') { setYtState('idle'); setYtVideo(null); setYtError(''); setYtProg(null); } }}
-              placeholder="Paste the long video link: https://www.youtube.com/watch?v=..."
+              placeholder="Paste a video link: youtube.com/watch?v=… or twitch.tv/videos/…"
               className="w-full bg-[#0f1c16] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-3 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none disabled:opacity-60"
             />
+            <p className="text-[11px] text-neutral-500 leading-relaxed">Works with <span className="text-neutral-300">YouTube</span> and <span className="text-neutral-300">Twitch</span> (past broadcasts and clips), and many other video sites. Only finished videos: a stream that is still live cannot be downloaded yet.</p>
             <div className="flex items-center gap-2">
               <button
                 type="button"

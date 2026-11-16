@@ -382,7 +382,7 @@ const FoldersTab: React.FC = () => {
     <div className="space-y-4">
       {row('models', '1. Models folder', 'Where speech models are downloaded. If you change it, download the models again or move the files there.', f.modelsDir, f.defaultModelsDir)}
       {row('clips', '2. Clips folder', 'Where finished clips are saved. Every project gets its own folder inside it.', f.clipsDir, f.defaultClipsDir)}
-      {row('youtube', '3. YouTube downloads folder', 'Where videos downloaded from a YouTube link are saved.', f.ytDir || f.defaultYtDir, f.defaultYtDir)}
+      {row('youtube', '3. Link downloads folder', 'Where videos downloaded from a link (YouTube, Twitch…) are saved.', f.ytDir || f.defaultYtDir, f.defaultYtDir)}
     </div>
   );
 };
