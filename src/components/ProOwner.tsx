@@ -3,7 +3,7 @@ import { X, Copy, Check, ArrowLeft, ArrowRight, Gem, ShieldCheck, Loader2, Lock,
 import solLogo from '../assets/pay/sol.png';
 import kelviqLogo from '../assets/pay/kelviq.png';
 import gumroadLogo from '../assets/pay/gumroad.png';
-import { PAY_METHODS, PRO_PLANS, PRO_HIGHLIGHTS, CONTACTS } from '../config/proConfig';
+import { PAY_METHODS, PRO_PLANS, PRO_HIGHLIGHTS, CONTACTS, GUMROAD_AVAILABLE } from '../config/proConfig';
 import { LicenseService, useLicense } from '../services/licenseService';
 
 const Overlay: React.FC<{ onClose: () => void; children: React.ReactNode; wide?: boolean }> = ({ onClose, children, wide }) => (
@@ -60,7 +60,8 @@ export const BuyProModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   const manual = PAY_METHODS.find(x => x.id === method);
   const mt = METHOD_TABS.find(t => t.id === method);   // Easypaisa / Crypto details
-  const cardUrl = !method ? '' : method === 'kelviq' ? plan.kelviqUrl : method === 'gumroad' ? plan.gumroadUrl : '';
+  const unavailable = method === 'gumroad' && !GUMROAD_AVAILABLE;
+  const cardUrl = !method || unavailable ? '' : method === 'kelviq' ? plan.kelviqUrl : method === 'gumroad' ? plan.gumroadUrl : '';
   const cardName = method === 'kelviq' ? 'Kelviq' : 'Gumroad';
 
   const KeyBox = (
@@ -122,7 +123,7 @@ export const BuyProModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div className="grid grid-cols-2 gap-3 pt-1">
           {METHOD_TABS.map(x => (
             <button key={x.id} type="button" onClick={() => setMethod(x.id)}
-              className={`px-4 py-4 rounded-2xl text-sm font-bold cursor-pointer border flex items-center gap-3 ${method === x.id ? 'bg-[#12201a] border-[#bef264] shadow-[0_0_0_1px_#bef264] text-white' : 'bg-[#0d1712] border-[#1d3228] text-neutral-300 hover:border-[#3f9a5a] hover:text-white'}`}><MethodIcon id={x.id} size={32} />{x.name}</button>
+              className={`px-4 py-4 rounded-2xl text-sm font-bold cursor-pointer border flex items-center gap-3 ${method === x.id ? 'bg-[#12201a] border-[#bef264] shadow-[0_0_0_1px_#bef264] text-white' : 'bg-[#0d1712] border-[#1d3228] text-neutral-300 hover:border-[#3f9a5a] hover:text-white'}`}><MethodIcon id={x.id} size={32} />{x.name}{x.id === 'gumroad' && !GUMROAD_AVAILABLE && <span className="ml-auto text-[10px] font-semibold text-amber-300">Not available</span>}</button>
           ))}
         </div>
         <div className="flex justify-between pt-1"><Btn onClick={() => setStep(1)}><ArrowLeft className="w-3.5 h-3.5" /> Back</Btn><Btn primary disabled={!method} onClick={() => setStep(3)} className="!px-8">Next <ArrowRight className="w-3.5 h-3.5" /></Btn></div>
@@ -163,10 +164,12 @@ export const BuyProModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           </>)}
 
           {!manual && (<>
-            {cardUrl
+            {unavailable
+              ? <p className="text-xs font-semibold text-amber-300 text-center rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-3">Currently not available. Please choose another payment method.</p>
+              : cardUrl
               ? <Btn primary onClick={() => open(cardUrl)} className="w-full !py-3 !text-sm"><ExternalLink className="w-4 h-4" /> Pay with {cardName} · ${plan.price} {plan.per}</Btn>
               : <p className="text-[11px] text-amber-300 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">Card checkout for the {plan.label.toLowerCase()} plan on {cardName} is not ready yet. Go back and choose the monthly plan, or pay with Easypaisa or crypto.</p>}
-            <p className="text-[11px] text-neutral-500 text-center">Secure checkout by {cardName}. After paying you get a licence key by email.</p>
+            {!unavailable && cardUrl && <p className="text-[11px] text-neutral-500 text-center">Secure checkout by {cardName}.{method === 'gumroad' ? ` On the Gumroad page choose "${plan.label}" in the dropdown.` : ''} After paying you get a licence key by email.</p>}
             <div className="border-t border-[#17291f] pt-3">{KeyBox}</div>
           </>)}
         </div>

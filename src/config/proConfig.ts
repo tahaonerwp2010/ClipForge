@@ -21,10 +21,13 @@ export const GUMROAD_URL = 'https://tahawave85.gumroad.com/l/hsxljg';
 export const KELVIQ_URL = 'https://www.kelviq.com/buy/f52f206e-e369-4038-8a7e-7c2ac0ab87df/?enabled=clip-forge-pro&plan_identifier=clip-forge-pro&charge_period=MONTHLY';
 
 // Plans shown in the Buy Pro window. A yearly checkout link left empty ('') means "card checkout for this plan is not ready yet" (the buyer is told to use Easypaisa / crypto or the monthly plan).
+// Gumroad card checkout switch: false while the Gumroad payout / bank details are not set up (the buyer sees "Currently not available"). Set to true when Gumroad can take payments.
+export const GUMROAD_AVAILABLE = false;
+
 export interface ProPlan { id: 'month' | 'year'; label: string; price: number; per: string; note: string; badge?: string; gumroadUrl: string; kelviqUrl: string }
 export const PRO_PLANS: ProPlan[] = [
   { id: 'month', label: 'Monthly', price: 10, per: 'per month', note: 'Billed every month', gumroadUrl: GUMROAD_URL, kelviqUrl: KELVIQ_URL },
-  { id: 'year', label: 'Yearly', price: 100, per: 'per year', note: 'Just $8.33 a month', badge: 'Save 17% ($20)', gumroadUrl: '', kelviqUrl: KELVIQ_URL.replace('charge_period=MONTHLY', 'charge_period=YEARLY') },
+  { id: 'year', label: 'Yearly', price: 100, per: 'per year', note: 'Just $8.33 a month', badge: 'Save 17% ($20)', gumroadUrl: GUMROAD_URL, kelviqUrl: KELVIQ_URL.replace('charge_period=MONTHLY', 'charge_period=YEARLY') },
 ];
 
 export interface PayMethod { id: string; name: string; kind: 'easypaisa' | 'crypto'; lines: { label: string; value: string }[]; note?: string }
