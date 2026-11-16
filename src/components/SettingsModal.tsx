@@ -435,7 +435,7 @@ const IS_MOBILE = !!(window as any).electronAPI?.isMobile;
 export const SettingsView: React.FC = () => {
   const [tab, setTab] = useState<Tab>('ai');
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#0a130f] text-neutral-200 overflow-y-auto">
+    <div className="flex-1 flex flex-col h-full bg-transparent text-neutral-200 overflow-y-auto">
       <div className="px-4 md:px-8 pt-6 border-b border-[#182a22] bg-[#0c1611] shrink-0">
         <h1 className="text-xl font-display font-bold text-white tracking-tight">Settings</h1>
         <div className="flex gap-1 mt-4 overflow-x-auto">

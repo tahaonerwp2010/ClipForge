@@ -53,6 +53,9 @@ import { isDynStyle } from './utils/dynCaptions';
 import { SoftwareManager } from './services/softwareManager';
 import { PipelineRunner } from './services/pipelineRunner';
 
+// Soft forest picture behind Projects, Settings and Studio (the dark layer on top keeps it faint so text stays easy to read)
+const FOREST_BG: React.CSSProperties = { backgroundColor: '#030806', backgroundImage: 'linear-gradient(rgba(3,8,6,0.50), rgba(3,8,6,0.64)), url(./main-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center bottom', backgroundAttachment: 'local' };
+
 export default function App() {
   // Navigation & View: 'home' | 'my_projects' | 'settings' | 'studio'
   const [activeView, setActiveView] = useState<ActiveNavView>('home');
@@ -576,7 +579,7 @@ export default function App() {
 
         {/* VIEW 2: MY PROJECTS */}
         {activeView === 'my_projects' && (
-          <main className="flex-1 flex flex-col overflow-y-auto">
+          <main className="flex-1 flex flex-col overflow-y-auto" style={FOREST_BG}>
             <MyProjectsView
               projects={projects}
               onOpenClips={(proj) => {
@@ -714,14 +717,14 @@ export default function App() {
 
         {/* VIEW 3: SETTINGS */}
         {activeView === 'settings' && (
-          <main className="flex-1 flex flex-col overflow-y-auto bg-[#030806] bg-[radial-gradient(900px_500px_at_85%_-5%,rgba(40,120,70,0.14),transparent_60%)]">
+          <main className="flex-1 flex flex-col overflow-y-auto bg-[#030806]" style={FOREST_BG}>
             <SettingsView />
           </main>
         )}
 
         {/* VIEW 4: STUDIO WORKSTATION (SINGLE UNIFIED SCROLL CONTAINER AS REQUESTED!) */}
         {activeView === 'studio' && selectedVideo && (
-          <main className="flex-1 flex flex-col overflow-hidden">
+          <main className="flex-1 flex flex-col overflow-hidden" style={FOREST_BG}>
             
             {/* Studio Header (floating) */}
             <StudioHeader

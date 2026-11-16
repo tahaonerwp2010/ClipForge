@@ -1,5 +1,7 @@
 ## What's new
 
+- **Forest background:** a soft misty-forest picture now sits behind Projects, Settings and Studio.
+- **Kelviq payments (second card option):** Pro keys from Kelviq now work next to Gumroad keys. Paste either key in "I have a key". Pro lasts for the paid month and stops (after 3 days of grace) if the subscription is not renewed. One key works on one computer only.
 - **Sideways phone videos fixed:** clips filmed on a phone (stored with a rotate note) were squashed vertically in Already Cut Clips. Their real size is now read correctly, so they are no longer squeezed.
 - **AI prompt is now the boss:** besides choosing the moments, your prompt also guides the title, hook and description the AI writes (hook type, tone, what to include).
 - **Bigger prompt box:** the prompt can be up to 4000 characters (it was cut at 600), the box is taller and can be resized, with a counter.

@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const P = require('./paths.cjs');
 const GR = require('./gumroad.cjs');
+const KV = require('./kelviq.cjs');
 
 let cfg = {};
 try { cfg = require('./license-config.json'); } catch {}
@@ -99,7 +100,7 @@ async function withGumroad(s) {
   if (!g || !g.key) return s;
   let active = !!g.active, checked = g.checkedAt || 0, reason = g.reason || '';
   if (Date.now() - checked > GR_RECHECK) {
-    const v = await GR.verify(g.key);
+    const v = await (g.provider === 'kelviq' ? KV : GR).verify(g.key);
     if (v.ok) { active = v.active; reason = v.reason; checked = Date.now(); writeCache({ gumroad: { ...g, active, reason, checkedAt: checked } }); }
     else if (v.error === 'invalid') { active = false; reason = 'This key is no longer valid.'; writeCache({ gumroad: { ...g, active: false, reason, checkedAt: Date.now() } }); }
     else if (Date.now() - checked > GR_OFFLINE) active = false;       // could not reach Gumroad for a week
@@ -110,14 +111,15 @@ async function withGumroad(s) {
 }
 async function gumroadActivate(key) {
   const k = String(key || '').trim(), id = deviceId();
-  const v = await GR.verify(k);
-  if (!v.ok) return { ok: false, error: v.error === 'network' ? 'Could not reach Gumroad. Check your internet and try again.' : 'This key was not found. Copy it again from your Gumroad receipt.' };
+  let v = await GR.verify(k), provider = 'gumroad';
+  if (!v.ok && v.error === 'invalid' && KV.configured()) { const v2 = await KV.verify(k); if (v2.ok || v2.error === 'network') { v = v2; provider = 'kelviq'; } }   // not a Gumroad key: try Kelviq
+  if (!v.ok) return { ok: false, error: v.error === 'network' ? 'Could not reach the payment server. Check your internet and try again.' : 'This key was not found. Copy it again from your payment receipt.' };
   if (!v.active) return { ok: false, error: v.reason || 'This subscription is not active.' };
   if (configured()) {                                                    // one key = one PC (a second PC is refused; the same PC can always re-activate)
     try { const r = await rpc('cf_bind_key', { p_id: id, p_hash: keyHash(k) }); if (r === 'other') return { ok: false, error: 'This key is already used on another computer. Open ClipForge there and press "Remove key" first.' }; }
     catch { /* the licence server is busy or not updated yet: the buyer has paid, so activation still works (the one-PC rule is best effort) */ }
   }
-  writeCache({ gumroad: { key: k, active: true, reason: '', checkedAt: Date.now() } });
+  writeCache({ gumroad: { key: k, provider, active: true, reason: '', checkedAt: Date.now() } });
   return { ok: true, status: await status({ trial: false }) };
 }
 async function gumroadRemove() {

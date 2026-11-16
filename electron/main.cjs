@@ -757,7 +757,7 @@ ipcMain.handle('update-install', async (e, { filePath, version }) => {
     shell.showItemInFolder(f); return { ok: true, mode: 'manual' };
   } catch (err) { return { ok: false, error: String(err.message || err) }; }
 });
-ipcMain.handle('open-external', async (e, url) => { if (/^https:\/\/(github\.com|([a-z0-9-]+\.)?gumroad\.com|discord\.(gg|com)|wa\.me|api\.whatsapp\.com|(www\.)?instagram\.com)\//i.test(String(url))) { await shell.openExternal(url); return true; } return false; });
+ipcMain.handle('open-external', async (e, url) => { if (/^https:\/\/(github\.com|([a-z0-9-]+\.)?kelviq\.com|([a-z0-9-]+\.)?gumroad\.com|discord\.(gg|com)|wa\.me|api\.whatsapp\.com|(www\.)?instagram\.com)\//i.test(String(url))) { await shell.openExternal(url); return true; } return false; });
 
 // Window control handlers for custom titlebar
 ipcMain.on('window-minimize', () => {

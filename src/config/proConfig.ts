@@ -17,6 +17,8 @@ export const PRO_DETAILS = [
 
 // Card payments through Gumroad (the buyer gets a licence key and pastes it in the Buy Pro window).
 export const GUMROAD_URL = 'https://tahawave85.gumroad.com/l/hsxljg';
+// Second card option through Kelviq. Paste the Kelviq checkout link here; while it is empty the Kelviq button stays hidden.
+export const KELVIQ_URL = 'https://www.kelviq.com/buy/f52f206e-e369-4038-8a7e-7c2ac0ab87df/?enabled=clip-forge-pro&plan_identifier=clip-forge-pro&charge_period=MONTHLY';
 
 export interface PayMethod { id: string; name: string; kind: 'easypaisa' | 'crypto'; lines: { label: string; value: string }[]; note?: string }
 export const PAY_METHODS: PayMethod[] = [

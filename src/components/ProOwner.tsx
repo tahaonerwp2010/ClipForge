@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Copy, Check, ArrowLeft, ArrowRight, Gem, ShieldCheck, Loader2, Lock, Smartphone, ExternalLink, KeyRound, CreditCard, Wallet } from 'lucide-react';
 import solLogo from '../assets/pay/sol.png';
-import { PAY_METHODS, PRO_PLAN_NAME, PRO_PRICE_USD, PRO_PERIOD, PRO_HIGHLIGHTS, CONTACTS, GUMROAD_URL } from '../config/proConfig';
+import { PAY_METHODS, PRO_PLAN_NAME, PRO_PRICE_USD, PRO_PERIOD, PRO_HIGHLIGHTS, CONTACTS, GUMROAD_URL, KELVIQ_URL } from '../config/proConfig';
 import { LicenseService, useLicense } from '../services/licenseService';
 
 const Overlay: React.FC<{ onClose: () => void; children: React.ReactNode; wide?: boolean }> = ({ onClose, children, wide }) => (
@@ -66,7 +66,8 @@ export const BuyProModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         </ul>
         <div className="space-y-2">
           <Btn primary onClick={() => open(GUMROAD_URL)} className="w-full !py-3 !text-sm"><CreditCard className="w-4 h-4" /> Subscribe with card</Btn>
-          <p className="text-[11px] text-neutral-500 text-center">Secure checkout by Gumroad. After paying you get a licence key by email.</p>
+          {KELVIQ_URL && <Btn onClick={() => open(KELVIQ_URL)} className="w-full !py-3 !text-sm"><CreditCard className="w-4 h-4" /> Pay with card (Kelviq)</Btn>}
+          <p className="text-[11px] text-neutral-500 text-center">Secure checkout by {KELVIQ_URL ? 'Gumroad or Kelviq' : 'Gumroad'}. After paying you get a licence key by email.</p>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Btn onClick={() => setStep(2)}><Wallet className="w-3.5 h-3.5" /> Easypaisa / Crypto</Btn>

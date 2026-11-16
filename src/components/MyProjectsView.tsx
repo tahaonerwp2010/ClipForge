@@ -18,7 +18,7 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({
   onNewProject
 }) => {
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#030806] bg-[radial-gradient(900px_500px_at_85%_-5%,rgba(40,120,70,0.14),transparent_60%)] text-neutral-100 overflow-y-auto font-sans select-none p-5 md:p-7">
+    <div className="flex-1 flex flex-col h-full text-neutral-100 overflow-y-auto font-sans select-none p-5 md:p-7">
       {/* Header (Exact match to screenshot 3: "My clips  2 projects") */}
       <div className="flex items-center gap-3 mb-5 pr-44">
         <FolderOpen className="w-[26px] h-[26px] text-[#8fd13a]" strokeWidth={1.8} />
