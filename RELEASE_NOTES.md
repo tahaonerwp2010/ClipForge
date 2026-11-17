@@ -1,5 +1,7 @@
 ## What's new
 
+- **Gaming clips: the clip count you ask for is now reached.** A 30-minute video with 30 clips used to give only 3 (the finder stopped at 12 candidates and then dropped every moment the AI scored low). It now looks at as many places as needed, fills up to your count with the best moments, never overlaps clips, and tells you when the video is simply too short for that many.
+- **Better gameplay hooks:** hooks and titles are now written in small batches from the final clip (a big batch used to fail and leave the rough first text), they also use what the player says, follow the hook length you chose (1, 2 or 3 lines), and obey your AI prompt.
 - **New Buy Pro window (3 steps):** 1) choose a plan (Monthly $10 or Yearly $100, save 17% / $20), 2) choose how to pay (Easypaisa, Crypto, Kelviq or Gumroad), 3) pay. Easypaisa and Crypto show the amount for the chosen plan, your device ID and Send proof buttons. Kelviq and Gumroad (now with their logos; yearly card checkout works on Kelviq; Gumroad shows "Currently not available" for now) show a pay button and a box to paste your licence key.
 - **Paste a Video Link:** now also downloads Twitch past broadcasts and clips (and many other video sites), not only YouTube. Live streams that are still running are refused with a clear message (live import is planned for later).
 - **Forest background:** a soft misty-forest picture now sits behind Projects, Settings and Studio.

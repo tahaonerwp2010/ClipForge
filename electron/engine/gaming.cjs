@@ -77,13 +77,16 @@ function candidates({ dur, aud, mot, words, count, len }) {
   if (words && words.length) for (const w of words) if (HYPE.test(w.word)) { const i = Math.floor(w.start / step); for (let k = Math.max(0, i - 4); k < Math.min(n, i + 4); k++) score[k] += 0.9; }
   const sm = score.map((_, i) => { let s = 0, c = 0; for (let k = Math.max(0, i - 3); k <= Math.min(n - 1, i + 3); k++) { s += score[k]; c++; } return s / c; });   // ~3 s smoothing: sustained action beats one click
   const lead = len * 0.5, picks = [], idx = sm.map((v, i) => [v, i]).sort((x, y) => y[0] - x[0]);
-  const want = Math.min(12, Math.max(count * 2 + 2, count + 4));
-  for (const [v, i] of idx) {
-    if (picks.length >= want) break; if (v < 0.35) break;
-    const t = i * step; if (picks.some(p => Math.abs(p.peak - t) < len * 0.85)) continue;
-    let start = Math.max(0, t - lead); const end = Math.min(dur, start + len); start = Math.max(0, end - len);
-    if (end - start < 6) continue;
-    picks.push({ peak: t, start, end, signal: v, aud: A[Math.min(i, A.length - 1)] || 0, mot: M[Math.min(Math.floor(t * (mot.length / dur)), M.length - 1)] || 0 });
+  const want = Math.min(90, Math.max(count * 2 + 2, count + 4, 12));      // used to stop at 12: asking for 30 clips could never work
+  for (const pass of [0.35, -1]) {                                       // 1st pass: only real peaks. 2nd pass (only when too few): the next best places, so the count you asked for can be reached
+    for (const [v, i] of idx) {
+      if (picks.length >= want) break; if (v < pass) break;
+      const t = i * step; if (picks.some(p => Math.abs(p.peak - t) < len * 0.92)) continue;
+      let start = Math.max(0, t - lead); const end = Math.min(dur, start + len); start = Math.max(0, end - len);
+      if (end - start < 6) continue;
+      picks.push({ peak: t, start, end, signal: Math.max(0, v), aud: A[Math.min(i, A.length - 1)] || 0, mot: M[Math.min(Math.floor(t * (mot.length / dur)), M.length - 1)] || 0 });
+    }
+    if (picks.length >= count + 2) break;
   }
   return picks;
 }
@@ -122,32 +125,39 @@ Return ONLY JSON: {"game":"","c":[{"i":0,"score":0,"what":"","peakAt":0,"title":
 
 
 // ---------- 4) the final text is written from the FINAL clip (the cut can move away from the first candidate window) ----------
-async function writeText(clips, { filePath, workDir, g, log, game }) {
-  const parts = [{ text: `You write the on-screen text for short GAMEPLAY clips${game ? ' (game: ' + game + ')' : ''}. For each clip you get frames in time order with their time in seconds. Look at the frames carefully, then write ONLY what you can actually SEE.
+const HOOK_LEN = { 1: '3 to 5 words', 2: '6 to 9 words', 3: '9 to 13 words' };
+async function writeText(clips, { filePath, workDir, g, log, game, words = [], hn = 2, userPrompt = '' }) {
+  const head = `You write the on-screen text for short GAMEPLAY clips${game ? ' (game: ' + game + ')' : ''}. For each clip you get frames in time order with their time in seconds${words.length ? ' and, when the player or streamer talks, what is said' : ''}. Look at the frames carefully, then write ONLY what you can actually SEE (the speech only helps you understand the moment).
 Rules:
 - "what": 1-2 plain sentences describing the visible action (who/what does what, objects, places, results). No guessing about things not visible.
-- "title": max 70 chars, specific to this clip (name the visible action or object), no clickbait lies.
-- "hookText": max 9 words, a curiosity line about THIS clip's visible action. It must make sense for these exact frames. Never claim an outcome (won, lost, busted, caught, heist ended) unless the frames clearly show it. No generic lines like "You won't believe this".
+- "title": 5 to 10 words, specific to this clip (name the visible action or object), natural English, 1 fitting emoji at the end, no clickbait lies, not ALL CAPS.
+- "hookText": the text shown on screen in the first seconds, ${HOOK_LEN[hn] || HOOK_LEN[2]} long. It is a TEASER written by an editor ABOUT this clip: a curiosity question or a bold open-loop line about the visible action, as a complete natural English sentence (never cut off, never random words, never a quote of what the player says, not ALL CAPS). Good: "Can he survive the last second?", "This chase went completely wrong", "Nobody saw that move coming". Bad: "Wait for the sound", "THIS IS INSANE", "You won't believe this". It must fit these exact frames. Never claim an outcome (won, lost, busted, caught) unless the frames clearly show it.
 - "description": 2 sentences for YouTube/Instagram that describe the visible action. "hashtags": 5 without #. "keywords": up to 6 plain words about what is visible.
-Return ONLY JSON: {"c":[{"i":0,"what":"","title":"","hookText":"","description":"","hashtags":[],"keywords":[]}]}` }];
-  for (let k = 0; k < clips.length; k++) {
-    const c = clips[k], len = c.end - c.start, dir = path.join(workDir, `gt${k}`);
-    try {
-      const frames = await R.extractFrames(filePath, c.start, len, dir, Math.min(2, 8 / len));
-      const step = Math.max(1, Math.round(frames.length / 8)), pick = frames.filter((_, j) => j % step === 0).slice(0, 8);
-      parts.push({ text: `Clip ${k} (${len.toFixed(0)} s). Frames at: ${pick.map((_, j) => (j * step * (len / Math.max(1, frames.length))).toFixed(0) + 's').join(', ')}` });
-      for (const f of pick) parts.push({ inlineData: { mimeType: 'image/jpeg', data: fs.readFileSync(f).toString('base64') } });
-    } catch (e) { if (String(e.message) === 'CANCELLED') throw e; } finally { try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} }
+${userPrompt ? `EDITOR'S INSTRUCTIONS (highest priority, they override the style rules above for title, hook and description; follow them literally for every clip; they may be in any language): "${String(userPrompt).slice(0, 4000)}"\n` : ''}Return ONLY JSON: {"c":[{"i":0,"what":"","title":"","hookText":"","description":"","hashtags":[],"keywords":[]}]}`;
+  const out = new Map(), BATCH = 4;
+  for (let o = 0; o < clips.length; o += BATCH) {
+    checkCancel();
+    const part = clips.slice(o, o + BATCH), parts = [{ text: head }];
+    for (let k = 0; k < part.length; k++) {
+      const c = part[k], len = c.end - c.start, dir = path.join(workDir, `gt${o + k}`);
+      try {
+        const frames = await R.extractFrames(filePath, c.start, len, dir, Math.min(2, 8 / len));
+        const step = Math.max(1, Math.round(frames.length / 8)), pick = frames.filter((_, j) => j % step === 0).slice(0, 8);
+        const said = words.filter(w => w.end > c.start && w.start < c.end).map(w => w.word).join(' ').slice(0, 400);
+        parts.push({ text: `Clip ${k} (${len.toFixed(0)} s). Frames at: ${pick.map((_, j) => (j * step * (len / Math.max(1, frames.length))).toFixed(0) + 's').join(', ')}${said ? `. Said in this clip: "${said}"` : ''}` });
+        for (const f of pick) parts.push({ inlineData: { mimeType: 'image/jpeg', data: fs.readFileSync(f).toString('base64') } });
+      } catch (e) { if (String(e.message) === 'CANCELLED') throw e; } finally { try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} }
+    }
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const r = G.parseJson((await G.generate(g, { parts, json: true, timeoutMs: 180000 })).text);
+        const arr = Array.isArray(r) ? r : (Array.isArray(r.c) ? r.c : (Object.values(r).find(Array.isArray) || []));
+        arr.forEach((x, k) => { const i = x && x.i != null ? +x.i : k; if (x && x.title && i >= 0 && i < part.length) out.set(o + i, x); });
+        break;
+      } catch (e) { if (String(e.message) === 'CANCELLED') throw e; if (attempt) log(`Could not re-check clips ${o + 1}-${o + part.length} (${String(e.message).slice(0, 90)}), keeping the first texts`, 'warn'); else await new Promise(s => setTimeout(s, 1500)); }
+    }
   }
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const r = G.parseJson((await G.generate(g, { parts, json: true, timeoutMs: 180000 })).text);
-      const arr = Array.isArray(r) ? r : (Array.isArray(r.c) ? r.c : (Object.values(r).find(Array.isArray) || []));
-      const out = new Map(); arr.forEach((x, k) => { const i = x && x.i != null ? +x.i : k; if (x && x.title && i >= 0 && i < clips.length) out.set(i, x); });
-      return out;
-    } catch (e) { if (String(e.message) === 'CANCELLED') throw e; if (attempt) log('Could not re-check the final clips (' + String(e.message).slice(0, 90) + '), keeping the first texts', 'warn'); else await new Promise(s => setTimeout(s, 1500)); }
-  }
-  return new Map();
+  return out;
 }
 
 // ---------- local fallback (no AI key) ----------
@@ -158,7 +168,7 @@ function localText(c, n) {
   return { title: t[0], hookText: t[1], description: 'A highlight from the gameplay. Watch till the end and tell us what you would have done.', hashtags: ['gaming', 'gameplay', 'highlights', 'shorts', 'fyp'], keywords: ['gaming', 'gameplay', 'highlight'] };
 }
 
-async function findGamingClips({ filePath, wav, duration, words = [], count = 4, clipLen = 0, gemini: g, log = () => {}, workDir, hookLines = 2, onProgress }) {
+async function findGamingClips({ filePath, wav, duration, words = [], count = 4, clipLen = 0, gemini: g, log = () => {}, workDir, hookLines = 2, onProgress, userPrompt = '' }) {
   const len = clipLen || 35, HN = hookLines === 1 || hookLines === 3 ? hookLines : 2;
   log('Gaming', 'Measuring the sound and the action of the video…');
   const aud = wav && fs.existsSync(wav) ? loudness(wav) : [];
@@ -175,20 +185,22 @@ async function findGamingClips({ filePath, wav, duration, words = [], count = 4,
   log('Gaming', `${cands.length} candidate moments found from sound and action`, 'success');
   let game = '', verdict = new Map(), engine = 'local';
   if (G.ready(g)) {
-    try { const r = await lookAt(cands, { filePath, workDir, g, log: (m, k) => log('AI', m, k), aud: audSeries, hookLines: HN }); verdict = r.out; game = r.game; if (verdict.size) engine = 'gemini'; }
+    const look = cands.slice().sort((a, b) => b.signal - a.signal).slice(0, Math.min(cands.length, Math.max(12, Math.ceil(count * 1.4))));   // the strongest ones; the rest keep their sound/action rank
+    try { const r = await lookAt(look, { filePath, workDir, g, log: (m, k) => log('AI', m, k), aud: audSeries, hookLines: HN }); game = r.game; look.forEach((c, k) => { const v = r.out.get(k); if (v) verdict.set(cands.indexOf(c), v); }); if (verdict.size) engine = 'gemini'; }
     catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('AI', 'Could not look at the frames (' + String(e.message).slice(0, 100) + '), choosing by sound and action only', 'warn'); }
   } else log('AI', 'No AI key: moments are chosen from sound and action only, titles are generic (add a key in Settings for real titles)', 'info');
   cands.forEach((c, i) => { const v = verdict.get(i); c.ai = v || null; c.rank = (v ? (+v.score || 0) * 10 : 30) + c.signal * 6; });
   let ranked = cands.slice().sort((a, b) => b.rank - a.rank);
-  if (engine === 'gemini') { const good = ranked.filter(c => c.ai && +c.ai.score >= 5); if (good.length >= Math.min(2, count)) ranked = good; }
-  const picked = []; for (const c of ranked) { if (picked.length >= count) break; if (!picked.some(p => Math.abs(p.peak - c.peak) < len * 0.7)) picked.push(c); }
+  if (engine === 'gemini') { const good = ranked.filter(c => c.ai && +c.ai.score >= 5); if (good.length >= count) ranked = good; }   // weak moments are only dropped when there are enough good ones
+  const picked = []; for (const c of ranked) { if (picked.length >= count) break; if (!picked.some(p => Math.abs(p.peak - c.peak) < len * 0.92)) picked.push(c); }
+  if (picked.length < count) log('Gaming', `Only ${picked.length} clip(s) of ${count} fit in this video without overlapping (${Math.round(len)} s each). Use a shorter clip length or fewer clips to get more.`, 'warn');
   const windows = picked.map(c => {
     let { start, end } = c; const v = c.ai;
     if (v && Number.isFinite(+v.peakAt) && +v.peakAt > 0) { const t = c.start + Math.min(len, +v.peakAt), s = Math.max(0, t - len * 0.5); start = s; end = Math.min(duration, s + len); start = Math.max(0, end - len); }
     return { start, end };
   });
   let fin = new Map();
-  if (engine === 'gemini') { log('AI', 'Writing title and hook from the final clips…'); fin = await writeText(windows.map(w => ({ start: w.start, end: w.end })), { filePath, workDir, g, log: (m, k) => log('AI', m, k), game }); }
+  if (engine === 'gemini') { log('AI', 'Writing title and hook from the final clips…'); fin = await writeText(windows.map(w => ({ start: w.start, end: w.end })), { filePath, workDir, g, log: (m, k) => log('AI', m, k), game, words, hn: HN, userPrompt }); }
   const clips = picked.map((c, n) => {
     let { start, end } = windows[n]; const v = fin.get(n) ? { ...(c.ai || {}), ...fin.get(n) } : c.ai;
     const x = v && v.title ? { title: String(v.title).slice(0, 70), hookText: String(v.hookText || v.title), description: String(v.description || '').slice(0, 400) || localText(c, n).description, hashtags: Array.isArray(v.hashtags) ? v.hashtags : localText(c, n).hashtags, keywords: Array.isArray(v.keywords) ? v.keywords.map(String).slice(0, 12) : [] } : localText(c, n);

@@ -305,7 +305,7 @@ async function runInner(job, emit, deps = {}) {
     startWork(); begin(5);
     const clipLen = { '15s': 15, '30s': 30, '45s': 45, '60s': 60, '90s': 90 }[job.clipLength] || 0;      // 0 = Auto: the AI decides the length of every moment
     const r = job.gaming
-      ? await GM.findGamingClips({ filePath: job.filePath, wav, duration: info.duration, words, count: job.targetClipsCount || 4, clipLen, gemini: job.gemini, log, workDir: work, hookLines: job.branding?.autoTitle?.lines, onProgress: p => setPct(5, p * 0.9) })
+      ? await GM.findGamingClips({ filePath: job.filePath, wav, duration: info.duration, words, count: job.targetClipsCount || 4, clipLen, gemini: job.gemini, log, workDir: work, hookLines: job.branding?.autoTitle?.lines, userPrompt: (job.aiPrompt || '').trim(), onProgress: p => setPct(5, p * 0.9) })
       : await A.findClips(words, { hookLines: job.branding?.autoTitle?.lines, count: job.targetClipsCount || 4, clipLen, gemini: job.gemini, log, userPrompt: (job.aiPrompt || '').trim(), filePath: job.filePath, workDir: work });
     clips = r.clips;
     if (!clips.length) throw new Error('Could not find any suitable moments.');
