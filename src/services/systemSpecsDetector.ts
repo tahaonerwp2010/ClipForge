@@ -29,7 +29,8 @@ declare global {
       syncVideos?: (mainPath: string, secondPath: string) => Promise<{ ok: boolean; offset?: number; confidence?: number; error?: string }>;
       pickVideos?: () => Promise<string[]>;
       hwInfo?: () => Promise<{ encoder: string | null; speechGpu: boolean; platform?: string }>;
-      ytDownload?: (url: string) => Promise<{ ok: boolean; path?: string; title?: string; error?: string }>;
+      ytInfo?: (url: string) => Promise<{ ok: boolean; duration?: number; title?: string; error?: string }>;
+      ytDownload?: (url: string, range?: { start: number; end: number } | null) => Promise<{ ok: boolean; path?: string; title?: string; error?: string }>;
       ytCancel?: () => Promise<boolean>;
       onYtProgress?: (cb: (d: { phase: string; percent: number; done?: number; total?: number; speed?: number; eta?: number | null; text?: string }) => void) => () => void;
       saveClipSheet?: (dir: string, rows: string[][]) => Promise<string>;

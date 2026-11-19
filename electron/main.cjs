@@ -499,10 +499,15 @@ ipcMain.handle('pick-image', async () => {
   const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
   return { path: p, name: path.basename(p), dataUrl: `data:${mime};base64,${fs.readFileSync(p).toString('base64')}` };
 });
-ipcMain.handle('yt-download', async (e, { url }) => {
+ipcMain.handle('yt-info', async (e, { url }) => {
+  const Y = require('./engine/yt.cjs');
+  try { return { ok: true, ...(await Y.info(url, (p) => send('yt-progress', p))) }; }
+  catch (err) { return { ok: false, error: String(err.message || err) }; }
+});
+ipcMain.handle('yt-download', async (e, { url, start, end }) => {
   const Y = require('./engine/yt.cjs');
   try {
-    const r = await Y.download(url, Settings.ytDir(), (p) => send('yt-progress', p));
+    const r = await Y.download(url, Settings.ytDir(), (p) => send('yt-progress', p), end > 0 ? { start, end } : null);
     return { ok: true, ...r };
   } catch (err) { return { ok: false, error: String(err.message || err) }; }
 });

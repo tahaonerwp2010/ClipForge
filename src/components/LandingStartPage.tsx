@@ -30,6 +30,45 @@ interface ShortItem { id: string; name: string; path: string; url: string; durat
 const FALLBACK_THUMB = 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=600&auto=format&fit=crop&q=80';
 const fmtBytes = (b = 0) => b >= 1e9 ? `${(b / 1e9).toFixed(2)} GB` : b >= 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.max(0, Math.round(b / 1e3))} KB`;
 const fmtEta = (s?: number | null) => s == null ? '' : s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor(s % 3600 / 60)}m` : s >= 60 ? `${Math.floor(s / 60)}m ${Math.round(s % 60)}s` : `${Math.round(s)}s`;
+const fmtHMS = (s: number) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; };
+
+// Two dots on a line: drag them (or use the arrow keys) to choose which part of a video to download.
+const RangePicker: React.FC<{ duration: number; start: number; end: number; onChange: (s: number, e: number) => void }> = ({ duration, start, end, onChange }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const grab = useRef<'s' | 'e' | null>(null);
+  const pc = (t: number) => (duration ? Math.max(0, Math.min(100, t / duration * 100)) : 0);
+  const timeAt = (x: number) => { const r = ref.current?.getBoundingClientRect(); return r && r.width ? Math.max(0, Math.min(duration, (x - r.left) / r.width * duration)) : 0; };
+  const set = (w: 's' | 'e', t: number) => { if (w === 's') onChange(Math.max(0, Math.min(t, end - 1)), end); else onChange(start, Math.min(duration, Math.max(t, start + 1))); };
+  const key = (w: 's' | 'e') => (e: React.KeyboardEvent) => {
+    const d = (e.key === 'ArrowLeft' || e.key === 'ArrowDown') ? -1 : (e.key === 'ArrowRight' || e.key === 'ArrowUp') ? 1 : 0; if (!d) return;
+    e.preventDefault(); set(w, (w === 's' ? start : end) + d * (e.shiftKey ? 10 : 1));
+  };
+  const dot = (w: 's' | 'e') => (
+    <div role="slider" tabIndex={0} aria-label={w === 's' ? 'Start of the part' : 'End of the part'} aria-valuemin={0} aria-valuemax={Math.round(duration)} aria-valuenow={Math.round(w === 's' ? start : end)}
+      data-handle={w}
+      onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); grab.current = w; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); }}
+      onPointerMove={(e) => { if (grab.current === w) set(w, timeAt(e.clientX)); }}
+      onPointerUp={() => { grab.current = null; }} onPointerCancel={() => { grab.current = null; }}
+      onKeyDown={key(w)}
+      className="absolute top-1/2 w-[18px] h-[18px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#bef264] border-2 border-[#0c1611] shadow-[0_0_0_2px_#bef264] cursor-grab active:cursor-grabbing outline-none focus-visible:shadow-[0_0_0_3px_#fff] touch-none"
+      style={{ left: `${pc(w === 's' ? start : end)}%`, zIndex: w === 's' && start > duration * 0.95 ? 3 : 2 }} />
+  );
+  return (
+    <div className="space-y-1.5 select-none">
+      <div ref={ref} className="relative h-8 cursor-pointer touch-none"
+        onPointerDown={(e) => { const t = timeAt(e.clientX); set(Math.abs(t - start) <= Math.abs(t - end) ? 's' : 'e', t); }}>
+        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-[#1a2c23]" />
+        <div className="absolute top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-[#bef264]" style={{ left: `${pc(start)}%`, width: `${Math.max(0, pc(end) - pc(start))}%` }} />
+        {dot('s')}{dot('e')}
+      </div>
+      <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400">
+        <span>From <span className="text-white">{fmtHMS(start)}</span></span>
+        <span className="text-[#bef264]">{fmtHMS(end - start)} selected</span>
+        <span>To <span className="text-white">{fmtHMS(end)}</span></span>
+      </div>
+    </div>
+  );
+};
 const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 
 /** Reads duration + a thumbnail frame from a video URL (blob: or file:). Never rejects. */
@@ -95,7 +134,9 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
 
   // ---- YouTube ----
   const [ytUrl, setYtUrl] = useState('');
-  const [ytState, setYtState] = useState<'idle' | 'downloading' | 'done' | 'error'>('idle');
+  const [ytState, setYtState] = useState<'idle' | 'reading' | 'pick' | 'downloading' | 'done' | 'error'>('idle');
+  const [ytLen, setYtLen] = useState(0);
+  const [ytRange, setYtRange] = useState<[number, number]>([0, 0]);
   const [ytProg, setYtProg] = useState<{ phase: string; percent: number; done?: number; total?: number; speed?: number; eta?: number | null; text?: string } | null>(null);
   const [ytError, setYtError] = useState('');
   const [ytVideo, setYtVideo] = useState<VideoSource | null>(null);
@@ -158,10 +199,24 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
     };
   };
 
-  const startYtDownload = async () => {
+  // Download button: first read the length of the video so the part to download can be chosen
+  const readYtInfo = async () => {
+    if (!validUrl || ytState === 'downloading' || ytState === 'reading' || !window.electronAPI?.ytDownload) return;
+    if (!window.electronAPI.ytInfo) return startYtDownload(null);
+    setYtState('reading'); setYtError(''); setYtVideo(null); setYtProg({ phase: 'prepare', percent: 0, text: 'Reading video info…' });
+    const r = await window.electronAPI.ytInfo(ytUrl.trim());
+    if (!r.ok) {
+      if (r.error === 'Cancelled') { setYtState('idle'); setYtProg(null); return; }
+      setYtState('error'); setYtError(r.error || 'Could not read this video.'); return;
+    }
+    if (!r.duration || r.duration < 5) return startYtDownload(null);          // length unknown: download all of it
+    setYtLen(r.duration); setYtRange([0, r.duration]); setYtProg(null); setYtState('pick');
+  };
+  const startYtDownload = async (part?: [number, number] | null) => {
     if (!validUrl || ytState === 'downloading' || !window.electronAPI?.ytDownload) return;
-    setYtState('downloading'); setYtError(''); setYtVideo(null); setYtProg({ phase: 'prepare', percent: 0, text: 'Starting…' });
-    const r = await window.electronAPI.ytDownload(ytUrl.trim());
+    const range = part && (part[0] > 0.5 || part[1] < ytLen - 0.5) ? { start: part[0], end: part[1] } : null;   // the whole video = no range
+    setYtState('downloading'); setYtError(''); setYtVideo(null); setYtProg({ phase: 'prepare', percent: 0, text: range ? 'Preparing the selected part…' : 'Starting…' });
+    const r = await window.electronAPI.ytDownload(ytUrl.trim(), range);
     if (!r.ok || !r.path) {
       if (r.error === 'Cancelled') { setYtState('idle'); setYtProg(null); return; }
       setYtState('error'); setYtError(r.error || 'Download failed.'); return;
@@ -297,7 +352,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
 
   const longSelected = selectedVideo && !selectedVideo.shorts && selectedVideo.type !== 'youtube' ? selectedVideo : null;
   const nextVideo: VideoSource | null = isLong ? (longSelected ? { ...longSelected, gaming: activeCard === 'gaming' } : null) : activeCard === 'short' ? shortsSource() : activeCard === 'split' ? splitSource() : (ytState === 'done' ? ytVideo : null);
-  const nextHint = isLong ? 'Choose a video to continue.' : activeCard === 'short' ? 'Add at least one short clip to continue.' : activeCard === 'split' ? (spMode === 'single' ? 'Choose a video and select the facecam area to continue.' : 'Choose both videos to continue.') : (ytState === 'downloading' ? 'Downloading… Next unlocks when it finishes.' : 'Paste a link and download the video to continue.');
+  const nextHint = isLong ? 'Choose a video to continue.' : activeCard === 'short' ? 'Add at least one short clip to continue.' : activeCard === 'split' ? (spMode === 'single' ? 'Choose a video and select the facecam area to continue.' : 'Choose both videos to continue.') : (ytState === 'downloading' ? 'Downloading… Next unlocks when it finishes.' : ytState === 'pick' ? 'Choose the part of the video, then download it to continue.' : 'Paste a link and download the video to continue.');
 
   return (
     <div className="flex flex-col items-stretch w-full select-none text-neutral-200">
@@ -497,39 +552,61 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
             <input
               type="text"
               value={ytUrl}
-              disabled={ytState === 'downloading'}
+              disabled={ytState === 'downloading' || ytState === 'reading'}
               onChange={(e) => { setYtUrl(e.target.value); if (ytState !== 'idle') { setYtState('idle'); setYtVideo(null); setYtError(''); setYtProg(null); } }}
               placeholder="Paste a video link: youtube.com/watch?v=… or twitch.tv/videos/…"
               className="w-full bg-[#0f1c16] border border-[#1d3228] focus:border-[#3f9a5a] rounded-lg px-3 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none disabled:opacity-60"
             />
             <p className="text-[11px] text-neutral-500 leading-relaxed">Works with <span className="text-neutral-300">YouTube</span> and <span className="text-neutral-300">Twitch</span> (past broadcasts and clips), and many other video sites. Only finished videos: a stream that is still live cannot be downloaded yet.</p>
-            <div className="flex items-center gap-2">
+            {ytState !== 'pick' && <div className="flex items-center gap-2">
               <button
                 type="button"
-                disabled={!validUrl || ytState === 'downloading' || !inDesktop}
-                onClick={startYtDownload}
+                disabled={!validUrl || ytState === 'downloading' || ytState === 'reading' || !inDesktop}
+                onClick={readYtInfo}
                 className={`px-5 py-2 rounded-lg font-extrabold text-xs flex items-center gap-2 transition-all ${
-                  validUrl && ytState !== 'downloading' && inDesktop ? 'bg-[#bef264] hover:bg-[#a3e635] text-black cursor-pointer active:scale-95' : 'bg-[#13241b] text-neutral-500 cursor-not-allowed'
+                  validUrl && ytState !== 'downloading' && ytState !== 'reading' && inDesktop ? 'bg-[#bef264] hover:bg-[#a3e635] text-black cursor-pointer active:scale-95' : 'bg-[#13241b] text-neutral-500 cursor-not-allowed'
                 }`}
               >
                 <Download className="w-4 h-4" />
-                <span>{ytState === 'downloading' ? 'Downloading...' : ytState === 'done' ? 'Download again' : 'Download'}</span>
+                <span>{ytState === 'downloading' ? 'Downloading...' : ytState === 'reading' ? 'Reading video…' : ytState === 'done' ? 'Download again' : 'Download'}</span>
               </button>
-              {ytState === 'downloading' && (
+              {(ytState === 'downloading' || ytState === 'reading') && (
                 <button type="button" onClick={cancelYt} className="px-3 py-2 rounded-lg bg-[#14231c] hover:bg-[#21332a] border border-[#263c32] text-xs text-neutral-300 cursor-pointer">Cancel</button>
               )}
               {!inDesktop && <span className="text-[11px] text-neutral-500">Downloading works in the desktop app.</span>}
-              {inDesktop && ytFolder && ytState !== 'downloading' && <span className="text-[11px] text-neutral-500 truncate">Saves to: <span className="text-neutral-400">{ytFolder}</span> (change in Settings → Folders)</span>}
-            </div>
+              {inDesktop && ytFolder && ytState !== 'downloading' && ytState !== 'reading' && <span className="text-[11px] text-neutral-500 truncate">Saves to: <span className="text-neutral-400">{ytFolder}</span> (change in Settings → Folders)</span>}
+            </div>}
 
-            {ytState === 'downloading' && ytProg && (
+            {ytState === 'pick' && (
+              <div className="rounded-lg bg-[#0e1914] border border-[#3f9a5a]/40 p-3 space-y-2.5">
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-neutral-200 font-semibold">Choose the part to download</span>
+                  <span className="text-[11px] text-neutral-400 font-mono shrink-0">Video length {fmtHMS(ytLen)}</span>
+                </div>
+                <RangePicker duration={ytLen} start={ytRange[0]} end={ytRange[1]} onChange={(a, b) => setYtRange([a, b])} />
+                <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                  <button type="button" onClick={() => startYtDownload(ytRange)}
+                    className="px-5 py-2 rounded-lg font-extrabold text-xs flex items-center gap-2 bg-[#bef264] hover:bg-[#a3e635] text-black cursor-pointer active:scale-95">
+                    <Download className="w-4 h-4" />
+                    <span>{ytRange[0] <= 0.5 && ytRange[1] >= ytLen - 0.5 ? 'Download full video' : `Download this part (${fmtHMS(ytRange[1] - ytRange[0])})`}</span>
+                  </button>
+                  {!(ytRange[0] <= 0.5 && ytRange[1] >= ytLen - 0.5) && (
+                    <button type="button" onClick={() => setYtRange([0, ytLen])} className="px-3 py-2 rounded-lg bg-[#14231c] hover:bg-[#21332a] border border-[#263c32] text-xs text-neutral-300 cursor-pointer">Select all</button>
+                  )}
+                  <button type="button" onClick={() => { setYtState('idle'); setYtProg(null); }} className="px-3 py-2 rounded-lg bg-[#14231c] hover:bg-[#21332a] border border-[#263c32] text-xs text-neutral-300 cursor-pointer">Cancel</button>
+                </div>
+                <p className="text-[11px] text-neutral-500">Only the chosen part is downloaded, so it is faster and smaller. Drag the dots, or click a dot and use the arrow keys (Shift = 10 s).</p>
+              </div>
+            )}
+
+            {(ytState === 'downloading' || ytState === 'reading') && ytProg && (
               <div className="space-y-1">
                 <div className="h-1.5 rounded-full bg-[#16261e] overflow-hidden">
                   <div className="h-full bg-[#bef264] transition-all" style={{ width: `${Math.max(2, Math.min(100, ytProg.percent || 0))}%` }} />
                 </div>
                 <div className="flex flex-wrap justify-between gap-x-4 text-[11px] text-neutral-400 font-mono">
                   <span>{ytProg.phase === 'download' ? `${(ytProg.percent || 0).toFixed(1)}%` : (ytProg.text || 'Working…')}{ytProg.phase === 'prepare' && ytProg.percent > 0 ? ` ${Math.round(ytProg.percent)}%` : ''}</span>
-                  {ytProg.phase === 'download' && (
+                  {ytProg.phase === 'download' && ytProg.done != null && (
                     <span>
                       {fmtBytes(ytProg.done)}{ytProg.total ? ` / ${fmtBytes(ytProg.total)}` : ''}
                       {ytProg.speed ? ` · ${fmtBytes(ytProg.speed)}/s` : ''}
