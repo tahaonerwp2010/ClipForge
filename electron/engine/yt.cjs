@@ -304,9 +304,10 @@ function attempt(bin, url, dir, fmt, ff, route, grand, onProgress, canSwitch, se
   const args = ['--no-playlist', '--match-filter', '!is_live', '--newline', '--no-colors', '--progress', '-f', fmt, '--merge-output-format', 'mp4', ...FAST_ARGS, ...jsArgs(), ...route.args,
     '--progress-template', 'download:CFP|%(progress.status)s|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s',
     '-o', path.join(dir, '%(title).80B [%(id)s]' + (sec ? ` (part ${secTag(sec.s)}-${secTag(sec.e)})` : '') + '.%(ext)s'), '--print', 'after_move:CFFILE:%(filepath)s', '--print', 'CFTITLE:%(title)s'];
-  if (sec) args.push('--download-sections', `*${sec.s.toFixed(2)}-${sec.e.toFixed(2)}`, '--force-keyframes-at-cuts');   // only this part is downloaded, cut exactly
+  if (sec) args.push('--download-sections', `*${sec.s.toFixed(2)}-${sec.e.toFixed(2)}`);   // only this part is downloaded and copied as it is (no re-encoding: that took hours on slow PCs); the cut snaps to the nearest keyframe, a few seconds
   if (ff) args.push('--ffmpeg-location', path.dirname(ff));
   args.push(url);
+  if (sec) onProgress({ phase: 'prepare', percent: 0, text: 'Downloading the selected part…' });
   return new Promise((resolve) => {
     const p = spawn(bin, args, { windowsHide: true, env: jsEnv() }); cur = p; procs.add(p);
     let file = '', title = '', errBuf = '', buf = '', slowFlag = false;

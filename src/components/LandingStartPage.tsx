@@ -595,7 +595,7 @@ export const LandingStartPage: React.FC<LandingStartPageProps> = ({
                   )}
                   <button type="button" onClick={() => { setYtState('idle'); setYtProg(null); }} className="px-3 py-2 rounded-lg bg-[#14231c] hover:bg-[#21332a] border border-[#263c32] text-xs text-neutral-300 cursor-pointer">Cancel</button>
                 </div>
-                <p className="text-[11px] text-neutral-500">Only the chosen part is downloaded, so it is faster and smaller. Drag the dots, or click a dot and use the arrow keys (Shift = 10 s).</p>
+                <p className="text-[11px] text-neutral-500">Only the chosen part is downloaded, so it is faster and smaller (the start and end can differ by a few seconds). Drag the dots, or click a dot and use the arrow keys (Shift = 10 s).</p>
               </div>
             )}
 
