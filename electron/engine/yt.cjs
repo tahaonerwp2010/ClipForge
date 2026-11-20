@@ -212,8 +212,7 @@ async function info(url, onProgress) {
   throw new Error(friendly(lastErr));
 }
 
-async function download(url, dir, onProgress, range) {
-  const sec = secRange(range);
+async function downloadCore(url, dir, onProgress, sec, stallMs) {
   url = String(url || '').trim();
   if (!isUrl(url)) throw new Error('Please paste a valid video link.');
   fs.mkdirSync(dir, { recursive: true });
@@ -260,8 +259,9 @@ async function download(url, dir, onProgress, range) {
   };
   let choice = await chooseRoute(), netTries = 0, failsInRow = 0;
   while (choice) {
-    const res = await attempt(bin, url, dir, fmt, ff, choice.rt, sec ? 0 : choice.grand, onProgress, false, sec);
+    const res = await attempt(bin, url, dir, fmt, ff, choice.rt, sec ? 0 : choice.grand, onProgress, false, sec, stallMs);
     if (res.ok) return res.value;
+    if (res.stalled) throw new Error('STALLED');
     if (res.cancelled || cancelled) throw new Error('Cancelled');
     lastErr = res.error || lastErr;
     if (NET.test(res.error || '') && netTries < 60) {              // connection problem: wait a moment and continue on the SAME route
@@ -300,7 +300,7 @@ function diagnose(bin, url) {
   });
 }
 
-function attempt(bin, url, dir, fmt, ff, route, grand, onProgress, canSwitch, sec) {
+function attempt(bin, url, dir, fmt, ff, route, grand, onProgress, canSwitch, sec, stallMs) {
   const args = ['--no-playlist', '--match-filter', '!is_live', '--newline', '--no-colors', '--progress', '-f', fmt, '--merge-output-format', 'mp4', ...FAST_ARGS, ...jsArgs(), ...route.args,
     '--progress-template', 'download:CFP|%(progress.status)s|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s',
     '-o', path.join(dir, '%(title).80B [%(id)s]' + (sec ? ` (part ${secTag(sec.s)}-${secTag(sec.e)})` : '') + '.%(ext)s'), '--print', 'after_move:CFFILE:%(filepath)s', '--print', 'CFTITLE:%(title)s'];
@@ -312,11 +312,11 @@ function attempt(bin, url, dir, fmt, ff, route, grand, onProgress, canSwitch, se
     const p = spawn(bin, args, { windowsHide: true, env: jsEnv() }); cur = p; procs.add(p);
     let file = '', title = '', errBuf = '', buf = '', slowFlag = false;
     let base = 0, lastD = 0, lastT = 0, lastEmit = 0, tStart = 0, ema = 0, slowSince = 0;
-    let lastTime = 0;
+    let lastTime = 0, lastAct = Date.now(), stalled = false, lastPart = 0;
     const tick = (l) => {                                   // a part is cut by ffmpeg: its progress is the time written so far
       if (!sec) return;
       const m = [...l.matchAll(/time=(\d+):(\d+):(\d+(?:\.\d+)?)/g)].pop(); if (!m) return;
-      const t = +m[1] * 3600 + +m[2] * 60 + +m[3]; if (t <= lastTime) return; lastTime = t;
+      const t = +m[1] * 3600 + +m[2] * 60 + +m[3]; if (t <= lastTime) return; lastTime = t; lastAct = Date.now();
       const now = Date.now(); if (now - lastEmit < 150) return; lastEmit = now;
       onProgress({ phase: 'download', percent: Math.min(99, t / (sec.e - sec.s) * 100), text: 'Downloading the selected part…' });
     };
@@ -345,17 +345,59 @@ function attempt(bin, url, dir, fmt, ff, route, grand, onProgress, canSwitch, se
       }
       if (/\[Merger\]|\[ExtractAudio\]|\[VideoRemuxer\]|\[FixupM/.test(l)) onProgress({ phase: 'merge', percent: 100, text: 'Finishing…' });
     };
-    p.stdout.on('data', (d) => { buf += d; let i; while ((i = buf.indexOf('\n')) >= 0) { line(buf.slice(0, i).replace(/\r$/, '')); buf = buf.slice(i + 1); } });
+    const sid = idOf(url);
+    const wd = sec ? setInterval(() => {                      // part download: show the size that arrived, and give up on this way when nothing moves for a long time
+      let size = 0; try { for (const f of fs.readdirSync(dir)) if (f.includes(sid) && /\.part|\.ytdl|\.temp/i.test(f)) size += fs.statSync(path.join(dir, f)).size; } catch {}
+      if (size > lastPart) { lastPart = size; lastAct = Date.now(); }
+      if (!lastTime && size) onProgress({ phase: 'download', percent: 0, done: size, text: 'Downloading the selected part…' });
+      if (stallMs && Date.now() - lastAct > stallMs && !cancelled) { stalled = true; killTree(p); }
+    }, 4000) : null;
+    p.stdout.on('data', (d) => { if (sec) String(d).split(/[\r\n]+/).forEach(tick); buf += d; let i; while ((i = buf.indexOf('\n')) >= 0) { line(buf.slice(0, i).replace(/\r$/, '')); buf = buf.slice(i + 1); } });
     p.stderr.on('data', (d) => { errBuf += d; if (sec) String(d).split(/[\r\n]+/).forEach(tick); });
     const logIt = () => { try { fs.appendFileSync(path.join(P.userDataDir(), 'ytdlp-log.txt'), `\n==== ${new Date().toISOString()} route=${route.name} deno=${jsRt || 'none'}\n${errBuf.slice(-4000)}\n`); } catch {} };
-    p.on('error', (e) => { cur = null; procs.delete(p); resolve({ ok: false, error: e.message }); });
-    p.on('close', (code) => {
+    p.on('error', (e) => { if (wd) clearInterval(wd); cur = null; procs.delete(p); resolve({ ok: false, error: e.message }); });
+    let finished = false;
+    const finish = (code) => {                                // also called on 'exit' when we killed it for stalling: a child left behind (ffmpeg) can keep the pipes open, so 'close' may never come
+      if (finished) return; finished = true;
+      if (wd) clearInterval(wd);
       if (errBuf) logIt(); procs.delete(p); const wasCancelled = cancelled; if (cur === p) cur = null;
       if (wasCancelled) return resolve({ ok: false, cancelled: true });
+      if (stalled) return resolve({ ok: false, stalled: true, error: 'stalled' });
       if (slowFlag) return resolve({ ok: false, slow: true, error: 'slow' });
       if (code === 0 && file && fs.existsSync(file)) return resolve({ ok: true, value: { path: file, title } });
       resolve({ ok: false, error: errBuf });
-    });
+    };
+    p.on('close', finish);
+    p.on('exit', (code) => { if (stalled) setTimeout(() => finish(code), 1500); });
   });
+}
+// Cuts [s, e] out of a file as it is (no re-encoding)
+function cutFile(ff, src, s, e, out, onProgress) {
+  return new Promise((resolve, reject) => {
+    const p = spawn(ff, ['-y', '-hide_banner', '-ss', String(s), '-i', src, '-t', String(e - s), '-c', 'copy', '-avoid_negative_ts', 'make_zero', '-movflags', '+faststart', out], { windowsHide: true }); procs.add(p);
+    let err = '';
+    p.stderr.on('data', (d) => { err += d; const m = [...String(d).matchAll(/time=(\d+):(\d+):(\d+(?:\.\d+)?)/g)].pop(); if (m) onProgress({ phase: 'download', percent: Math.min(99, (+m[1] * 3600 + +m[2] * 60 + +m[3]) / (e - s) * 100), text: 'Cutting your part…' }); });
+    p.on('error', (x) => { procs.delete(p); reject(x); });
+    p.on('close', (code) => { procs.delete(p); if (cancelled) return reject(new Error('Cancelled')); code === 0 && fs.existsSync(out) ? resolve() : reject(new Error('Could not cut the selected part. ' + err.slice(-300))); });
+  });
+}
+
+// The whole video, or only a part of it. A part is first tried the quick way (yt-dlp + ffmpeg download just that part). If that makes no progress for
+// a long time (it happens on some networks / sites), the full video is downloaded the normal, reliable way and the part is cut out of it.
+async function download(url, dir, onProgress, range) {
+  const sec = secRange(range);
+  if (!sec) return downloadCore(url, dir, onProgress, null);
+  try { return await downloadCore(url, dir, onProgress, sec, Number(process.env.CF_STALL_MS) || 90000); }
+  catch (e) { if (String(e.message) !== 'STALLED' || cancelled) throw e; }
+  const ff = global.__cfMobileSpawn ? null : (P.resolveBin('ffmpeg') || 'ffmpeg');
+  if (!ff) throw new Error('Could not download the selected part. Please try the full video.');
+  cleanPartials(dir, url, false);
+  onProgress({ phase: 'prepare', percent: 0, text: 'The quick way is too slow here. Downloading the full video, then cutting your part…' });
+  const full = await downloadCore(url, dir, onProgress, null);
+  const out = full.path.replace(/\.[^.\\/]+$/, '') + ` (part ${secTag(sec.s)}-${secTag(sec.e)}).mp4`;
+  onProgress({ phase: 'merge', percent: 100, text: 'Cutting your part…' });
+  await cutFile(ff, full.path, sec.s, sec.e, out, onProgress);
+  try { fs.unlinkSync(full.path); } catch {}
+  return { path: out, title: full.title };
 }
 module.exports = { download, info, cancel, isUrl, ensureYtDlp, ensureDeno };
