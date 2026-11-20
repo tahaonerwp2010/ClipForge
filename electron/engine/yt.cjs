@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const http = require('http');
 const { spawn: realSpawn } = require('child_process');
 // Android: yt-dlp runs inside the native side (python is bundled there), so 'spawn' is routed to a bridge that looks like a normal child process.
 const spawn = (cmd, ...r) => (cmd === '__mobile_ytdlp__' && global.__cfMobileSpawn) ? global.__cfMobileSpawn(cmd, ...r) : realSpawn(cmd, ...r);
@@ -212,7 +213,7 @@ async function info(url, onProgress) {
   throw new Error(friendly(lastErr));
 }
 
-async function downloadCore(url, dir, onProgress, sec, stallMs) {
+async function downloadCore(url, dir, onProgress, sec, stallMs, maxBytes) {
   url = String(url || '').trim();
   if (!isUrl(url)) throw new Error('Please paste a valid video link.');
   fs.mkdirSync(dir, { recursive: true });
@@ -258,6 +259,7 @@ async function downloadCore(url, dir, onProgress, sec, stallMs) {
     return null;
   };
   let choice = await chooseRoute(), netTries = 0, failsInRow = 0;
+  if (choice && maxBytes && choice.grand > maxBytes) throw new Error('TOO_BIG:' + choice.grand);
   while (choice) {
     const res = await attempt(bin, url, dir, fmt, ff, choice.rt, sec ? 0 : choice.grand, onProgress, false, sec, stallMs);
     if (res.ok) return res.value;
@@ -371,6 +373,124 @@ function attempt(bin, url, dir, fmt, ff, route, grand, onProgress, canSwitch, se
     p.on('exit', (code) => { if (stalled) setTimeout(() => finish(code), 1500); });
   });
 }
+
+// ---------- Download only a part of a video (chunked, through a small local proxy) ----------
+// yt-dlp's own "download a section" lets ffmpeg read the YouTube stream in one piece. YouTube throttles / stalls that (the normal downloader uses 10 MB
+// range chunks for exactly this reason), so on YouTube it can hang for hours. Here yt-dlp only finds the stream addresses; a tiny proxy on this
+// computer fetches them in 8 MB range chunks over IPv4, and ffmpeg reads just the wanted part from the proxy and copies it (no re-encoding).
+function upstream(urlStr, headers, a, b, hops = 0) {
+  return new Promise((resolve, reject) => {
+    let u; try { u = new URL(urlStr); } catch (e) { return reject(e); }
+    const lib = u.protocol === 'https:' ? https : http;
+    const req = lib.request(u, { method: 'GET', headers: { ...headers, Range: `bytes=${a}-${b}` }, family: 4, agent: false, timeout: 30000 }, (res) => {
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && hops < 5) { res.resume(); return resolve(upstream(new URL(res.headers.location, u).href, headers, a, b, hops + 1)); }
+      if (res.statusCode !== 206 && !(res.statusCode === 200 && a === 0)) { res.resume(); return reject(new Error('HTTP ' + res.statusCode)); }
+      const cr = /\/(\d+)\s*$/.exec(res.headers['content-range'] || '');
+      resolve({ res, url: u.href, total: cr ? +cr[1] : (res.statusCode === 200 ? +res.headers['content-length'] || 0 : 0) });
+    });
+    req.on('timeout', () => req.destroy(new Error('timeout'))); req.on('error', reject); req.end();
+  });
+}
+function startRangeProxy(files) {
+  const CH = 8 * 1024 * 1024;
+  const srv = http.createServer(async (req, resp) => {
+    const f = files[+((/^\/f(\d+)/.exec(req.url) || [])[1])];
+    if (!f) { resp.writeHead(404); return resp.end(); }
+    const rg = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
+    const a = rg && rg[1] ? +rg[1] : 0; let b = rg && rg[2] ? +rg[2] : Infinity;
+    let pos = a, sent = false, closed = false, curUp = null; resp.on('close', () => { closed = true; if (curUp) curUp.destroy(); });
+    try {
+      while (pos <= b && !closed) {
+        const end = Math.min(b, pos + CH - 1, f.total ? f.total - 1 : Infinity);
+        const up = await upstream(f.url, f.headers, pos, end);
+        f.url = up.url; if (up.total) f.total = up.total;
+        if (!sent) {
+          const hi = Math.min(b, (f.total || Infinity) - 1); b = hi;
+          resp.writeHead(rg ? 206 : 200, { 'Content-Type': 'video/mp4', 'Accept-Ranges': 'bytes', 'Content-Length': hi - a + 1, ...(rg ? { 'Content-Range': `bytes ${a}-${hi}/${f.total || '*'}` } : {}) });
+          sent = true;
+        }
+        await new Promise((ok, bad) => {
+          up.res.on('data', (c) => { if (closed) return; if (!resp.write(c)) { up.res.pause(); resp.once('drain', () => up.res.resume()); } });
+          curUp = up.res; up.res.on('end', ok); up.res.on('error', bad); up.res.on('close', ok);
+        });
+        pos = end + 1;
+      }
+      if (!closed) resp.end();
+    } catch (e) { if (!sent) { try { resp.writeHead(502); resp.end(); } catch {} } else resp.destroy(); }
+  });
+  return new Promise((resolve, reject) => { srv.on('error', reject); srv.listen(0, '127.0.0.1', () => resolve({ srv, port: srv.address().port })); });
+}
+// Stream addresses (+ headers) of the video, found by yt-dlp
+function streamInfo(bin, url, fmt, extra) {
+  return new Promise((resolve) => {
+    let out = '', err = '', done = false;
+    const p = spawn(bin, ['--no-playlist', ...jsArgs(), ...extra, '-f', fmt, '-j', url], { windowsHide: true, env: jsEnv() }); procs.add(p);
+    const fin = (v) => { if (!done) { done = true; clearTimeout(t); procs.delete(p); killTree(p); resolve(v); } };
+    const t = setTimeout(() => fin({ ok: false, err: 'timed out' }), 90000);
+    p.stdout.on('data', (d) => { out += d; }); p.stderr.on('data', (d) => { err += d; });
+    p.on('error', (e) => fin({ ok: false, err: e.message }));
+    p.on('close', () => {
+      try {
+        const j = JSON.parse(out.trim().split('\n').filter(Boolean).pop() || '{}');
+        if (j.is_live || /is_live/.test(j.live_status || '')) return fin({ ok: false, live: true, err: 'CF_LIVE' });
+        const fl = (j.requested_formats && j.requested_formats.length ? j.requested_formats : [j]).filter(f => f && f.url);
+        if (!fl.length) return fin({ ok: false, err });
+        fin({ ok: true, title: j.title || 'video', id: j.id || 'video', files: fl.map(f => ({ url: f.url, headers: f.http_headers || {}, total: 0 })) });
+      } catch { fin({ ok: false, err }); }
+    });
+  });
+}
+async function downloadPartLocal(url, dir, onProgress, sec) {
+  const prep = (m, p) => { if (!cancelled) onProgress({ phase: 'prepare', percent: p, text: m }); };
+  const bin = await ensureYtDlp(prep);
+  if (cancelled) throw new Error('Cancelled');
+  await ensureDeno(prep);
+  const ff = global.__cfMobileSpawn ? null : (P.resolveBin('ffmpeg') || 'ffmpeg');
+  if (!ff) throw new Error('PART_FAILED');
+  const fmt = 'bv*[height<=1080]+ba/b[height<=1080]/b';
+  const tries = isYouTube(url) ? [['--force-ipv4'], [], ['--force-ipv4', ...ROUTES[3].args], ['--force-ipv4', ...ROUTES[1].args]] : [['--force-ipv4'], []];
+  let lastErr = '';
+  for (let i = 0; i < tries.length; i++) {
+    if (cancelled) throw new Error('Cancelled');
+    onProgress({ phase: 'prepare', percent: 0, text: i ? 'Trying another way to reach the video…' : 'Preparing the selected part…' });
+    netArgs = tries[i].includes('--force-ipv4') ? ['--force-ipv4'] : []; cookieArgs = [];
+    const info = await streamInfo(bin, url, fmt, tries[i].filter(x => x !== '--force-ipv4'));
+    if (cancelled) throw new Error('Cancelled');
+    if (info.live) throw new Error('This is a live stream that is still running. Wait until it ends and paste the link of the finished video (past broadcast).');
+    if (!info.ok) { lastErr = info.err || lastErr; continue; }
+    const { srv, port } = await startRangeProxy(info.files);
+    const safe = String(info.title).replace(/[\\/:*?"<>|\r\n]+/g, ' ').trim().slice(0, 80) || 'video';
+    const out = path.join(dir, `${safe} [${info.id}] (part ${secTag(sec.s)}-${secTag(sec.e)}).mp4`);
+    try { fs.rmSync(out + '.part', { force: true }); } catch {}
+    const args = ['-hide_banner', '-nostdin', '-v', 'error', '-stats', '-y'];
+    info.files.forEach((_, k) => args.push('-ss', String(sec.s), '-t', String(sec.e - sec.s), '-i', `http://127.0.0.1:${port}/f${k}`));
+    if (info.files.length > 1) args.push('-map', '0:v:0', '-map', '1:a:0'); else args.push('-map', '0');
+    args.push('-c', 'copy', '-strict', '-2', '-avoid_negative_ts', 'make_zero', '-movflags', '+faststart', '-f', 'mp4', out + '.part');
+    const res = await new Promise((resolve) => {
+      const p = spawn(ff, args, { windowsHide: true }); procs.add(p);
+      let err = '', lastT = 0, lastAct = Date.now(), done = false;
+      const fin = (v) => { if (done) return; done = true; clearInterval(wd); procs.delete(p); killTree(p); resolve(v); };
+      const wd = setInterval(() => { if (Date.now() - lastAct > 120000 && !cancelled) fin({ ok: false, err: 'no progress for 2 minutes' }); }, 5000);
+      const tick = (d) => {
+        const m = [...String(d).matchAll(/time=(\d+):(\d+):(\d+(?:\.\d+)?)/g)].pop(); if (!m) return;
+        const t = +m[1] * 3600 + +m[2] * 60 + +m[3]; if (t <= lastT) return; lastT = t; lastAct = Date.now();
+        onProgress({ phase: 'download', percent: Math.min(99, t / (sec.e - sec.s) * 100), text: 'Downloading the selected part…' });
+      };
+      p.stderr.on('data', (d) => { err += d; tick(d); }); p.stdout.on('data', tick);
+      p.on('error', (e) => fin({ ok: false, err: e.message }));
+      p.on('close', (code) => { if (cancelled) return fin({ ok: false, cancelled: true }); fin(code === 0 && fs.existsSync(out + '.part') ? { ok: true } : { ok: false, err }); });
+      p.on('exit', (code) => { if (done) return; setTimeout(() => { if (!done) { if (cancelled) fin({ ok: false, cancelled: true }); else fin(code === 0 && fs.existsSync(out + '.part') ? { ok: true } : { ok: false, err }); } }, 1500); });
+    });
+    try { srv.close(); } catch {}
+    if (res.cancelled || cancelled) { try { fs.rmSync(out + '.part', { force: true }); } catch {} throw new Error('Cancelled'); }
+    if (res.ok) { try { fs.renameSync(out + '.part', out); } catch (e) { lastErr = e.message; continue; } return { path: out, title: info.title }; }
+    lastErr = res.err || lastErr;
+    try { fs.rmSync(out + '.part', { force: true }); } catch {}
+    try { fs.appendFileSync(path.join(P.userDataDir(), 'ytdlp-log.txt'), `\n==== PART ${new Date().toISOString()} try=${i}\n${String(lastErr).slice(-1500)}\n`); } catch {}
+  }
+  throw new Error('PART_FAILED');
+}
+
 // Cuts [s, e] out of a file as it is (no re-encoding)
 function cutFile(ff, src, s, e, out, onProgress) {
   return new Promise((resolve, reject) => {
@@ -387,13 +507,21 @@ function cutFile(ff, src, s, e, out, onProgress) {
 async function download(url, dir, onProgress, range) {
   const sec = secRange(range);
   if (!sec) return downloadCore(url, dir, onProgress, null);
-  try { return await downloadCore(url, dir, onProgress, sec, Number(process.env.CF_STALL_MS) || 90000); }
-  catch (e) { if (String(e.message) !== 'STALLED' || cancelled) throw e; }
+  fs.mkdirSync(dir, { recursive: true });
+  cancelled = false;
+  try { return await downloadPartLocal(String(url || '').trim(), dir, onProgress, sec); }               // 1) chunked part download (fast, small)
+  catch (e) { if (String(e.message) !== 'PART_FAILED' || cancelled) throw e; }
   const ff = global.__cfMobileSpawn ? null : (P.resolveBin('ffmpeg') || 'ffmpeg');
   if (!ff) throw new Error('Could not download the selected part. Please try the full video.');
   cleanPartials(dir, url, false);
-  onProgress({ phase: 'prepare', percent: 0, text: 'The quick way is too slow here. Downloading the full video, then cutting your part…' });
-  const full = await downloadCore(url, dir, onProgress, null);
+  onProgress({ phase: 'prepare', percent: 0, text: 'The quick way did not work here. Checking the full video…' });
+  let full;
+  try { full = await downloadCore(url, dir, onProgress, null, 0, 2.5 * 1024 * 1024 * 1024); }           // 2) full video + cut, only when it is not huge
+  catch (e) {
+    const m = /^TOO_BIG:(\d+)/.exec(String(e.message));
+    if (m) throw new Error(`Could not download just that part, and the full video is too large to download as a fallback (${(+m[1] / 1073741824).toFixed(1)} GB). Please try again in a while, or choose a shorter video.`);
+    throw e;
+  }
   const out = full.path.replace(/\.[^.\\/]+$/, '') + ` (part ${secTag(sec.s)}-${secTag(sec.e)}).mp4`;
   onProgress({ phase: 'merge', percent: 100, text: 'Cutting your part…' });
   await cutFile(ff, full.path, sec.s, sec.e, out, onProgress);
