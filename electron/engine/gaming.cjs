@@ -92,7 +92,7 @@ function candidates({ dur, aud, mot, words, count, len }) {
 }
 
 // ---------- 3) the AI looks ----------
-async function lookAt(cands, { filePath, workDir, g, log, aud, hookLines }) {
+async function lookAt(cands, { filePath, workDir, g, log, aud, hookLines, words = [] }) {
   const out = new Map(); let game = '';
   for (let o = 0; o < cands.length; o += 4) {
     checkCancel();
@@ -100,13 +100,15 @@ async function lookAt(cands, { filePath, workDir, g, log, aud, hookLines }) {
     parts.push({ text: `You are a short-video editor for GAMEPLAY videos (any game). Below are ${part.length} candidate moments. For each one you get frames spread over its length and a loudness note. Decide how good a highlight it is: kills, close fights, clutch plays, big explosions or crashes, funny fails, lucky escapes, victory or other clear peaks score high; menus, loading, walking or waiting score low.
 For each candidate answer: "score" 0-10, "what" (one plain sentence about what happens), "peakAt" (seconds from the START of the candidate where the best moment happens), "title" (catchy, max 70 chars, no clickbait lies), "hookText" (max 9 words, a curiosity line about what is VISIBLE in these frames; never claim an outcome you cannot see), "description" (2 sentences for YouTube/Instagram), "hashtags" (5 without #), "keywords" (up to 6 plain words). Also "game": the game name if you can recognise it, else "".
 Return ONLY JSON: {"game":"","c":[{"i":0,"score":0,"what":"","peakAt":0,"title":"","hookText":"","description":"","hashtags":[],"keywords":[]}]}` });
+    parts.push({ text: `SCORING RULES (strict, be honest): 9-10 = a real peak that people would rewatch or share (a big crash/explosion, a chase with a payoff, a close escape, a kill or win, a truly funny fail or reaction, a story the streamer tells that ends with a payoff). 6-8 = good action or a funny/interesting moment. 3-5 = ordinary driving/walking/shooting with nothing special. 0-2 = NOT usable: the streamer reading chat or donations, giveaways, "like and subscribe", thanking people, talking about the stream itself, setup or settings, menus, loading, phone / tab-switching, idle or standing still, an empty road, pure small talk with nothing happening. A loud moment is NOT automatically good: shouting at chat or a giveaway is loud but scores 0-2. If the streamer talks, the words said are given: judge the moment by what is happening in the game AND by whether the talk is a funny / exciting / story moment or just chat-reading and housekeeping.` });
     for (let k = 0; k < part.length; k++) {
       const c = part[k], len = c.end - c.start, dir = path.join(workDir, `gm${o + k}`);
       const frames = await R.extractFrames(filePath, c.start, len, dir, Math.min(2, 7 / len));
       const pick = frames.filter((_, j) => j % Math.max(1, Math.round(frames.length / 7)) === 0).slice(0, 7);
       const db = aud.slice(Math.floor(c.start / 0.5), Math.floor(c.end / 0.5));
+      const said = words.filter(w => w.end > c.start && w.start < c.end).map(w => w.word).join(' ').slice(0, 450);
       const mx = Math.max(...db), loudAt = db.indexOf(mx) * 0.5, base = median(db);
-      parts.push({ text: `Candidate ${k} (length ${len.toFixed(0)} s). Loudness: normal ${base.toFixed(0)} dB, loudest ${mx.toFixed(0)} dB at ${loudAt.toFixed(0)} s. Frames in time order:` });
+      parts.push({ text: `Candidate ${k} (length ${len.toFixed(0)} s). Loudness: normal ${base.toFixed(0)} dB, loudest ${mx.toFixed(0)} dB at ${loudAt.toFixed(0)} s. ${said ? ` The streamer says: "${said}".` : ''} Frames in time order:` });
       for (const f of pick) parts.push({ inlineData: { mimeType: 'image/jpeg', data: fs.readFileSync(f).toString('base64') } });
       try { fs.rmSync(dir, { recursive: true, force: true }); } catch {}
     }
@@ -131,7 +133,7 @@ async function writeText(clips, { filePath, workDir, g, log, game, words = [], h
 Rules:
 - "what": 1-2 plain sentences describing the visible action (who/what does what, objects, places, results). No guessing about things not visible.
 - "title": 5 to 10 words, specific to this clip (name the visible action or object), natural English, 1 fitting emoji at the end, no clickbait lies, not ALL CAPS.
-- "hookText": the text shown on screen in the first seconds, ${HOOK_LEN[hn] || HOOK_LEN[2]} long. It is a TEASER written by an editor ABOUT this clip: a curiosity question or a bold open-loop line about the visible action, as a complete natural English sentence (never cut off, never random words, never a quote of what the player says, not ALL CAPS). Good: "Can he survive the last second?", "This chase went completely wrong", "Nobody saw that move coming". Bad: "Wait for the sound", "THIS IS INSANE", "You won't believe this". It must fit these exact frames. Never claim an outcome (won, lost, busted, caught) unless the frames clearly show it.
+- "hookText": the text shown on screen in the first seconds, ${HOOK_LEN[hn] || HOOK_LEN[2]} long. It must make a stranger NEED to keep watching THIS clip. First work out the real story of the clip (what happens and how it ends, using the frames AND what is said), then write the hook about THAT: a bold claim, a surprising result or a direct line to the viewer that matches the actual payoff. Natural English, a complete sentence, not ALL CAPS, never cut off. Write like a top YouTube Shorts editor: first person or "you" is great ("I did NOT expect this to work", "You won't believe how this chase ends", "This one move saved the whole run", "He almost lost everything here"). FORBIDDEN: vague questions about nothing in particular ("Where is this fast city drive taking him?", "Will the bouncers let him enter the club?", "What happens next?"), describing the scene like a caption, hooks that fit any clip, spoilers that kill the ending, and claims you cannot see in the clip. If the clip is only normal driving/walking, make the hook about the one specific thing that makes it interesting (a near-miss, a funny line, a decision) instead of the setting.
 - "description": 2 sentences for YouTube/Instagram that describe the visible action. "hashtags": 5 without #. "keywords": up to 6 plain words about what is visible.
 ${userPrompt ? `EDITOR'S INSTRUCTIONS (highest priority, they override the style rules above for title, hook and description; follow them literally for every clip; they may be in any language): "${String(userPrompt).slice(0, 4000)}"\n` : ''}Return ONLY JSON: {"c":[{"i":0,"what":"","title":"","hookText":"","description":"","hashtags":[],"keywords":[]}]}`;
   const out = new Map(), BATCH = 4;
@@ -143,7 +145,7 @@ ${userPrompt ? `EDITOR'S INSTRUCTIONS (highest priority, they override the style
       try {
         const frames = await R.extractFrames(filePath, c.start, len, dir, Math.min(2, 8 / len));
         const step = Math.max(1, Math.round(frames.length / 8)), pick = frames.filter((_, j) => j % step === 0).slice(0, 8);
-        const said = words.filter(w => w.end > c.start && w.start < c.end).map(w => w.word).join(' ').slice(0, 400);
+        const said = words.filter(w => w.end > c.start && w.start < c.end).map(w => w.word).join(' ').slice(0, 800);
         parts.push({ text: `Clip ${k} (${len.toFixed(0)} s). Frames at: ${pick.map((_, j) => (j * step * (len / Math.max(1, frames.length))).toFixed(0) + 's').join(', ')}${said ? `. Said in this clip: "${said}"` : ''}` });
         for (const f of pick) parts.push({ inlineData: { mimeType: 'image/jpeg', data: fs.readFileSync(f).toString('base64') } });
       } catch (e) { if (String(e.message) === 'CANCELLED') throw e; } finally { try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} }
@@ -158,6 +160,21 @@ ${userPrompt ? `EDITOR'S INSTRUCTIONS (highest priority, they override the style
     }
   }
   return out;
+}
+
+
+// The clip should not start or stop in the middle of a sentence: move both edges to the nearest pause in the speech (small shift only).
+function snapToSpeech({ start, end }, words, len, duration) {
+  if (!words || words.length < 8) return { start, end };
+  const ws = words.filter(w => w.end > start - 8 && w.start < end + 8); if (ws.length < 4) return { start, end };
+  const starts = [], ends = [];
+  for (let i = 0; i < ws.length; i++) { const gapBefore = i ? ws[i].start - ws[i - 1].end : 1, gapAfter = i < ws.length - 1 ? ws[i + 1].start - ws[i].end : 1; if (gapBefore >= 0.45) starts.push(ws[i].start); if (gapAfter >= 0.45 || /[.!?]$/.test(ws[i].word)) ends.push(ws[i].end); }
+  const near = (arr, t, r) => arr.filter(x => Math.abs(x - t) <= r).sort((a, b) => Math.abs(a - t) - Math.abs(b - t))[0];
+  const s2 = near(starts, start, 4);
+  const ns = s2 != null ? Math.max(0, s2 - 0.15) : start;
+  const e2 = near(ends.filter(x => x - ns >= len * 0.75 && x - ns <= len * 1.3), ns + len, 6);
+  const ne = e2 != null ? Math.min(duration, e2 + 0.25) : Math.min(duration, ns + len);
+  return ne - ns >= len * 0.7 ? { start: ns, end: ne } : { start, end };
 }
 
 // ---------- local fallback (no AI key) ----------
@@ -185,19 +202,27 @@ async function findGamingClips({ filePath, wav, duration, words = [], count = 4,
   log('Gaming', `${cands.length} candidate moments found from sound and action`, 'success');
   let game = '', verdict = new Map(), engine = 'local';
   if (G.ready(g)) {
-    const look = cands.slice().sort((a, b) => b.signal - a.signal).slice(0, Math.min(cands.length, Math.max(12, Math.ceil(count * 1.4))));   // the strongest ones; the rest keep their sound/action rank
-    try { const r = await lookAt(look, { filePath, workDir, g, log: (m, k) => log('AI', m, k), aud: audSeries, hookLines: HN }); game = r.game; look.forEach((c, k) => { const v = r.out.get(k); if (v) verdict.set(cands.indexOf(c), v); }); if (verdict.size) engine = 'gemini'; }
+    const look = cands.slice().sort((a, b) => b.signal - a.signal).slice(0, Math.min(cands.length, 28, Math.max(16, Math.ceil(count * 2.2))));   // the strongest ones; the rest keep their sound/action rank
+    try { const r = await lookAt(look, { filePath, workDir, g, log: (m, k) => log('AI', m, k), aud: audSeries, hookLines: HN, words }); game = r.game; look.forEach((c, k) => { const v = r.out.get(k); if (v) verdict.set(cands.indexOf(c), v); }); if (verdict.size) engine = 'gemini'; }
     catch (e) { if (String(e.message) === 'CANCELLED') throw e; log('AI', 'Could not look at the frames (' + String(e.message).slice(0, 100) + '), choosing by sound and action only', 'warn'); }
   } else log('AI', 'No AI key: moments are chosen from sound and action only, titles are generic (add a key in Settings for real titles)', 'info');
   cands.forEach((c, i) => { const v = verdict.get(i); c.ai = v || null; c.rank = (v ? (+v.score || 0) * 10 : 30) + c.signal * 6; });
   let ranked = cands.slice().sort((a, b) => b.rank - a.rank);
-  if (engine === 'gemini') { const good = ranked.filter(c => c.ai && +c.ai.score >= 5); if (good.length >= count) ranked = good; }   // weak moments are only dropped when there are enough good ones
+  if (engine === 'gemini') {
+    const seen = ranked.filter(c => c.ai);                                                                    // moments the AI actually looked at
+    const usable = ranked.filter(c => !c.ai || +c.ai.score >= 3);                                             // 0-2 = chat reading, giveaways, menus, idle: never used
+    const good = ranked.filter(c => c.ai && +c.ai.score >= 6);
+    if (good.length >= count) ranked = good;
+    else if (usable.length) ranked = usable.filter(c => c.ai || good.length < count);
+    if (seen.length > usable.length) log('Gaming', `${seen.length - usable.length} moment(s) skipped: chat reading, giveaway talk, menus or idle time`, 'info');
+    ranked = [...ranked.filter(c => c.ai), ...ranked.filter(c => !c.ai)];                                      // moments the AI did not look at only fill the count after the checked ones
+  }
   const picked = []; for (const c of ranked) { if (picked.length >= count) break; if (!picked.some(p => Math.abs(p.peak - c.peak) < len * 0.92)) picked.push(c); }
   if (picked.length < count) log('Gaming', `Only ${picked.length} clip(s) of ${count} fit in this video without overlapping (${Math.round(len)} s each). Use a shorter clip length or fewer clips to get more.`, 'warn');
   const windows = picked.map(c => {
     let { start, end } = c; const v = c.ai;
     if (v && Number.isFinite(+v.peakAt) && +v.peakAt > 0) { const t = c.start + Math.min(len, +v.peakAt), s = Math.max(0, t - len * 0.5); start = s; end = Math.min(duration, s + len); start = Math.max(0, end - len); }
-    return { start, end };
+    return snapToSpeech({ start, end }, words, len, duration);
   });
   let fin = new Map();
   if (engine === 'gemini') { log('AI', 'Writing title and hook from the final clips…'); fin = await writeText(windows.map(w => ({ start: w.start, end: w.end })), { filePath, workDir, g, log: (m, k) => log('AI', m, k), game, words, hn: HN, userPrompt }); }

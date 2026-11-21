@@ -40,6 +40,10 @@ async function transcribe(wavPath, { prompt = '', modelId = 'small', language = 
     checkCancel();
     let f = wavPath;
     if (n > 1) { f = path.join(workDir, `chunk_${i}${wk.id === 'gpu' ? '_g' : ''}.wav`); await slice(wavPath, offset, chunkSec, f); }
+    if (n > 1) {                                                // no audio left for this part (the audio track is shorter than the video): nothing to transcribe, do not fail the whole run
+      let tiny = false; try { tiny = fs.statSync(f).size < 4096; } catch { tiny = true; }
+      if (tiny) { fs.writeFileSync(base + '.json', JSON.stringify({ transcription: [] })); log('Whisper', `No audio found from ${Math.round(offset / 60)} min on (the audio track is shorter than the video), skipping this part`, 'warn'); try { fs.unlinkSync(f); } catch {} prog[i] = 1; report(); return; }
+    }
     const attemptWith = async (runner) => {
       const baseArgs = ['-m', model, '-f', f, '-oj', '-of', base, '-ml', '1', '-sow', '-l', language || 'auto', '-pp', '-t', String(runner.threads), ...runner.extra];
       // DTW token timestamps = much tighter word timing. Not every whisper-cli build supports it, so fall back step by step.

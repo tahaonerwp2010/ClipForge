@@ -79,11 +79,13 @@ function splitSizes(split, W, H) {
   const topH = ev2(H * clampN(split.splitPct ?? 40, 20, 80) / 100);
   return { gap, topH, botH: H - topH - gap, k };
 }
+// Backdrop blur strength: the sliders are in preview pixels (phone preview is ~320 px wide), so scale to the render width — otherwise 6..32 px on a 1080 px video looks the same.
+function blurRadius(v, w) { const n = (v === 0 || v) ? Number(v) : 18; if (!(n > 0)) return 0; return Math.max(1, Math.min(Math.floor(w / 4) - 1, Math.round(n * w / 320))); }
 // One section: crop the source (optional rectangle), scale to cover the section, apply the user's zoom/pan, or "fit" with a blurred backdrop.
-function sectionChain({ label, dims, rect, w, h, z = 1, px = 0, py = 0, fit = false, out, pre = '' }) {
+function sectionChain({ label, dims, rect, w, h, z = 1, px = 0, py = 0, fit = false, out, pre = '', blur = 18 }) {
   const [sw, sh] = dims;
   if (fit) {
-    return `${label}${pre}split[fa${out}][fb${out}];[fa${out}]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},boxblur=18:2,eq=brightness=-0.15[fg${out}];` +
+    return `${label}${pre}split[fa${out}][fb${out}];[fa${out}]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},${(rb => rb > 0 ? `boxblur=${rb}:2,` : '')(Math.min(blurRadius(blur, w), Math.floor(h / 4) - 1))}eq=brightness=-0.15[fg${out}];` +
       `[fb${out}]scale=${w}:${h}:force_original_aspect_ratio=decrease[ff${out}];[fg${out}][ff${out}]overlay=(W-w)/2:(H-h)/2[${out}]`;
   }
   let r = { x: 0, y: 0, w: sw, h: sh };
@@ -98,7 +100,7 @@ function sectionChain({ label, dims, rect, w, h, z = 1, px = 0, py = 0, fit = fa
   const x = Math.round(clampN((cw - w) / 2 * (1 + px / 50), 0, cw - w)), y = Math.round(clampN((ch - h) / 2 * (1 + py / 50), 0, ch - h));
   return `${label}${pre}${full ? '' : `crop=${r.w}:${r.h}:${r.x}:${r.y},`}scale=${cw}:${ch},crop=${w}:${h}:${x}:${y}[${out}]`;
 }
-function splitBase({ W, H, split, secIdx, fcMaskIdx, fps, dur, lead = 0 }) {
+function splitBase({ W, H, split, secIdx, fcMaskIdx, fps, dur, lead = 0, framing }) {
   const { gap, topH, botH } = splitSizes(split, W, H);
   const mainD = split.mainDims || [1920, 1080], secD = split.secondDims || mainD;
   const mode = split.mode || 'single';
@@ -115,7 +117,7 @@ function splitBase({ W, H, split, secIdx, fcMaskIdx, fps, dur, lead = 0 }) {
   const fz = faceBox.ui;
   parts.push(sectionChain({ label: faceLabel, dims: mainD, rect: faceRect, w: W, h: faceBox.h, z: fz.zoom, px: fz.panX, py: fz.panY, out: 'face' }));
   const gz = gameBox.ui;
-  parts.push(sectionChain({ label: gameLabel, dims: mode === 'single' ? mainD : secD, rect: gameRect, w: W, h: gameBox.h, z: gz.zoom, px: gz.panX, py: gz.panY, fit: split.gameFit === 'fit', out: 'game', pre: pre2 }));
+  parts.push(sectionChain({ label: gameLabel, dims: mode === 'single' ? mainD : secD, rect: gameRect, w: W, h: gameBox.h, z: gz.zoom, px: gz.panX, py: gz.panY, fit: split.gameFit === 'fit', blur: framing && framing.blurIntensity, out: 'game', pre: pre2 }));
   let faceOut = 'face';
   if (fcMaskIdx != null) { parts.push(`[face]format=yuva420p[face0];[${fcMaskIdx}:v]format=gray[fcm];[face0][fcm]alphamerge[facer]`); faceOut = 'facer'; }
   const topL = faceFirst ? faceOut : 'game', botL = faceFirst ? 'game' : faceOut;
@@ -153,7 +155,7 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
   const mode = f.mode || 'fit-blur';
   let base, note = null, gpuUsed = false;
   if (splitArgs) {
-    base = splitBase(splitArgs);
+    base = splitBase({ ...splitArgs, framing });
   } else if (mode === 'fill-crop' && track && track.duo && !behind && srcAspect >= 1.3 && H > W) {
     // two speakers in one wide shot: each one gets half of the screen (full source height, so the people keep their natural proportions), the left person on top
     const PH = Math.floor(H / 2 / 2) * 2, d = track.duo;
@@ -173,7 +175,7 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
     const { fgW, fgH, radius } = layoutInfo({ ...f, mode: mode === 'custom-scale' ? mode : 'fit-blur' }, W, H, srcAspect);
     const black = f.fitBackground === 'black' || mode === 'letterbox';
     const bgFx = black ? 'drawbox=t=fill:c=black'
-      : `boxblur=${Math.max(4, f.blurIntensity || 18)}:2,eq=brightness=${-(f.backdropDarken ?? 0.3) * 0.5}`;
+      : `${blurRadius(f.blurIntensity, W) ? `boxblur=${blurRadius(f.blurIntensity, W)}:2,` : ''}eq=brightness=${-(f.backdropDarken ?? 0.3) * 0.5}`;
     const offX = Math.round(((f.offsetX || 0) / 100) * W), offY = Math.round(((f.offsetY || 0) / 100) * H);
     const tracked = mode === 'custom-scale' && track && track.expr && fgW > W;
     const xo = tracked ? `max(${W}-w,min(0,${W}/2-(${RFX.balanceExpr(track.expr)})*w))+${offX}` : `(W-w)/2+${offX}`;
@@ -181,8 +183,8 @@ function filterGraph({ W, H, framing, grading, hasAss, track, emojiGroups = [], 
     gpuUsed = gpuF;
     const fgSc = gpuF ? `scale_cuda=${fgW}:${fgH}:format=nv12,hwdownload,format=nv12` : `scale=${fgW}:${fgH}`;
     // graphics-card mode: the blurred backdrop is made at a quarter of the size and enlarged (it is blurred anyway), far less work for the processor
-    const ev4 = n => Math.max(2, Math.round(n / 2) * 2), w4 = ev4(W / 4), h4 = ev4(H / 4), r4 = Math.max(1, Math.min(Math.floor(Math.min(w4, h4) / 2) - 1, Math.round(Math.max(4, f.blurIntensity || 18) / 4)));
-    const bgFx4 = black ? 'drawbox=t=fill:c=black' : `boxblur=${r4}:2,eq=brightness=${-(f.backdropDarken ?? 0.3) * 0.5}`;
+    const ev4 = n => Math.max(2, Math.round(n / 2) * 2), w4 = ev4(W / 4), h4 = ev4(H / 4), r4 = blurRadius(f.blurIntensity, w4);
+    const bgFx4 = black ? 'drawbox=t=fill:c=black' : `${r4 ? `boxblur=${r4}:2,` : ''}eq=brightness=${-(f.backdropDarken ?? 0.3) * 0.5}`;
     const bgSc = gpuF ? `scale_cuda=${w4}:${h4}:force_original_aspect_ratio=increase:format=nv12,hwdownload,format=nv12` : `scale=${w4}:${h4}:force_original_aspect_ratio=increase`;
     const bgChain = cheap ? `[a]${bgSc},crop=${w4}:${h4},${bgFx4},scale=${W}:${H}:flags=bilinear[bg]` : `[a]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},${bgFx}[bg]`;
     const fgChain = `[b]${fgSc}${useMask ? `,format=yuva420p[fg0];[${maskIdx}:v]format=gray[m];[fg0][m]alphamerge[fg]` : '[fg]'}`;

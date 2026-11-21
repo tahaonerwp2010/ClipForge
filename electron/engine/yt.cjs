@@ -435,9 +435,20 @@ function streamInfo(bin, url, fmt, extra) {
         if (j.is_live || /is_live/.test(j.live_status || '')) return fin({ ok: false, live: true, err: 'CF_LIVE' });
         const fl = (j.requested_formats && j.requested_formats.length ? j.requested_formats : [j]).filter(f => f && f.url);
         if (!fl.length) return fin({ ok: false, err });
-        fin({ ok: true, title: j.title || 'video', id: j.id || 'video', files: fl.map(f => ({ url: f.url, headers: f.http_headers || {}, total: 0 })) });
+        fin({ ok: true, title: j.title || 'video', id: j.id || 'video', files: fl.map(f => ({ url: f.url, headers: f.http_headers || {}, total: 0 })), webmFamily: fl.some(f => /vp0?[89]|av0?1|vp8/i.test(f.vcodec || '') || /opus|vorbis/i.test(f.acodec || '')), hasAudio: fl.some(f => f.acodec && f.acodec !== 'none') || fl.length > 1, videoOnly: fl.length === 1 && fl[0].acodec === 'none' });
       } catch { fin({ ok: false, err }); }
     });
+  });
+}
+// Length of the first audio track of a file in seconds (read without decoding); -2 when the file has no audio track
+function audioSecs(ff, file) {
+  return new Promise((resolve) => {
+    let last = 0, err = '';
+    const p = spawn(ff, ['-hide_banner', '-nostdin', '-v', 'error', '-stats', '-i', file, '-map', '0:a:0', '-c', 'copy', '-f', 'null', '-'], { windowsHide: true }); procs.add(p);
+    const rd = (d) => { err += d; const m = [...String(d).matchAll(/time=(\d+):(\d+):(\d+(?:\.\d+)?)/g)].pop(); if (m) last = +m[1] * 3600 + +m[2] * 60 + +m[3]; };
+    p.stderr.on('data', rd); p.stdout.on('data', rd);
+    p.on('error', () => { procs.delete(p); resolve(-1); });
+    p.on('close', () => { procs.delete(p); resolve(/matches no streams|no streams/i.test(err) ? -2 : last); });
   });
 }
 async function downloadPartLocal(url, dir, onProgress, sec) {
@@ -454,18 +465,20 @@ async function downloadPartLocal(url, dir, onProgress, sec) {
     if (cancelled) throw new Error('Cancelled');
     onProgress({ phase: 'prepare', percent: 0, text: i ? 'Trying another way to reach the video…' : 'Preparing the selected part…' });
     netArgs = tries[i].includes('--force-ipv4') ? ['--force-ipv4'] : []; cookieArgs = [];
-    const info = await streamInfo(bin, url, fmt, tries[i].filter(x => x !== '--force-ipv4'));
+    const info = await streamInfo(bin, url, i >= 2 ? 'b[height<=1080]/b[acodec!=none]/b' : fmt, tries[i].filter(x => x !== '--force-ipv4'));
     if (cancelled) throw new Error('Cancelled');
     if (info.live) throw new Error('This is a live stream that is still running. Wait until it ends and paste the link of the finished video (past broadcast).');
     if (!info.ok) { lastErr = info.err || lastErr; continue; }
+    if (info.videoOnly) { lastErr = 'this format has no audio'; continue; }       // never save a part without sound
     const { srv, port } = await startRangeProxy(info.files);
     const safe = String(info.title).replace(/[\\/:*?"<>|\r\n]+/g, ' ').trim().slice(0, 80) || 'video';
-    const out = path.join(dir, `${safe} [${info.id}] (part ${secTag(sec.s)}-${secTag(sec.e)}).mp4`);
+    const ext = info.webmFamily ? 'mkv' : 'mp4';            // vp9 / av1 / opus are copied into Matroska, their own container (the mp4 muxer can drop their audio)
+    const out = path.join(dir, `${safe} [${info.id}] (part ${secTag(sec.s)}-${secTag(sec.e)}).${ext}`);
     try { fs.rmSync(out + '.part', { force: true }); } catch {}
     const args = ['-hide_banner', '-nostdin', '-v', 'error', '-stats', '-y'];
     info.files.forEach((_, k) => args.push('-ss', String(sec.s), '-t', String(sec.e - sec.s), '-i', `http://127.0.0.1:${port}/f${k}`));
     if (info.files.length > 1) args.push('-map', '0:v:0', '-map', '1:a:0'); else args.push('-map', '0');
-    args.push('-c', 'copy', '-strict', '-2', '-avoid_negative_ts', 'make_zero', '-movflags', '+faststart', '-f', 'mp4', out + '.part');
+    args.push('-c', 'copy', '-strict', '-2', '-avoid_negative_ts', 'make_zero', ...(ext === 'mp4' ? ['-movflags', '+faststart'] : []), '-f', ext === 'mkv' ? 'matroska' : 'mp4', out + '.part');
     const res = await new Promise((resolve) => {
       const p = spawn(ff, args, { windowsHide: true }); procs.add(p);
       let err = '', lastT = 0, lastAct = Date.now(), done = false;
@@ -483,6 +496,12 @@ async function downloadPartLocal(url, dir, onProgress, sec) {
     });
     try { srv.close(); } catch {}
     if (res.cancelled || cancelled) { try { fs.rmSync(out + '.part', { force: true }); } catch {} throw new Error('Cancelled'); }
+    if (res.ok) {                       // the audio must cover (nearly) the whole part, otherwise transcribing fails later
+      const a = await audioSecs(ff, out + '.part');
+      if (cancelled) { try { fs.rmSync(out + '.part', { force: true }); } catch {} throw new Error('Cancelled'); }
+      if (a === -2) { res.ok = false; res.err = 'the saved part has no audio'; }
+      else if (a >= 0 && a < (sec.e - sec.s) * 0.9) { res.ok = false; res.err = `audio too short (${Math.round(a)} s of ${Math.round(sec.e - sec.s)} s)`; }
+    }
     if (res.ok) { try { fs.renameSync(out + '.part', out); } catch (e) { lastErr = e.message; continue; } return { path: out, title: info.title }; }
     lastErr = res.err || lastErr;
     try { fs.rmSync(out + '.part', { force: true }); } catch {}
@@ -522,7 +541,7 @@ async function download(url, dir, onProgress, range) {
     if (m) throw new Error(`Could not download just that part, and the full video is too large to download as a fallback (${(+m[1] / 1073741824).toFixed(1)} GB). Please try again in a while, or choose a shorter video.`);
     throw e;
   }
-  const out = full.path.replace(/\.[^.\\/]+$/, '') + ` (part ${secTag(sec.s)}-${secTag(sec.e)}).mp4`;
+  const out = full.path.replace(/\.[^.\\/]+$/, '') + ` (part ${secTag(sec.s)}-${secTag(sec.e)})` + path.extname(full.path);
   onProgress({ phase: 'merge', percent: 100, text: 'Cutting your part…' });
   await cutFile(ff, full.path, sec.s, sec.e, out, onProgress);
   try { fs.unlinkSync(full.path); } catch {}

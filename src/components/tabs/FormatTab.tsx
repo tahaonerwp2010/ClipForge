@@ -68,7 +68,7 @@ const BackgroundPicker: React.FC<{ framing: InnerFramingConfig; onFramingChange:
         </div>
       </div>
       {bg === 'blur' && (
-        <SliderRow label="Backdrop Blur" value={framing.blurIntensity} unit="px" min={6} max={32}
+        <SliderRow label="Backdrop Blur" value={framing.blurIntensity} unit="px" min={0} max={48}
           onChange={(v) => onFramingChange({ ...framing, blurIntensity: v })} />
       )}
     </div>

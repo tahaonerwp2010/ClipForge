@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   GeneratedClip, 
   InnerFramingConfig, 
@@ -77,6 +78,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
     catch (e: any) { setSheetMsg(`Could not save: ${e?.message || e}`); }
   };
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const [confirmDel, setConfirmDel] = useState<GeneratedClip | null>(null);
   const [activePreviewClip, setActivePreviewClip] = useState<GeneratedClip | null>(null);
   const [isPlayingPreview, setIsPlayingPreview] = useState(true);
   const [previewTime, setPreviewTime] = useState(0);
@@ -390,7 +392,7 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
                         </button>
 
                         <button
-                          onClick={() => onDeleteClip(clip.id)}
+                          onClick={() => setConfirmDel(clip)}
                           className="hover:text-rose-400 flex items-center gap-1 cursor-pointer transition-colors"
                           title="Delete clip"
                         >
@@ -599,6 +601,17 @@ export const ClipsLibrary: React.FC<ClipsLibraryProps> = ({
         </div>
       )}
 
+      {confirmDel && createPortal(
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 p-4" onClick={() => setConfirmDel(null)}>
+          <div className="w-full max-w-sm rounded-2xl border border-[#1d3228] bg-[#0b140f] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 text-rose-400 font-extrabold text-sm"><Trash2 className="w-4 h-4" /> Delete this clip?</div>
+            <p className="mt-2 text-xs text-neutral-300 leading-relaxed">"{confirmDel.title || 'Untitled clip'}" will be removed from this project. This can't be undone.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setConfirmDel(null)} className="px-4 py-1.5 rounded-lg bg-[#13211a] hover:bg-[#1d3228] text-xs font-bold text-neutral-200 cursor-pointer">Cancel</button>
+              <button onClick={() => { const id = confirmDel.id; setConfirmDel(null); onDeleteClip(id); }} className="px-4 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-400 text-xs font-extrabold text-white cursor-pointer">Delete</button>
+            </div>
+          </div>
+        </div>, document.body)}
     </div>
   );
 };
