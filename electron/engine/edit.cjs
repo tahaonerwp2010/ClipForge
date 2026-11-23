@@ -106,6 +106,17 @@ async function prepare(outDir, i) {
   return { base: f, dims: R.dimsFor(st.ratio || '9:16', 540), footage: footageOf(st, i, R.dimsFor(st.ratio || '9:16', 540)) };
 }
 
+// Windows keeps a file locked while it is open in the preview player / a virus scanner / the explorer: wait and retry instead of failing (EPERM / EBUSY).
+// If it stays locked, the new version is saved next to it under a new name, so the edit is never lost.
+async function replaceFile(tmp, out) {
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  for (let k = 0; k < 12; k++) {
+    try { try { fs.unlinkSync(out); } catch (e) { if (e.code !== 'ENOENT' && k < 11) throw e; } fs.renameSync(tmp, out); return out; }
+    catch (e) { if (!/EPERM|EBUSY|EACCES/.test(String(e.code || e.message))) throw e; await wait(500 + k * 300); }
+  }
+  const alt = out.replace(/\.mp4$/, '') + `_edit${Date.now().toString(36)}.mp4`;
+  fs.renameSync(tmp, alt); return alt;
+}
 // Re-render clip i with the user's caption / hook changes and replace the old file. The new settings are remembered.
 async function rerender(outDir, i, ov, onProgress, deps, hw = 'cpu') {
   const st = loadState(outDir); if (!st) throw new Error('This project was made with an older version, so its clips cannot be edited.');
@@ -124,9 +135,8 @@ async function rerender(outDir, i, ov, onProgress, deps, hw = 'cpu') {
   await R.renderClip({ capSfx: CAPSFX.build({ words: x.cw, clipStart: x.start, clipEnd: x.end, captions: x.captions, branding: x.branding, seed: i + 1 }), broll, behind: x.behind, assBehind: x.assBehind, quality: x.quality, fx, input: x.input, start: x.start, end: x.end, out: tmp, assText: x.ass, ratio: st.ratio || '9:16', framing: x.fr, grading: st.grading,
     workDir: w, track: (st.tracks || [])[i] || null, emojis: x.emojis, emojiBox: x.emojiBox, srcAspect: x.info.width / x.info.height, hasAudio: x.info.hasAudio !== false, fontFamilies: x.fontFamilies,
     watermark: x.watermark, music: x.music, split: st.split || undefined, fps: Math.round(x.info.fps || 30) || 30, hw, onProgress });
-  try { fs.unlinkSync(out); } catch {}
-  fs.renameSync(tmp, out);
-  let thumb; try { thumb = await R.thumbnail(out, path.join(w, 't.jpg')); } catch {}
+  const finalOut = await replaceFile(tmp, out);
+  let thumb; try { thumb = await R.thumbnail(finalOut, path.join(w, 't.jpg')); } catch {}
   try { fs.rmSync(w, { recursive: true, force: true }); } catch {}
   // remember the edit so the next editor session starts from it
   st.captions = x.captions; st.branding = { ...x.branding, autoTitle: { ...x.branding.autoTitle, title: '', wordColors: undefined } };
@@ -134,7 +144,7 @@ async function rerender(outDir, i, ov, onProgress, deps, hw = 'cpu') {
   if (ov.hookText == null && Array.isArray(ov.hookRule)) { const wc = ruleColors(st.clips[i].hookText || st.clips[i].title, (ov.autoTitle || {}).lines || ((x.branding || {}).autoTitle || {}).lines, ov.hookRule); if (wc) st.clips[i].hookColors = wc; else delete st.clips[i].hookColors; }
   if (ov.framing) { st.clips[i].framing = { ...(st.clips[i].framing || {}), ...ov.framing }; try { fs.unlinkSync(path.join(editDir(outDir), `base_${nn(i)}.mp4`)); } catch {} }   // this clip's own layout; the preview copy is made again next time
   saveState(outDir, st);
-  return { outputPath: out, thumbnailUrl: thumb };
+  return { outputPath: finalOut, thumbnailUrl: thumb };
 }
 // Re-render many clips as ONE job (same worker pool as the first render: graphics card + processor side by side). ctl = { paused, cancel } is controlled from outside.
 async function rerenderBatch(outDir, items, { hardware, deps, onEvent, ctl, resetCancel }) {

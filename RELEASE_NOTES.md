@@ -1,5 +1,7 @@
 ## What's new
 
+- **Fix: "EPERM: operation not permitted, rename … clip_01.edit.mp4"** when applying an edit on Windows (the old clip was still locked by the preview or a virus scanner). ClipForge now waits and retries, and if the file stays locked the edited clip is saved under a new name instead of failing.
+- **Fix: "6 h left" at the start of Edit clips.** The time estimate now appears only after the first clip is finished (it used to extrapolate from the first few percent). Note: "Apply to all clips (N)" re-renders every clip; "Apply to this clip" renders only one.
 - **Fix: a downloaded part had no sound** (that was the real reason transcribing failed). A part without audio is now rejected and ClipForge tries another format/route; video-only streams are never saved.
 - **Fix: Fit "Backdrop Blur" was ignored.** The slider is now 0–48 (0 = no blur) and is scaled to the video size, so the exported blur matches the preview. It also works for the Fit section of split-screen.
 - **Delete clip now asks first** ("Delete this clip?" Cancel / Delete).

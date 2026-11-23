@@ -17,7 +17,7 @@ export const EditJobView: React.FC<{ job: EditJob; name: string; onPause: () => 
   const pct = editJobPct(job), finished = job.status === 'done', failed = job.status === 'error';
   const [now, setNow] = React.useState(Date.now());
   React.useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
-  const elapsed = (now - job.startedAt) / 1000, eta = pct > 2 && !job.paused ? elapsed * (100 - pct) / pct : null;
+  const elapsed = (now - job.startedAt) / 1000, eta = pct >= 5 && !job.paused && (job.done >= 1 || job.total === 1) ? elapsed * (100 - pct) / pct : null;   // no wild guesses ("6 h left") before the first clip is finished
   const steps = [
     { name: 'Preparing the clips', p: 100, done: true },
     ...job.labels.map(l => ({ name: `Applying ${l.toLowerCase()}`, p: 100, done: true })),
